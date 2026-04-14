@@ -1,12 +1,12 @@
-# MSBlue
+# fb2k-medium-slate-blue
 
 ## 1. 简介
 
-![](/imgs/UI3_v1.1.0.png)
+![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI3_v1.1.0.png)
 
-Foobar2000 Customized Interface
+Foobar2000 Customized Interface.
 
-**MSBlue**（Medium Slate Blue）是一个基于 [**foobar2000-x64_v2.2.x**](https://www.foobar2000.org/download)、[**Columns UI**](https://github.com/reupen/columns_ui) 定制版本。
+**fb2k-medium-slate-blue**（Medium Slate Blue）是一个基于 [**foobar2000-x64_v2.2.x**](https://www.foobar2000.org/download)、[**Columns UI**](https://github.com/reupen/columns_ui) 定制版本。
 
 > 仅在WIN11测试。
 
@@ -16,18 +16,18 @@ Foobar2000 Customized Interface
 
 2. 使用 **便携** 方式安装软件;
 
-3. 把仓库的 `\profile` 复制到 foobar2000 **安装目录**中即可；
+3. 下载或克隆仓库，把 `\fb2k-medium-slate-blue` 重名名为 `\profile` 复制到 foobar2000 **安装目录**中即可；
 
-> 新安装的 foobar2000 的便携版**不要启动**，此时不会生成 `profile` 目录，
+> 新安装的 foobar2000 的便携版**不要启动**，此时不会生成 `\profile` 目录，
 >
-> 直接复制旧版的 `profile` 到新版本的 foobar 安装目录即可！没有覆盖文件操作可以减少出错的情况！！！！
+> 直接复制 `\profile` 到 foobar2000 安装目录即可！没有覆盖文件操作可以减少出错的情况！！！！
 >
 
 > 安装目录参考:
 >
-> 便携安装版的用户配置：`foobar2000\profile`，
+> 便携安装版的用户配置：`xx\foobar2000\profile`，
 >
-> 非便携版本在 Win 用户的路径中：`C:\Users\用户名\AppData\Roaming\foobar2000`
+> 非便携版本在 Win 用户的路径中：`C:\Users\用户名\AppData\Roaming\foobar2000\profile`
 
 ## 3. 电台封面
 
@@ -41,11 +41,11 @@ Foobar2000 Customized Interface
 	
 	利用电台Url标识设置路径：`$if($strstr(%path%,'://'),E:\Music\_Extras\Radio\%title%.*)`；
 	
-	固定路径：`E:\Music\_Extras\Radio\%title%.*`（优先级最低，不然会覆盖同名歌曲）。
+	固定路径：`E:\Music\_Extras\Radio\%title%.*`（优先级*最低*，不然会覆盖同名歌曲）。
 
 3. 需要显示封面的地方选择 `Front cover` 即可显示（`Artist` 设置类似）。
 
-> `/imgs/Radio`：内置的几个电台封面。
+> `/user-theme-fb2k-medium-slate-blue/imgs/RadioCover`：示例电台封面。
 
 ## 4. 字体
 
@@ -66,7 +66,7 @@ Foobar2000 Customized Interface
 - 配色优化。
 - 脚本优化。
 
-![](/imgs/UI3_v1.1.0.png)
+![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI3_v1.1.0.png)
 
 #### 1.0.0
 
@@ -78,12 +78,12 @@ Foobar2000 Customized Interface
 
 - 引入Coverflow面板。
 
-![](/imgs/UI3_v1.0.0.png)
+![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI3_v1.0.0.png)
 
 ### UI2
 
-![](/imgs/UI2.png)
+![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI2.png)
 
 ### UI1
 
-![](/imgs/UI1.png)
+![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI1.png)
