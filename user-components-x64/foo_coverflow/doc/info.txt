@@ -1,0 +1,24 @@
+Installation:
+
+- Install fb2k plugin normally.
+
+COM Interface installation:
+
+x32 bits:
+
+- Open user profile folder -> user-compenents -> foo_coverflow
+- Double click on coverflow32.reg to register coverflow ActiveX
+
+x64 bits:
+
+- Open user profile folder -> user-components-x64 -> foo_coverflow
+- Double click on coverflow64.reg to register coverflow ActiveX
+
+ActiveX interface example:
+
+const cf = new ActiveXObject("coverflow.ICoverflowControl")
+
+const col1 = 0x55ffaa; 
+
+cron.SetTextColor(col1, /*skip refresh*/[0]);
+cron.SetPanelColor(RGB(200,200,200), /*refresh*/[1]);
