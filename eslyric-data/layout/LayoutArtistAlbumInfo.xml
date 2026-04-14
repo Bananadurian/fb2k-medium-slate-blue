@@ -1,0 +1,19 @@
+<layout xmlns="https://github.com/ESLyric/layout" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://github.com/ESLyric/layout ./Layout.xsd">
+    <panel layout="stack" name="artist and album button layout" orientation="vertical" features="1">
+        <!-- 上方歌词面板 -->
+        <container name="top-panel" anchor="vfill" width="*">
+            <lyric margin="0,30,0,30" text-align="center" anchor="fill" banner-text="Style for foobar2000"/>         
+        </container>
+
+        <!-- 下方按钮面板，内部横向排列 -->
+        <container name="bottom-panel" layout="stack" orientation="horizontal" justify="end" anchor="bottom" width="*" height="36">
+            <button name="artist-info" margin="0,0,0,0" anchor="left" width="28" height="28" 
+                background="imgs/users-round.png" 
+                command="mm://View/Popup panels/Show/SMP-艺人资料"/>            
+            <button name="album-info" margin="10,0,10,0" anchor="left" width="28" height="28" 
+                background="imgs/disc-2.png" 
+                command="mm://View/Popup panels/Show/SMP-专辑介绍"/>
+        </container>               
+
+    </panel>
+</layout>

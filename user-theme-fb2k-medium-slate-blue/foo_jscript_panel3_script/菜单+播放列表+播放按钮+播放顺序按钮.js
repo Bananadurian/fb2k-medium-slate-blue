@@ -1,0 +1,103 @@
+// ==PREPROCESSOR==
+// @name "菜单+播放列表+播放按钮+播放顺序按钮"
+// @author "jin"
+// @version "1.0.0"
+// @import "%fb2k_component_path%helpers.txt"
+// @import "%fb2k_component_path%samples\js\lodash.min.js"
+// @import "%fb2k_component_path%samples\js\common.js"
+// @import "%fb2k_component_path%samples\js\panel.js"
+// ==/PREPROCESSOR==
+
+// @created 2024-04-06
+// @updated 2024-04-06
+
+var colours = {
+	buttons : RGB(255, 255, 254),
+	menuButtons: RGB(148, 161, 178),
+	background : window.GetColourCUI(3),
+	contrast : RGB(255, 255, 254),
+	
+};
+
+//////////////////////////////////////////////////////////////
+
+var panel = new _panel();
+var buttons = new _buttons();
+var bs = _scale(24);
+
+var pbo_chars = [chars.repeat_off, chars.repeat_all, chars.repeat_one, chars.random, chars.shuffle, chars.album, chars.folder];
+var pbo_names = plman.GetPlaybackOrders().toArray();
+
+buttons.update = function () {
+	var x = ((panel.w - bs * 1) / 2);
+	var y = Math.round((panel.h - bs) / 2);
+	
+	this.buttons.menu = new _button(0, y, bs-4, bs-4, { char: chars.menu, colour: colours.menuButtons }, null, function () { _menu(0, bs); }, 'Menu');
+	this.buttons.playlist = new _button(x - bs, y, bs, bs, { char: chars.list, colour: colours.buttons }, null, function () { fb.RunMainMenuCommand('View/Popup panels/New panel/Playlist views/Playlist view'); }, 'Playlist');
+	
+	this.buttons.stop = new _button(x, y, bs, bs, { char : chars.stop, colour:fb.StopAfterCurrent ? colours.contrast : colours.buttons}, null, function () { fb.Stop(); }, 'Stop');
+	this.buttons.previous = new _button(x + bs, y, bs, bs, { char : chars.prev, colour:colours.buttons }, null, function () { fb.Prev(); }, 'Previous');
+	this.buttons.play = new _button(x + (bs * 2), y, bs, bs, { char : !fb.IsPlaying || fb.IsPaused ? chars.play : chars.pause, colour:colours.buttons}, null, function () { fb.PlayOrPause(); }, !fb.IsPlaying || fb.IsPaused ? 'Play' : 'Pause');
+	this.buttons.next = new _button(x + (bs * 3), y, bs, bs, { char : chars.next, colour:colours.buttons }, null, function () { fb.Next(); }, 'Next');
+
+	var pbo = plman.PlaybackOrder;
+	this.buttons.pbo = new _button(x + (bs * 4), y, bs, bs, { char : pbo_chars[pbo], colour: pbo == 0 ? setAlpha(colours.buttons, 60) : colours.contrast }, null, function () { pbo >= pbo_chars.length - 1 ? plman.PlaybackOrder = 0 : plman.PlaybackOrder++ }, 'Playback Order: ' + pbo_names[pbo]);
+	
+
+}
+
+function on_mouse_lbtn_up(x, y) {
+	buttons.lbtn_up(x, y);
+}
+
+function on_mouse_leave() {
+	buttons.leave();
+}
+
+function on_mouse_move(x, y) {
+	buttons.move(x, y);
+}
+
+function on_mouse_rbtn_up(x, y) {
+	if (buttons.buttons.stop.containsXY(x, y)) {
+		fb.StopAfterCurrent = !fb.StopAfterCurrent;
+		return true;
+	}
+
+	return panel.rbtn_up(x, y);
+}
+
+function on_paint(gr) {
+	gr.Clear(colours.background);
+	buttons.paint(gr);
+}
+
+function on_playback_order_changed() {
+	buttons.update();
+	window.Repaint();
+}
+
+function on_playback_pause() {
+	buttons.update();
+	window.Repaint();
+}
+
+function on_playback_starting() {
+	buttons.update();
+	window.Repaint();
+}
+
+function on_playback_stop() {
+	buttons.update();
+	window.Repaint();
+}
+
+function on_playlist_stop_after_current_changed() {
+	buttons.update();
+	window.Repaint();
+}
+
+function on_size() {
+	panel.size();
+	buttons.update();
+}
