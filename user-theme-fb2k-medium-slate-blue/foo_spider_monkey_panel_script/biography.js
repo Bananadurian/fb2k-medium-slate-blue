@@ -2,8 +2,8 @@
  * @file BIOGRAPHY.js
  * @author XYSRe
  * @created 2025-12-23
- * @updated 2026-01-17
- * @version 1.6.8
+ * @updated 2026-04-14
+ * @version 1.6.9
  * @description 艺人资料面板 (优化版：修复高度计算Bug，延迟加载ActiveX，增强注释)
  */
 
@@ -15,7 +15,7 @@
 
 window.DefineScript("BIOGRAPHY", {
     author: "XYSRe",
-    version: "1.6.7",
+    version: "1.6.9",
     options: { grab_focus: false }
 });
 
