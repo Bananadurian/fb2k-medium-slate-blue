@@ -2,8 +2,8 @@
  * @file control_buttons.js
  * @author XYSRe
  * @created 2025-12-12
- * @updated 2026-01-01  
- * @version 1.3.3 (Fix Crash)
+ * @updated 2026-04-14  
+ * @version 1.3.4 (Fix Crash)
  * @description 一个包含 [声音输出设备按钮 + 声音控制 + 打开搜索 + 打开队列 + 菜单] 的控件
  *              修复：volumeBar 未定义错误，移除 menu.Dispose 防止报错。
  */
@@ -12,7 +12,7 @@
 
 window.DefineScript("Control Buttons", {
     author: "XYSRe",
-    version: "1.3.3",
+    version: "1.3.4",
     options: { grab_focus: false },
 });
 

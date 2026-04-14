@@ -4,8 +4,6 @@
 
 ![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI3_v1.1.0.png)
 
-Foobar2000 Customized Interface.
-
 **fb2k-medium-slate-blue**（Medium Slate Blue）是一个基于 [**foobar2000-x64_v2.2.x**](https://www.foobar2000.org/download)、[**Columns UI**](https://github.com/reupen/columns_ui) 定制版本。
 
 > 仅在WIN11测试。
@@ -14,7 +12,7 @@ Foobar2000 Customized Interface.
 
 1. 下载 **64bit** 的 [Foobar2000](https://www.foobar2000.org/download);
 
-2. 使用 **便携** 方式安装软件;
+2. 安装foobar2000，推荐使用 **便携** 方式安装;
 
 3. 下载或克隆仓库，把 `\fb2k-medium-slate-blue` 重名名为 `\profile` 复制到 foobar2000 **安装目录**中即可；
 
@@ -22,7 +20,6 @@ Foobar2000 Customized Interface.
 >
 > 直接复制 `\profile` 到 foobar2000 安装目录即可！没有覆盖文件操作可以减少出错的情况！！！！
 >
-
 > 安装目录参考:
 >
 > 便携安装版的用户配置：`xx\foobar2000\profile`，
@@ -53,9 +50,11 @@ Foobar2000 Customized Interface.
 
 ## 5. 版本记录
 
-### UI3 (当前版本)
+> 仅记录UI大变化的版本。
 
-#### 1.1.0
+### 5.1. UI3 (当前版本)
+
+#### 5.1.1. v1.1.0
 
 2026-01-14：
 
@@ -68,7 +67,7 @@ Foobar2000 Customized Interface.
 
 ![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI3_v1.1.0.png)
 
-#### 1.0.0
+#### 5.1.2. v1.0.0
 
 2026-01-01 主要内容：
 
@@ -80,10 +79,10 @@ Foobar2000 Customized Interface.
 
 ![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI3_v1.0.0.png)
 
-### UI2
+### 5.2. UI2
 
 ![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI2.png)
 
-### UI1
+### 5.3. UI1
 
 ![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI1.png)

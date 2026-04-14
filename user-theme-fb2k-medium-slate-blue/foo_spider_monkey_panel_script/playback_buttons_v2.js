@@ -2,8 +2,8 @@
  * @file playback_buttons_v2.js
  * @author XYSRe
  * @created 2025-12-14
- * @updated 2026-01-05
- * @version 1.4.0 (Native Tooltip)
+ * @updated 2026-04-14
+ * @version 1.4.1 (Native Tooltip)
  * @description 修复：完全还原原版 Tooltip 逻辑（移除 Deactivate），修正碰撞检测间隙。
  *              播放控制按钮, 播放模式(Order)写死了几个模式！
  */
@@ -12,7 +12,7 @@
 
 window.DefineScript("Playback Buttons", {
     author: "XYSRe",
-    version: "1.4.0",
+    version: "1.4.1",
     options: { grab_focus: false },
 });
 

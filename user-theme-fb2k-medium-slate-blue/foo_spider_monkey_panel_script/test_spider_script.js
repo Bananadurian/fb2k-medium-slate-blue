@@ -143,8 +143,10 @@ function load_image(path) {
   return utils.IsFile(path) ? gdi.Image(path) : null;
 }
 
-const LINK_ICONS_DIR = fb.ProfilePath + "\\user-theme-fb2k-medium-slate-blue\\imgs\\Links\\";
-const STAR_ICONS_DIR = fb.ProfilePath + "\\user-theme-fb2k-medium-slate-blue\\imgs\\Lucide\\";
+const LINK_ICONS_DIR =
+  fb.ProfilePath + "\\user-theme-fb2k-medium-slate-blue\\imgs\\Links\\";
+const STAR_ICONS_DIR =
+  fb.ProfilePath + "\\user-theme-fb2k-medium-slate-blue\\imgs\\Lucide\\";
 const STAR_ICONS = {
   StarOff: load_image(STAR_ICONS_DIR + "star1.png"),
   StarOn: load_image(STAR_ICONS_DIR + "star.png"),
@@ -212,6 +214,9 @@ const tf_track_artist = fb.TitleFormat("%artist%");
 const tf_track_year = fb.TitleFormat("$year(%date%)");
 const tf_track_album = fb.TitleFormat("%album%");
 const tf_album_source = fb.TitleFormat("$if2($meta(SOURCE),WEB)");
+
+const tf_track_bpm = fb.TitleFormat("$if2($meta(BPM) BPM,Unknown BPM)");
+const tf_track_genre = fb.TitleFormat("%GENRE%");
 
 // AQ 音质参数提取 TF
 const tf_codec = fb.TitleFormat("%codec%");
@@ -439,6 +444,11 @@ function update_contents() {
   if (g_metadb) {
     CONTENTS.title.text =
       tf_track_title.EvalWithMetadb(g_metadb) || "Unknown Title";
+    const track_bpm = tf_track_bpm.EvalWithMetadb(g_metadb) || "0 BPM";
+    const track_genre =
+      tf_track_genre.EvalWithMetadb(g_metadb) || "Umknown Genre";
+    CONTENTS.title.tooltip = track_genre + "\n" + track_bpm;
+
     CONTENTS.artist.text =
       tf_track_artist.EvalWithMetadb(g_metadb) || "Unknown Artist";
     CONTENTS.album.text =
@@ -685,7 +695,7 @@ function on_paint(gr) {
   gr.GdiDrawText(
     CONTENTS.title.text,
     FONTS.Title,
-    COLORS.Title,
+    CONTENTS.title.is_hover ? COLORS.Accent : COLORS.Title,
     CONTENTS.title.x,
     CONTENTS.title.y,
     CONTENTS.title.w,
@@ -818,7 +828,9 @@ function on_mouse_move(x, y) {
 
   // 2. 检测文本与图标
   if (!target) {
-    if (_element_trace(x, y, CONTENTS.artist)) {
+    if (_element_trace(x, y, CONTENTS.title)) {
+      target = CONTENTS.title;
+    } else if (_element_trace(x, y, CONTENTS.artist)) {
       target = CONTENTS.artist;
     } else if (_element_trace(x, y, CONTENTS.album)) {
       target = CONTENTS.album;
@@ -951,8 +963,7 @@ function on_playback_new_track() {
   update_contents();
 }
 function on_playback_stop(reason) {
-  // console.log(reason);
-  console.log("==========  on_playback_stop: " + reason);
+  // console.log("==========  on_playback_stop: " + reason);
   if (reason !== 2) update_contents();
 }
 function on_item_focus_change() {
