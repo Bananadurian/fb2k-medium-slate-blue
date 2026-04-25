@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>现代化音乐播放器组件</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212; /* Default dark background */
+            transition: background-color 0.5s ease;
+        }
+
+        /* ----- 动画与通用样式 ----- */
+        .spin {
+            animation: spin 6s linear infinite;
+        }
+        .spin-paused {
+            animation-play-state: paused;
+        }
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ----- 主题 1: 极简黑胶 (Classic Vinyl) ----- */
+        .theme-vinyl-bg { background-color: #18181b; }
+        .vinyl-record {
+            background: 
+                linear-gradient(30deg, transparent 40%, rgba(255,255,255,0.05) 50%, transparent 60%),
+                linear-gradient(-30deg, transparent 40%, rgba(255,255,255,0.05) 50%, transparent 60%),
+                repeating-radial-gradient(#111 0, #111 4px, #1a1a1a 5px, #111 6px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .tonearm {
+            transform-origin: 20px 20px;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: rotate(-25deg); /* off record */
+            filter: drop-shadow(-5px 10px 10px rgba(0,0,0,0.5));
+        }
+        .is-playing .tonearm {
+            transform: rotate(20deg); /* on record */
+        }
+        /* 简单的纯CSS唱臂绘制 */
+        .tonearm-base { width: 40px; height: 40px; background: #ddd; border-radius: 50%; box-shadow: inset 0 0 10px #555; }
+        .tonearm-rod { width: 8px; height: 120px; background: linear-gradient(to right, #ccc, #fff, #ccc); margin-left: 16px; margin-top: -10px;}
+        .tonearm-head { width: 16px; height: 30px; background: #333; margin-left: 12px; border-radius: 4px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); }
+
+        /* ----- 主题 2: 拟态 CD (Neumorphism) ----- */
+        .theme-neu-bg { background-color: #e0e5ec; }
+        .neu-flat {
+            background: #e0e5ec;
+            box-shadow: 9px 9px 16px rgb(163,177,198,0.6), -9px -9px 16px rgba(255,255,255, 0.5);
+        }
+        .neu-pressed {
+            background: #e0e5ec;
+            box-shadow: inset 6px 6px 10px 0 rgba(163,177,198, 0.7), inset -6px -6px 10px 0 rgba(255,255,255, 0.8);
+        }
+        .neu-button {
+            transition: all 0.2s ease;
+        }
+        .neu-button:active {
+            box-shadow: inset 6px 6px 10px 0 rgba(163,177,198, 0.7), inset -6px -6px 10px 0 rgba(255,255,255, 0.8);
+            transform: scale(0.98);
+        }
+        .cd-disc {
+            background: conic-gradient(from 0deg, #d4d8e1, #f0f4f8, #d4d8e1, #f0f4f8, #d4d8e1);
+            border: 10px solid #e0e5ec;
+        }
+        .cd-inner-ring {
+            box-shadow: inset 3px 3px 6px rgb(163,177,198,0.6), inset -3px -3px 6px rgba(255,255,255, 0.5);
+        }
+
+        /* ----- 主题 3: 液态玻璃 (iOS 26 Liquid Glass) ----- */
+        .theme-glass-bg { background-color: #000; }
+        
+        @keyframes liquid {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .liquid-container {
+            background: linear-gradient(-45deg, #ff6b6b, #4facfe, #00f2fe, #f093fb, #f5576c);
+            background-size: 400% 400%;
+            animation: liquid 15s ease infinite;
+            position: relative;
+            overflow: hidden;
+        }
+        /* 增加内部流体光效 */
+        .liquid-blob {
+            position: absolute;
+            filter: blur(40px);
+            border-radius: 50%;
+            opacity: 0.6;
+            animation: moveBlobs 10s infinite alternate;
+        }
+        @keyframes moveBlobs {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(50px, -50px) scale(1.5); }
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-top: 1px solid rgba(255, 255, 255, 0.5);
+            border-left: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+        .glass-record {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.2), 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        /* --- 变体 1: 绿野仙踪 (Emerald) --- */
+        .liquid-container-emerald {
+            background: linear-gradient(-45deg, #0575e6, #00f260, #11998e, #38ef7d);
+            background-size: 400% 400%;
+            animation: liquid 15s ease infinite;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* --- 变体 2: 赛博霓虹 (Cyberpunk) --- */
+        .liquid-container-cyber {
+            background: linear-gradient(-45deg, #1a0033, #000000, #1a001a, #000022);
+            background-size: 400% 400%;
+            animation: liquid 15s ease infinite;
+            position: relative;
+            overflow: hidden;
+        }
+        .glass-panel-cyber {
+            background: rgba(20, 20, 20, 0.4);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-top: 1px solid rgba(255, 0, 255, 0.5);
+            border-left: 1px solid rgba(0, 255, 255, 0.5);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+        }
+
+        /* --- 变体 3: 蛋白石梦 (Opal - Light Theme) --- */
+        .liquid-container-opal {
+            background: linear-gradient(-45deg, #ffecd2, #fcb69f, #e0c3fc, #8ec5fc);
+            background-size: 400% 400%;
+            animation: liquid 15s ease infinite;
+            position: relative;
+            overflow: hidden;
+        }
+        .glass-panel-light {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
+        .glass-record-light {
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.5);
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.4), 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        /* 隐藏无障碍滚动条 */
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Tab 切换栏 -->
+    <div class="mb-8 flex space-x-2 bg-gray-800/50 backdrop-blur-md p-1.5 rounded-full z-10 border border-gray-700 max-w-[95vw] overflow-x-auto">
+        <button onclick="switchTab('vinyl')" id="tab-vinyl" class="px-6 py-2 rounded-full text-sm font-medium text-white bg-blue-600 transition-all shadow-lg shrink-0">黑胶极简</button>
+        <button onclick="switchTab('neu')" id="tab-neu" class="px-6 py-2 rounded-full text-sm font-medium text-gray-400 hover:text-white transition-all shrink-0">拟态 CD</button>
+        <button onclick="switchTab('glass')" id="tab-glass" class="px-6 py-2 rounded-full text-sm font-medium text-gray-400 hover:text-white transition-all shrink-0">液态玻璃</button>
+        <button onclick="switchTab('glass-emerald')" id="tab-glass-emerald" class="px-6 py-2 rounded-full text-sm font-medium text-gray-400 hover:text-white transition-all shrink-0">液态(绿野仙踪)</button>
+        <button onclick="switchTab('glass-cyber')" id="tab-glass-cyber" class="px-6 py-2 rounded-full text-sm font-medium text-gray-400 hover:text-white transition-all shrink-0">液态(赛博霓虹)</button>
+        <button onclick="switchTab('glass-opal')" id="tab-glass-opal" class="px-6 py-2 rounded-full text-sm font-medium text-gray-400 hover:text-white transition-all shrink-0">液态(蛋白石梦)</button>
+    </div>
+
+    <!-- 播放器容器 -->
+    <div class="relative w-full max-w-[360px] h-[700px] perspective-1000">
+
+        <!-- ==========================================
+             设计 1: 极简黑胶 (Classic Vinyl) 
+             ========================================== -->
+        <div id="player-vinyl" class="absolute inset-0 theme-vinyl-bg rounded-[40px] shadow-2xl p-6 flex flex-col transition-opacity duration-500 z-10 border border-gray-800">
+            <!-- Header -->
+            <div class="flex justify-between items-center text-gray-400 mb-8">
+                <i class="ph ph-caret-down text-2xl cursor-pointer hover:text-white transition"></i>
+                <span class="text-xs tracking-widest uppercase font-semibold">Now Playing</span>
+                <i class="ph ph-dots-three text-2xl cursor-pointer hover:text-white transition"></i>
+            </div>
+
+            <!-- Record Area -->
+            <div class="relative w-full aspect-square flex items-center justify-center mb-8" id="vinyl-container">
+                <!-- 唱臂 -->
+                <div class="absolute top-0 right-4 z-20 tonearm pointer-events-none">
+                    <div class="tonearm-base"></div>
+                    <div class="tonearm-rod"></div>
+                    <div class="tonearm-head"></div>
+                </div>
+                <!-- 唱片 -->
+                <div class="vinyl-record w-[260px] h-[260px] rounded-full flex items-center justify-center spin spin-paused relative z-10" id="disc-vinyl">
+                    <img src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=400&auto=format&fit=crop" class="w-24 h-24 rounded-full object-cover border-2 border-[#111] shadow-inner" alt="Album Art">
+                    <!-- 中心孔 -->
+                    <div class="absolute w-3 h-3 bg-[#18181b] rounded-full"></div>
+                </div>
+            </div>
+
+            <!-- Info -->
+            <div class="text-center mb-8">
+                <h2 class="text-white text-2xl font-bold mb-1">尘大师 Lightly</h2>
+                <p class="text-gray-400 text-sm">陈奕迅</p>
+            </div>
+
+            <!-- Progress -->
+            <div class="mb-8">
+                <div class="w-full h-1 bg-gray-800 rounded-full mb-2 overflow-hidden">
+                    <div class="h-full bg-white w-1/3 rounded-full relative"></div>
+                </div>
+                <div class="flex justify-between text-xs text-gray-500 font-medium">
+                    <span>01:24</span>
+                    <span>04:27</span>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex items-center justify-between text-gray-400 mt-auto px-2">
+                <i class="ph ph-shuffle text-2xl cursor-pointer hover:text-white transition"></i>
+                <i class="ph ph-skip-back-circle text-4xl cursor-pointer hover:text-white transition"></i>
+                <button onclick="togglePlay('vinyl')" class="w-16 h-16 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 transition shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                    <i id="btn-play-vinyl" class="ph-fill ph-play text-3xl ml-1"></i>
+                </button>
+                <i class="ph ph-skip-forward-circle text-4xl cursor-pointer hover:text-white transition"></i>
+                <i class="ph ph-repeat text-2xl cursor-pointer hover:text-white transition"></i>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             设计 2: 拟态 CD (Neumorphic CD) 
+             ========================================== -->
+        <div id="player-neu" class="absolute inset-0 neu-flat rounded-[40px] p-6 flex flex-col transition-opacity duration-500 opacity-0 pointer-events-none">
+            <!-- Header -->
+            <div class="flex justify-between items-center text-gray-500 mb-8">
+                <button class="neu-button w-10 h-10 rounded-full flex items-center justify-center neu-flat text-lg">
+                    <i class="ph ph-caret-down"></i>
+                </button>
+                <span class="text-xs tracking-widest uppercase font-bold text-gray-400">Playing from Playlist</span>
+                <button class="neu-button w-10 h-10 rounded-full flex items-center justify-center neu-flat text-lg">
+                    <i class="ph ph-list"></i>
+                </button>
+            </div>
+
+            <!-- CD Area -->
+            <div class="relative w-full aspect-square flex items-center justify-center mb-8">
+                <!-- CD 光盘本身 -->
+                <div class="cd-disc w-[260px] h-[260px] rounded-full flex items-center justify-center spin spin-paused neu-flat relative" id="disc-neu">
+                    <img src="https://images.unsplash.com/photo-1493225457124-a1a2a5f5f928?q=80&w=400&auto=format&fit=crop" class="w-full h-full rounded-full object-cover opacity-80 mix-blend-multiply absolute inset-0" alt="Album Art">
+                    
+                    <!-- CD 内圈空白处 -->
+                    <div class="w-20 h-20 bg-[#e0e5ec] rounded-full z-10 flex items-center justify-center cd-inner-ring">
+                        <!-- 中心孔 -->
+                        <div class="w-4 h-4 neu-pressed rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info -->
+            <div class="text-center mb-8">
+                <h2 class="text-gray-700 text-2xl font-bold mb-1">Lost in Tokyo</h2>
+                <p class="text-gray-500 text-sm font-medium">Synthwave Boy</p>
+            </div>
+
+            <!-- Progress -->
+            <div class="mb-8 px-2">
+                <div class="w-full h-2 neu-pressed rounded-full mb-3 flex items-center">
+                    <div class="h-2 bg-blue-400 w-1/2 rounded-full relative neu-flat ml-[-1px]">
+                        <div class="absolute right-[-4px] top-[-4px] w-4 h-4 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(96,165,250,0.8)] border-2 border-white"></div>
+                    </div>
+                </div>
+                <div class="flex justify-between text-xs text-gray-500 font-bold">
+                    <span>02:15</span>
+                    <span>04:20</span>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex items-center justify-between text-gray-600 mt-auto px-2">
+                <i class="ph ph-shuffle text-xl cursor-pointer hover:text-blue-500 transition"></i>
+                <button class="neu-button w-12 h-12 rounded-full flex items-center justify-center neu-flat">
+                    <i class="ph-fill ph-skip-back text-lg"></i>
+                </button>
+                <button onclick="togglePlay('neu')" class="neu-button w-16 h-16 rounded-full flex items-center justify-center neu-flat text-blue-500">
+                    <i id="btn-play-neu" class="ph-fill ph-play text-2xl ml-1"></i>
+                </button>
+                <button class="neu-button w-12 h-12 rounded-full flex items-center justify-center neu-flat">
+                    <i class="ph-fill ph-skip-forward text-lg"></i>
+                </button>
+                <i class="ph ph-repeat text-xl cursor-pointer hover:text-blue-500 transition"></i>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             设计 3: 液态玻璃 (iOS 26 Liquid Glass) 
+             ========================================== -->
+        <div id="player-glass" class="absolute inset-0 liquid-container rounded-[40px] shadow-2xl transition-opacity duration-500 opacity-0 pointer-events-none p-2">
+            
+            <!-- 背景光晕装饰 -->
+            <div class="liquid-blob w-64 h-64 bg-yellow-300 top-[-50px] left-[-50px]"></div>
+            <div class="liquid-blob w-72 h-72 bg-purple-500 bottom-[-50px] right-[-50px]" style="animation-delay: -5s;"></div>
+
+            <!-- 玻璃主体卡片 -->
+            <div class="glass-panel w-full h-full rounded-[32px] p-6 flex flex-col relative z-10">
+                <!-- Header -->
+                <div class="flex justify-between items-center text-white/90 mb-8">
+                    <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md cursor-pointer hover:bg-white/20 transition border border-white/20">
+                        <i class="ph ph-caret-down text-lg"></i>
+                    </div>
+                    <span class="text-xs tracking-widest uppercase font-semibold text-white/80">Spatial Audio</span>
+                    <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md cursor-pointer hover:bg-white/20 transition border border-white/20">
+                        <i class="ph ph-list text-lg"></i>
+                    </div>
+                </div>
+
+                <!-- Glass Record Area -->
+                <div class="relative w-full aspect-square flex items-center justify-center mb-8">
+                    <!-- 玻璃感彩胶唱片 -->
+                    <div class="glass-record w-[260px] h-[260px] rounded-full flex items-center justify-center spin spin-paused relative" id="disc-glass">
+                        <div class="absolute inset-2 border border-white/10 rounded-full"></div>
+                        <div class="absolute inset-6 border border-white/10 rounded-full"></div>
+                        
+                        <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=400&auto=format&fit=crop" class="w-32 h-32 rounded-full object-cover shadow-[0_0_30px_rgba(0,0,0,0.5)] z-10" alt="Album Art">
+                        
+                        <!-- 玻璃中心孔 -->
+                        <div class="absolute w-4 h-4 bg-white/30 backdrop-blur-md rounded-full shadow-inner border border-white/40 z-20"></div>
+                    </div>
+                </div>
+
+                <!-- Info -->
+                <div class="text-center mb-8 text-white">
+                    <h2 class="text-3xl font-extrabold mb-1 tracking-tight drop-shadow-md">Midnight City</h2>
+                    <p class="text-white/70 text-base font-medium">M83</p>
+                </div>
+
+                <!-- Progress Glass -->
+                <div class="mb-8">
+                    <div class="w-full h-2 bg-black/20 rounded-full mb-2 overflow-hidden border border-white/10">
+                        <div class="h-full bg-white/90 w-2/3 rounded-full relative shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-white/70 font-semibold drop-shadow-sm">
+                        <span>02:45</span>
+                        <span>04:01</span>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="flex items-center justify-between text-white/90 mt-auto px-2">
+                    <i class="ph ph-shuffle text-2xl cursor-pointer hover:text-white transition opacity-80"></i>
+                    <i class="ph-fill ph-skip-back text-3xl cursor-pointer hover:text-white transition drop-shadow-md"></i>
+                    
+                    <button onclick="togglePlay('glass')" class="w-16 h-16 bg-white/20 backdrop-blur-xl border border-white/40 text-white rounded-full flex items-center justify-center hover:bg-white/30 hover:scale-105 transition shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+                        <i id="btn-play-glass" class="ph-fill ph-play text-3xl ml-1 drop-shadow-md"></i>
+                    </button>
+                    
+                    <i class="ph-fill ph-skip-forward text-3xl cursor-pointer hover:text-white transition drop-shadow-md"></i>
+                    <i class="ph ph-repeat text-2xl cursor-pointer hover:text-white transition opacity-80"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             设计 4: 液态玻璃 (绿野仙踪 Emerald) 
+             ========================================== -->
+        <div id="player-glass-emerald" class="absolute inset-0 liquid-container-emerald rounded-[40px] shadow-2xl transition-opacity duration-500 opacity-0 pointer-events-none p-2">
+            <div class="liquid-blob w-64 h-64 bg-green-400 top-[-20px] right-[-50px]"></div>
+            <div class="liquid-blob w-80 h-80 bg-teal-500 bottom-[-60px] left-[-30px]" style="animation-delay: -3s;"></div>
+
+            <div class="glass-panel w-full h-full rounded-[32px] p-6 flex flex-col relative z-10">
+                <div class="flex justify-between items-center text-white/90 mb-8">
+                    <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md cursor-pointer hover:bg-white/20 transition border border-white/20"><i class="ph ph-caret-down text-lg"></i></div>
+                    <span class="text-xs tracking-widest uppercase font-semibold text-white/80">Lossless</span>
+                    <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md cursor-pointer hover:bg-white/20 transition border border-white/20"><i class="ph ph-list text-lg"></i></div>
+                </div>
+
+                <div class="relative w-full aspect-square flex items-center justify-center mb-8">
+                    <div class="glass-record w-[260px] h-[260px] rounded-full flex items-center justify-center spin spin-paused relative" id="disc-glass-emerald">
+                        <div class="absolute inset-2 border border-white/10 rounded-full"></div>
+                        <img src="https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=400&auto=format&fit=crop" class="w-32 h-32 rounded-full object-cover shadow-[0_0_30px_rgba(0,0,0,0.5)] z-10" alt="Album Art">
+                        <div class="absolute w-4 h-4 bg-white/30 backdrop-blur-md rounded-full shadow-inner border border-white/40 z-20"></div>
+                    </div>
+                </div>
+
+                <div class="text-center mb-8 text-white">
+                    <h2 class="text-3xl font-extrabold mb-1 tracking-tight drop-shadow-md">Forest Lullaby</h2>
+                    <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold backdrop-blur-md border border-white/30">Nature Sounds</span>
+                </div>
+
+                <div class="mb-8">
+                    <div class="w-full h-2 bg-black/20 rounded-full mb-2 overflow-hidden border border-white/10">
+                        <div class="h-full bg-green-300 w-1/2 rounded-full relative shadow-[0_0_10px_rgba(134,239,172,0.8)]"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-white/70 font-semibold drop-shadow-sm"><span>01:30</span><span>03:00</span></div>
+                </div>
+
+                <div class="flex items-center justify-between text-white/90 mt-auto px-2">
+                    <i class="ph ph-shuffle text-2xl cursor-pointer hover:text-white transition opacity-80"></i>
+                    <i class="ph-fill ph-skip-back text-3xl cursor-pointer hover:text-white transition drop-shadow-md"></i>
+                    <button onclick="togglePlay('glass-emerald')" class="w-16 h-16 bg-white/20 backdrop-blur-xl border border-white/40 text-white rounded-full flex items-center justify-center hover:bg-white/30 hover:scale-105 transition shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+                        <i id="btn-play-glass-emerald" class="ph-fill ph-play text-3xl ml-1 drop-shadow-md"></i>
+                    </button>
+                    <i class="ph-fill ph-skip-forward text-3xl cursor-pointer hover:text-white transition drop-shadow-md"></i>
+                    <i class="ph ph-repeat text-2xl cursor-pointer hover:text-white transition opacity-80"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             设计 5: 液态玻璃 (赛博霓虹 Cyberpunk) 
+             ========================================== -->
+        <div id="player-glass-cyber" class="absolute inset-0 liquid-container-cyber rounded-[40px] shadow-2xl transition-opacity duration-500 opacity-0 pointer-events-none p-2">
+            <div class="liquid-blob w-72 h-72 bg-fuchsia-600 top-[-30px] left-[-30px] opacity-80 mix-blend-screen" style="filter: blur(50px);"></div>
+            <div class="liquid-blob w-64 h-64 bg-cyan-500 bottom-[-20px] right-[-20px] opacity-80 mix-blend-screen" style="animation-delay: -7s; filter: blur(50px);"></div>
+
+            <div class="glass-panel-cyber w-full h-full rounded-[32px] p-6 flex flex-col relative z-10">
+                <div class="flex justify-between items-center text-cyan-400 mb-8">
+                    <i class="ph ph-caret-down text-2xl cursor-pointer hover:text-cyan-200 transition"></i>
+                    <span class="text-xs tracking-widest uppercase font-bold text-fuchsia-400 tracking-[0.2em]">Cyber_Deck</span>
+                    <i class="ph ph-list text-2xl cursor-pointer hover:text-cyan-200 transition"></i>
+                </div>
+
+                <div class="relative w-full aspect-square flex items-center justify-center mb-8">
+                    <div class="glass-record w-[260px] h-[260px] rounded-full flex items-center justify-center spin spin-paused relative border-cyan-500/30" id="disc-glass-cyber" style="box-shadow: 0 0 40px rgba(0,255,255,0.2), inset 0 0 20px rgba(255,0,255,0.2);">
+                        <img src="https://images.unsplash.com/photo-1555680202-c86f0e12f086?q=80&w=400&auto=format&fit=crop" class="w-32 h-32 rounded-full object-cover shadow-[0_0_30px_rgba(0,255,255,0.5)] z-10 border-2 border-fuchsia-500/50" alt="Album Art">
+                        <div class="absolute w-4 h-4 bg-cyan-300/50 backdrop-blur-md rounded-full shadow-[0_0_10px_#0ff] border border-cyan-400 z-20"></div>
+                    </div>
+                </div>
+
+                <div class="text-center mb-8 text-white">
+                    <h2 class="text-3xl font-black mb-1 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-500 drop-shadow-[0_0_10px_rgba(0,255,255,0.5)]">Neon Override</h2>
+                    <p class="text-cyan-200/70 text-sm font-mono tracking-wider">V. Cyber</p>
+                </div>
+
+                <div class="mb-8">
+                    <div class="w-full h-1 bg-gray-900 rounded-full mb-3 border border-gray-800 relative">
+                        <div class="absolute top-0 left-0 h-full bg-gradient-to-r from-fuchsia-500 to-cyan-400 w-3/4 shadow-[0_0_15px_#0ff]">
+                            <div class="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-[0_0_10px_#fff]"></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-cyan-500/80 font-mono"><span>03:12</span><span>04:04</span></div>
+                </div>
+
+                <div class="flex items-center justify-between text-cyan-400/80 mt-auto px-2">
+                    <i class="ph ph-shuffle text-2xl cursor-pointer hover:text-fuchsia-400 transition"></i>
+                    <i class="ph-fill ph-skip-back text-3xl cursor-pointer hover:text-white transition drop-shadow-[0_0_8px_#0ff]"></i>
+                    <button onclick="togglePlay('glass-cyber')" class="w-16 h-16 bg-gray-900/60 backdrop-blur-xl border border-cyan-500/50 text-cyan-400 rounded-full flex items-center justify-center hover:bg-gray-800 hover:scale-105 transition shadow-[0_0_20px_rgba(0,255,255,0.3)]">
+                        <i id="btn-play-glass-cyber" class="ph-fill ph-play text-3xl ml-1 drop-shadow-[0_0_10px_#0ff]"></i>
+                    </button>
+                    <i class="ph-fill ph-skip-forward text-3xl cursor-pointer hover:text-white transition drop-shadow-[0_0_8px_#0ff]"></i>
+                    <i class="ph ph-repeat text-2xl cursor-pointer hover:text-fuchsia-400 transition"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             设计 6: 液态玻璃 (蛋白石梦 Opal) 
+             ========================================== -->
+        <div id="player-glass-opal" class="absolute inset-0 liquid-container-opal rounded-[40px] shadow-2xl transition-opacity duration-500 opacity-0 pointer-events-none p-2">
+            <div class="liquid-blob w-72 h-72 bg-white top-[-50px] right-[-50px]" style="opacity: 0.8;"></div>
+            <div class="liquid-blob w-80 h-80 bg-pink-200 bottom-[-50px] left-[-50px]" style="animation-delay: -2s; opacity: 0.6;"></div>
+
+            <div class="glass-panel-light w-full h-full rounded-[32px] p-6 flex flex-col relative z-10">
+                <div class="flex justify-between items-center text-gray-600 mb-8">
+                    <div class="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center backdrop-blur-md cursor-pointer hover:bg-white/50 transition border border-white/50 shadow-sm"><i class="ph ph-caret-down text-lg"></i></div>
+                    <span class="text-xs tracking-widest uppercase font-bold text-gray-500">Morning Vibes</span>
+                    <div class="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center backdrop-blur-md cursor-pointer hover:bg-white/50 transition border border-white/50 shadow-sm"><i class="ph ph-list text-lg"></i></div>
+                </div>
+
+                <div class="relative w-full aspect-square flex items-center justify-center mb-8">
+                    <div class="glass-record-light w-[260px] h-[260px] rounded-full flex items-center justify-center spin spin-paused relative" id="disc-glass-opal">
+                        <div class="absolute inset-2 border border-white/40 rounded-full"></div>
+                        <img src="https://images.unsplash.com/photo-1520690214124-2405c5217036?q=80&w=400&auto=format&fit=crop" class="w-32 h-32 rounded-full object-cover shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-10" alt="Album Art">
+                        <div class="absolute w-4 h-4 bg-white/60 backdrop-blur-md rounded-full shadow-inner border border-white z-20"></div>
+                    </div>
+                </div>
+
+                <div class="text-center mb-8 text-gray-800">
+                    <h2 class="text-3xl font-extrabold mb-1 tracking-tight">Opal Dream</h2>
+                    <p class="text-gray-500 text-sm font-medium">Lofi Girl</p>
+                </div>
+
+                <div class="mb-8">
+                    <div class="w-full h-2 bg-black/5 rounded-full mb-2 overflow-hidden border border-black/5 shadow-inner">
+                        <div class="h-full bg-gradient-to-r from-pink-300 to-purple-300 w-4/5 rounded-full relative"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-500 font-semibold"><span>03:45</span><span>04:12</span></div>
+                </div>
+
+                <div class="flex items-center justify-between text-gray-600 mt-auto px-2">
+                    <i class="ph ph-shuffle text-2xl cursor-pointer hover:text-gray-800 transition"></i>
+                    <i class="ph-fill ph-skip-back text-3xl cursor-pointer hover:text-gray-800 transition"></i>
+                    <button onclick="togglePlay('glass-opal')" class="w-16 h-16 bg-white/40 backdrop-blur-xl border border-white/60 text-gray-800 rounded-full flex items-center justify-center hover:bg-white/60 hover:scale-105 transition shadow-[0_8px_20px_rgba(0,0,0,0.05)]">
+                        <i id="btn-play-glass-opal" class="ph-fill ph-play text-3xl ml-1"></i>
+                    </button>
+                    <i class="ph-fill ph-skip-forward text-3xl cursor-pointer hover:text-gray-800 transition"></i>
+                    <i class="ph ph-repeat text-2xl cursor-pointer hover:text-gray-800 transition"></i>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 存储播放状态
+        const playState = {
+            vinyl: false,
+            neu: false,
+            glass: false,
+            'glass-emerald': false,
+            'glass-cyber': false,
+            'glass-opal': false
+        };
+
+        function switchTab(theme) {
+            // 所有主题ID
+            const themes = ['vinyl', 'neu', 'glass', 'glass-emerald', 'glass-cyber', 'glass-opal'];
+            
+            // 背景色映射 (为了页面整体氛围匹配)
+            const bgColors = {
+                vinyl: '#121212',
+                neu: '#c8d0d8',
+                glass: '#0a0a0a',
+                'glass-emerald': '#022c22',
+                'glass-cyber': '#050505',
+                'glass-opal': '#fdf2f8'
+            };
+
+            // 切换外层背景
+            document.body.style.backgroundColor = bgColors[theme];
+
+            themes.forEach(t => {
+                // 处理 Tab 按钮样式
+                const tab = document.getElementById(`tab-${t}`);
+                if (t === theme) {
+                    tab.classList.remove('text-gray-400', 'bg-transparent');
+                    tab.classList.add('text-white', 'bg-blue-600', 'shadow-lg');
+                } else {
+                    tab.classList.add('text-gray-400');
+                    tab.classList.remove('text-white', 'bg-blue-600', 'shadow-lg');
+                }
+
+                // 处理 Player 容器显隐
+                const player = document.getElementById(`player-${t}`);
+                if (t === theme) {
+                    player.classList.remove('opacity-0', 'pointer-events-none');
+                    player.classList.add('opacity-100', 'z-10');
+                } else {
+                    player.classList.add('opacity-0', 'pointer-events-none');
+                    player.classList.remove('opacity-100', 'z-10');
+                }
+            });
+        }
+
+        function togglePlay(theme) {
+            const isPlaying = playState[theme];
+            playState[theme] = !isPlaying;
+
+            const btnIcon = document.getElementById(`btn-play-${theme}`);
+            const disc = document.getElementById(`disc-${theme}`);
+            
+            // 针对 vinyl 的特殊处理 (唱臂)
+            if (theme === 'vinyl') {
+                const container = document.getElementById('vinyl-container');
+                if (!isPlaying) {
+                    container.classList.add('is-playing');
+                } else {
+                    container.classList.remove('is-playing');
+                }
+            }
+
+            if (!isPlaying) {
+                // 播放动作
+                btnIcon.classList.remove('ph-play', 'ml-1');
+                btnIcon.classList.add('ph-pause');
+                disc.classList.remove('spin-paused');
+            } else {
+                // 暂停动作
+                btnIcon.classList.remove('ph-pause');
+                btnIcon.classList.add('ph-play', 'ml-1');
+                disc.classList.add('spin-paused');
+            }
+        }
+    </script>
+</body>
+</html>

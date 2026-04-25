@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<layout xmlns="https://github.com/ESLyric/layout"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://github.com/ESLyric/layout ./Layout.xsd">
+    <panel name="vertical-style1-vinyl2"
+           layout="stack"
+           orientation="vertical"
+           features="1">
+        <!-- 优化：增�?layout="free" 声明，并清理不规范的 % 边距写法 -->
+        <container name="top-panel"
+                   layout="free"
+                   width="auto"
+                   height="40%"
+                   anchor="center"
+                   margin="0,2%,0,2%"
+                   aspect-ratio="1.0">
+            <!-- 优化：建立绝对坐标系基准组，防止在不同缩放比例下由于 margin 产生的黑胶和封面错位问题 -->
+            <!-- 黑胶碟面 -->
+            <container name="albumart"
+                       anchor="vcenter"
+                       width="auto"
+                       height="100%"
+                       margin="0,0,0,0"
+                       aspect-ratio="1.0"
+                       layout="free">
+                <!-- 黑胶外轮�? -->
+                <image width="auto"
+                       height="100%"
+                       aspect-ratio="1.0"
+                       background="imgs/mask/vinyl_outside2.png" />
+                <!-- 黑胶内轮�? -->
+                <albumart width="auto"
+                          height="46%"
+                          margin="0,0,0,0"
+                          aspect-ratio="1.0"
+                          album-art="disc"
+                          follow-background="1"
+                          use-stub="true"
+                          stub="imgs/mask/default.png"
+                          fitness="fill"
+                          shadow="1"
+                          shadow-color="rgba(0, 0, 0, 0.6)"
+                          shadow-intensity="2"
+                          mask="imgs/mask/vinyl_inside1-2.png"
+                          rotate="1"
+                          rotate-speed="1" />
+                <!-- 优化：rotate="true" 修正为标准语�?rotate="1" -->
+            </container>
+        </container>
+        <!-- 优化：bottom-panel 删除冗余且冲突的 anchor="vfill" (已有 height="*" 控制空间) -->
+        <container name="bottom-panel"
+                   layout="stack"
+                   orientation="vertical"
+                   width="100%"
+                   height="*"
+                   margin="0,0,0,0"
+                   justify="start">
+            <!-- 优化：song-info-panel 删除�?Stack 中冗余的 anchor="top" -->
+            <container name="song-info-panel"
+                       layout="stack"
+                       orientation="vertical"
+                       width="100%"
+                       height="20%"
+                       margin="2%,0,2%,0">
+                <label name="title"
+                       width="100%"
+                       height="auto"
+                       margin="0,0,0,0"
+                       caption="%title%"
+                       command="cm://Properties"
+                       text-align="center"
+                       text-color="#fffffe"
+                       highlight-color="#b7a2f6"
+                       bold="true"
+                       font-size="22"
+                       loop="cycle"
+                       loop-padding="60"
+                       nowrap="1" />
+                <label name="artist"
+                       width="100%"
+                       height="auto"
+                       margin="0,6%,0,0"
+                       caption="[%artist%]"
+                       command="mm://View/Popup panels/Show/SMP-艺人资料"
+                       text-align="center"
+                       text-color="rgba(200,200,200,0.8)"
+                       highlight-color="#b7a2f6"
+                       font-size="18"
+                       loop="cycle"
+                       loop-padding="60"
+                       hide-empty="1" />
+                <label name="album"
+                       width="100%"
+                       height="auto"
+                       margin="0,6%,0,0"
+                       caption="[%album% ]$if(%date%, ©%date% )"
+                       command="mm://View/Popup panels/Show/SMP-专辑介绍"
+                       text-align="center"
+                       text-color="rgba(200,200,200,0.8)"
+                       highlight-color="#b7a2f6"
+                       font-size="16"
+                       loop="cycle"
+                       loop-padding="60"
+                       hide-empty="1" />
+                <!-- 已有的优化：防止跑马灯溢出时发生换行，保证滚动平�? -->
+                <label name="genre-info"
+                       width="100%"
+                       height="auto"
+                       margin="0,6%,0,0"
+                       caption="[$meta(BPM) BPM /] [%GENRE%]"
+                       text-align="center"
+                       text-color="rgba(200,200,200,0.8)"
+                       highlight-color="#b7a2f6"
+                       font-size="16"
+                       loop="cycle"
+                       loop-padding="60"
+                       nowrap="1" />
+            </container>
+            <!-- 优化：使�?height="*" 完美填充?��余空白区域，并删除冗余的 anchor="fill" -->
+            <lyric width="100%"
+                   height="*"
+                   margin="2%,2%,2%,2%"
+                   text-align="center"
+                   banner-text="XRE's Music" />
+            <!-- 优化：删除在垂直 Stack 列中会导致逻辑计算错误的垂�?anchor="vcenter" -->
+            <container name="button-panel"
+                       layout="stack"
+                       orientation="horizontal"
+                       justify="end"
+                       width="100%"
+                       height="6%">
+                <!-- 优化：按上一轮规则去除了�?justify="end" 相互冲突�?anchor="left" 属�? -->
+                <button name="desktop-lyric"
+                        width="28"
+                        height="28"
+                        margin="10,0,0,0"
+                        background="imgs/icon/mic-vocal.png"
+                        command="mm://View/ESLyric/Desktop Lyric/Show" />
+                <button name="floating-lyric"
+                        margin="10,0,0,0"
+                        width="28"
+                        height="28"
+                        background="imgs/icon/picture-in-picture-2.png"
+                        command="mm://View/ESLyric/Floating Lyric/Show" />
+                <button name="fullscreen"
+                        margin="10,0,10,0"
+                        width="28"
+                        height="28"
+                        background="imgs/icon/maximize.png"
+                        command="mm://View/ESLyric/Panels/Fullscreen" />
+            </container>
+        </container>
+    </panel>
+</layout>

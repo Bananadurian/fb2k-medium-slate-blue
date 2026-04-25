@@ -86,3 +86,16 @@
 ### 5.3. UI1
 
 ![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI1.png)
+
+## 6. 附录
+
+### 6.1. 部分文件夹说明
+
+- `eslyric-data`: ESlyric配置。
+
+- `wispan`：[Spectrum Analyzer Visualisation](https://www.foobar2000.org/components/view/foo_vis_wispan)配置。
+
+- `goom`: [What a GOOM! Visualisation](https://www.foobar2000.org/components/view/foo_vis_goom)配置。
+
+- `milkdrop2`: [MilkDrop 2 Visualisation](https://www.foobar2000.org/components/view/foo_vis_milk2)配置。
+
