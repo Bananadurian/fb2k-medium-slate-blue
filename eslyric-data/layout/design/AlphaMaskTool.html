@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Alpha 遮罩生成工具 v11.0 (创世神版)</title>
+<title>Alpha 遮罩生成工具 v12.0 (空间悬浮版)</title>
 <style>
   :root {
     --bg-color: #0e0e11; --panel-bg: rgba(255, 255, 255, 0.08); --panel-hover: rgba(255, 255, 255, 0.12);
@@ -11,7 +11,7 @@
   }
   body { margin: 0; padding: 20px; background: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; }
   h1 { margin-bottom: 20px; font-size: 24px; display: flex; align-items: center; gap: 10px; justify-content: center; }
-  .version-tag { font-size: 12px; background: linear-gradient(135deg, var(--danger-color), var(--info-color)); padding: 4px 10px; border-radius: 999px; font-weight: bold; }
+  .version-tag { font-size: 12px; background: linear-gradient(135deg, var(--info-color), var(--accent-color)); padding: 4px 10px; border-radius: 999px; font-weight: bold; }
   
   .container { display: flex; gap: 20px; width: 100%; max-width: 1550px; align-items: flex-start; }
   .panel { background: var(--panel-bg); padding: 20px; border-radius: 16px; display: flex; flex-direction: column; gap: 15px; }
@@ -65,19 +65,19 @@
 </head>
 <body>
 
-  <h1>Alpha 遮罩生成工具 <span class="version-tag">v11.0 创世神版</span></h1>
+  <h1>Alpha 遮罩生成工具 <span class="version-tag">v12.0 空间悬浮版</span></h1>
 
   <div class="container">
     
     <!-- 左侧图层 -->
     <div class="panel layers-panel">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-        <h3 style="margin:0;">工程数据与图层</h3>
+        <h3 style="margin:0;">工程与图层</h3>
         <div style="display:flex; gap:6px; flex-wrap: wrap;">
           <button class="btn btn-action" style="font-size:12px;" onclick="saveProject()" title="保存到浏览器">💾</button>
           <button class="btn btn-action" style="font-size:12px;" onclick="loadProject()" title="从浏览器读取">📂</button>
-          <button class="btn btn-action" style="font-size:12px; background:var(--info-color); border:none;" onclick="exportJSON()" title="导出工程文件到电脑">⬇️ JSON</button>
-          <button class="btn btn-action" style="font-size:12px; background:var(--accent-color); border:none;" onclick="document.getElementById('importFile').click()" title="从电脑导入工程文件">⬆️ JSON</button>
+          <button class="btn btn-action" style="font-size:12px; background:var(--info-color); border:none;" onclick="exportJSON()" title="导出 JSON">⬇️ JSON</button>
+          <button class="btn btn-action" style="font-size:12px; background:var(--accent-color); border:none;" onclick="document.getElementById('importFile').click()" title="导入 JSON">⬆️ JSON</button>
           <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importJSON(event)">
         </div>
       </div>
@@ -88,15 +88,18 @@
 
     <!-- 中间属性 -->
     <div class="panel properties-panel" id="propertiesPanel" style="display: none;">
-      <div class="control-row" style="align-items: center;">
-        <h3 style="margin:0;">图层设置</h3><div style="flex:1;"></div>
-        <div class="control-group" style="margin:0; flex:1;">
-          <label style="color:var(--accent-color);">中心旋转 (°) <span id="v_rot">0</span></label>
-          <input type="range" id="p_rotation" min="-180" max="180" value="0" oninput="updateActiveLayer('rotation', parseFloat(this.value)); document.getElementById('v_rot').innerText=this.value;">
+      
+      <!-- V12.0 核心更新：3D 空间形变系统 -->
+      <div style="background: rgba(127,90,240,0.15); padding:12px; border-radius:10px; border-left:4px solid var(--info-color);">
+        <label style="color:var(--info-color); font-weight:bold; margin-bottom:10px; display:block;">3D 空间形变透视引擎 (Spatial Transform)</label>
+        <div class="control-row">
+          <div class="control-group"><label>X轴倾倒 (Pitch) <span id="v_rotX">0</span></label><input type="range" id="p_rotationX" min="-85" max="85" value="0" oninput="updateActiveLayer('rotationX', parseFloat(this.value)); document.getElementById('v_rotX').innerText=this.value;"></div>
+          <div class="control-group"><label>Y轴偏转 (Yaw) <span id="v_rotY">0</span></label><input type="range" id="p_rotationY" min="-85" max="85" value="0" oninput="updateActiveLayer('rotationY', parseFloat(this.value)); document.getElementById('v_rotY').innerText=this.value;"></div>
+          <div class="control-group"><label>Z轴旋转 (Roll) <span id="v_rot">0</span></label><input type="range" id="p_rotation" min="-180" max="180" value="0" oninput="updateActiveLayer('rotation', parseFloat(this.value)); document.getElementById('v_rot').innerText=this.value;"></div>
         </div>
       </div>
       
-      <div class="control-row" style="margin-top:10px;">
+      <div class="control-row" style="margin-top:15px;">
         <div class="control-group">
           <label>图形类型</label>
           <select id="p_type" onchange="updateActiveLayer('type', this.value)">
@@ -105,39 +108,25 @@
             <option value="text">文字排版 (Text)</option><option value="vinyl">黑胶/摩尔纹盘</option>
           </select>
         </div>
-        <div class="control-group"><label>图层混合模式</label><select id="p_composite" onchange="updateActiveLayer('composite', this.value)"><option value="source-over">正常叠加 (Normal)</option><option value="destination-out">掏空打孔 (Eraser)</option></select></div>
+        <div class="control-group"><label>混合模式</label><select id="p_composite" onchange="updateActiveLayer('composite', this.value)"><option value="source-over">正常叠加 (Normal)</option><option value="destination-out">掏空打孔 (Eraser)</option></select></div>
       </div>
 
       <div id="grp_effects" style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px;">
-        <label style="color:var(--accent-color); font-weight:bold; margin-bottom:10px; display:block;">高级材质引擎管线</label>
+        <label style="color:var(--accent-color); font-weight:bold; margin-bottom:10px; display:block;">高级材质与光学引擎</label>
         <label class="checkbox-group"><input type="checkbox" id="p_iosGlass" onchange="updateActiveLayer('enableIOSGlass', this.checked)"><span>🍎 iOS26 空间玻璃</span></label>
         <div id="sub_iosGlass" class="sub-panel">
-          <div class="control-row">
-            <div class="control-group"><label>内白边</label><input type="range" id="p_iosRim" min="0" max="1" step="0.05" oninput="updateActiveLayer('iosRimAlpha', parseFloat(this.value))"></div>
-            <div class="control-group"><label>玻璃反光</label><input type="range" id="p_iosGlassAlpha" min="0" max="1" step="0.05" oninput="updateActiveLayer('iosGlassAlpha', parseFloat(this.value))"></div>
-            <div class="control-group"><label>自带噪点</label><input type="range" id="p_iosNoise" min="0" max="1" step="0.05" oninput="updateActiveLayer('iosNoiseAlpha', parseFloat(this.value))"></div>
-          </div>
+          <div class="control-row"><div class="control-group"><label>内白边</label><input type="range" id="p_iosRim" min="0" max="1" step="0.05" oninput="updateActiveLayer('iosRimAlpha', parseFloat(this.value))"></div><div class="control-group"><label>玻璃反光</label><input type="range" id="p_iosGlassAlpha" min="0" max="1" step="0.05" oninput="updateActiveLayer('iosGlassAlpha', parseFloat(this.value))"></div><div class="control-group"><label>自带噪点</label><input type="range" id="p_iosNoise" min="0" max="1" step="0.05" oninput="updateActiveLayer('iosNoiseAlpha', parseFloat(this.value))"></div></div>
         </div>
         <label class="checkbox-group" style="margin-top:6px;"><input type="checkbox" id="p_light" onchange="updateActiveLayer('enableLighting', this.checked)"><span>✨ 3D 高光预设</span></label>
         <div id="sub_light" class="sub-panel">
-          <div class="control-row">
-            <div class="control-group">
-              <label>映射类型</label>
-              <select id="p_lightType" onchange="updateActiveLayer('lightType', this.value)">
-                <option value="diagonal">对角线渐变</option><option value="top">顶部垂直</option><option value="radial-center">中心径向</option><option value="spotlight">顶侧聚光</option>
-              </select>
-            </div>
-            <div class="control-group"><label>高光亮度</label><input type="range" id="p_lightAlpha" min="0" max="1" step="0.05" oninput="updateActiveLayer('lightAlpha', parseFloat(this.value))"></div>
-          </div>
+          <div class="control-row"><div class="control-group"><label>映射类型</label><select id="p_lightType" onchange="updateActiveLayer('lightType', this.value)"><option value="diagonal">对角线渐变</option><option value="top">顶部垂直</option><option value="radial-center">中心径向</option><option value="spotlight">顶侧聚光</option></select></div><div class="control-group"><label>亮度</label><input type="range" id="p_lightAlpha" min="0" max="1" step="0.05" oninput="updateActiveLayer('lightAlpha', parseFloat(this.value))"></div></div>
         </div>
         <label class="checkbox-group" style="margin-top:6px;"><input type="checkbox" id="p_frost" onchange="updateActiveLayer('enableFrosted', this.checked)"><span>🌫️ 磨砂噪点质感</span></label>
         <div id="sub_frost" class="sub-panel">
-          <div class="control-row">
-            <div class="control-group"><label>浓度 (Opacity)</label><input type="range" id="p_frostAlpha" min="0" max="1" step="0.05" oninput="updateActiveLayer('frostAlpha', parseFloat(this.value))"></div>
-            <div class="control-group"><label>颗粒大小 (Scale)</label><input type="range" id="p_frostScale" min="0.2" max="3.0" step="0.1" oninput="updateActiveLayer('frostScale', parseFloat(this.value))"></div>
-          </div>
+          <div class="control-row"><div class="control-group"><label>浓度(Opacity)</label><input type="range" id="p_frostAlpha" min="0" max="1" step="0.05" oninput="updateActiveLayer('frostAlpha', parseFloat(this.value))"></div><div class="control-group"><label>颗粒大小</label><input type="range" id="p_frostScale" min="0.2" max="3.0" step="0.1" oninput="updateActiveLayer('frostScale', parseFloat(this.value))"></div></div>
         </div>
-        <label class="checkbox-group" style="margin-top:6px;"><input type="checkbox" id="p_float" onchange="updateActiveLayer('enableFloat', this.checked)"><span>🎈 物理景深悬浮阴影</span></label>
+        <!-- V12.0 核心更新：多重阴影引擎 -->
+        <label class="checkbox-group" style="margin-top:6px; border:1px solid rgba(44,182,125,0.4);"><input type="checkbox" id="p_float" onchange="updateActiveLayer('enableFloat', this.checked)"><span style="color:var(--accent-color);">🎈 3层物理弥散阴影 (Smooth Shadow) ★</span></label>
       </div>
 
       <hr>
@@ -146,33 +135,24 @@
         <div class="control-group" id="grp_strokeWidth"><label>描边粗细 <span id="v_stroke"></span></label><input type="range" id="p_strokeWidth" min="1" max="150" oninput="updateActiveLayer('strokeWidth', parseFloat(this.value)); document.getElementById('v_stroke').innerText=this.value;"></div>
       </div>
 
-      <!-- V11 新增：径向渐变填充引擎 -->
-      <div class="control-row" id="grp_fillMode" style="background: rgba(44,182,125,0.1); padding:8px 8px 0 8px; border-radius:8px 8px 0 0; margin-top:5px;">
-        <div class="control-group" style="flex:1.2"><label>填充模式</label>
+      <!-- 渐变填充引擎 -->
+      <div class="control-row" id="grp_fillMode" style="background: rgba(255,255,255,0.05); padding:8px 8px 0 8px; border-radius:8px 8px 0 0; margin-top:5px;">
+        <div class="control-group" style="flex:1.2"><label>颜色填充模式</label>
           <select id="p_fillMode" onchange="updateActiveLayer('fillMode', this.value)">
-            <option value="solid">单色填充 (Solid)</option>
-            <option value="gradient">线性双色渐变 (Linear)</option>
-            <option value="radial">中心径向渐变 (Radial) ★</option>
+            <option value="solid">单色填充</option><option value="gradient">线性渐变</option><option value="radial">中心径向渐变</option>
           </select>
         </div>
         <div class="control-group"><label>主色</label><input type="color" id="p_color" oninput="updateActiveLayer('color', this.value)"></div>
         <div class="control-group" id="grp_color2" style="display:none;"><label>辅色</label><input type="color" id="p_color2" oninput="updateActiveLayer('color2', this.value)"></div>
         <div class="control-group" style="flex:1"><label>Alpha</label><input type="range" id="p_alpha" min="0" max="1" step="0.05" oninput="updateActiveLayer('alpha', parseFloat(this.value))"></div>
       </div>
-      <!-- 渐变角度专属滑块 -->
-      <div class="control-group" id="grp_gradAngle" style="display:none; background: rgba(44,182,125,0.1); padding:0 8px 8px 8px; border-radius:0 0 8px 8px;">
-        <label>渐变角度 (°) <span id="v_gradAng">45</span></label>
-        <input type="range" id="p_gradAngle" min="0" max="360" oninput="updateActiveLayer('gradAngle', parseFloat(this.value)); document.getElementById('v_gradAng').innerText=this.value;">
-      </div>
-      <!-- 底边补齐圆角 -->
-      <div id="grp_fillMode_bottom" style="background: rgba(44,182,125,0.1); height:8px; border-radius:0 0 8px 8px; margin-bottom: 10px;"></div>
+      <div class="control-group" id="grp_gradAngle" style="display:none; background: rgba(255,255,255,0.05); padding:0 8px 8px 8px; border-radius:0 0 8px 8px;">
+        <label>渐变角度 (°) <span id="v_gradAng">45</span></label><input type="range" id="p_gradAngle" min="0" max="360" oninput="updateActiveLayer('gradAngle', parseFloat(this.value)); document.getElementById('v_gradAng').innerText=this.value;">
+      </div><div id="grp_fillMode_bottom" style="background: rgba(255,255,255,0.05); height:8px; border-radius:0 0 8px 8px; margin-bottom: 10px;"></div>
 
-      <!-- V11 新增：高斯模糊/边缘羽化引擎 -->
+      <!-- 边缘羽化 -->
       <div class="control-row" style="background: rgba(127,90,240,0.15); padding:8px; border-radius:8px; margin-bottom:10px;">
-        <div class="control-group" style="margin:0;">
-          <label style="color:#d9c5ff; font-weight:bold;">高斯模糊 / 边缘羽化 (px) ★ <span id="v_filterBlur">0</span></label>
-          <input type="range" id="p_filterBlur" min="0" max="150" oninput="updateActiveLayer('filterBlur', parseFloat(this.value)); document.getElementById('v_filterBlur').innerText=this.value;">
-        </div>
+        <div class="control-group" style="margin:0;"><label style="color:#d9c5ff; font-weight:bold;">边缘高斯模糊 / 羽化晕染 (px) <span id="v_filterBlur">0</span></label><input type="range" id="p_filterBlur" min="0" max="150" oninput="updateActiveLayer('filterBlur', parseFloat(this.value)); document.getElementById('v_filterBlur').innerText=this.value;"></div>
       </div>
 
       <div id="grp_position" class="control-row" style="margin-top:5px;">
@@ -185,27 +165,15 @@
       </div>
       <div class="control-group" id="grp_radius"><label>圆角半径</label><input type="range" id="p_radius" min="0" max="500" oninput="updateActiveLayer('radius', parseFloat(this.value))"></div>
 
-      <!-- 专属面板 -->
-      <div id="grp_polygon" style="display:none; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
-        <div class="control-row">
-          <div class="control-group"><label>多边形边数 (Sides)</label><input type="range" id="p_polySides" min="3" max="20" oninput="updateActiveLayer('polySides', parseInt(this.value))"></div>
-          <div class="control-group"><label>星形内陷比例</label><input type="range" id="p_polyInset" min="0.1" max="1.0" step="0.05" oninput="updateActiveLayer('polyInset', parseFloat(this.value))"></div>
-        </div>
-      </div>
-      <div id="grp_text" style="display:none; background:rgba(127,90,240,0.1); padding:10px; border-radius:8px;">
-        <div class="control-group"><label>文本内容</label><input type="text" id="p_textContent" oninput="updateActiveLayer('textContent', this.value)"></div>
-        <div class="control-row">
-          <div class="control-group"><label>字体族</label><select id="p_fontFamily" onchange="updateActiveLayer('fontFamily', this.value)"><option value="'Segoe UI', sans-serif">Segoe UI</option><option value="Arial, sans-serif">Arial</option><option value="'Times New Roman', serif">Times New Roman</option><option value="Impact, sans-serif">Impact</option></select></div>
-          <div class="control-group"><label>字号(px)</label><input type="number" id="p_fontSize" oninput="updateActiveLayer('fontSize', parseFloat(this.value))"></div>
-          <div class="control-group"><label>字重</label><select id="p_fontWeight" onchange="updateActiveLayer('fontWeight', this.value)"><option value="normal">常规</option><option value="bold">粗体</option><option value="900">黑体</option></select></div>
-        </div>
-      </div>
+      <!-- 各图形专属面板 (隐藏) -->
+      <div id="grp_polygon" style="display:none; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;"><div class="control-row"><div class="control-group"><label>多边形边数 (Sides)</label><input type="range" id="p_polySides" min="3" max="20" oninput="updateActiveLayer('polySides', parseInt(this.value))"></div><div class="control-group"><label>星形内陷比例</label><input type="range" id="p_polyInset" min="0.1" max="1.0" step="0.05" oninput="updateActiveLayer('polyInset', parseFloat(this.value))"></div></div></div>
+      <div id="grp_text" style="display:none; background:rgba(127,90,240,0.1); padding:10px; border-radius:8px;"><div class="control-group"><label>文本内容</label><input type="text" id="p_textContent" oninput="updateActiveLayer('textContent', this.value)"></div><div class="control-row"><div class="control-group"><label>字体族</label><select id="p_fontFamily" onchange="updateActiveLayer('fontFamily', this.value)"><option value="'Segoe UI', sans-serif">Segoe UI</option><option value="Arial, sans-serif">Arial</option><option value="'Times New Roman', serif">Times New Roman</option><option value="Impact, sans-serif">Impact</option></select></div><div class="control-group"><label>字号</label><input type="number" id="p_fontSize" oninput="updateActiveLayer('fontSize', parseFloat(this.value))"></div><div class="control-group"><label>字重</label><select id="p_fontWeight" onchange="updateActiveLayer('fontWeight', this.value)"><option value="normal">常规</option><option value="bold">粗体</option><option value="900">黑体</option></select></div></div></div>
       <div id="grp_moire" style="display:none; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;"><div class="control-group"><label>射线光斑</label><input type="range" id="p_spokes" min="1" max="12" oninput="updateActiveLayer('moireSpokes', parseInt(this.value))"></div><div class="control-group"><label>细线密度</label><input type="range" id="p_density" min="10" max="200" oninput="updateActiveLayer('moireDensity', parseInt(this.value))"></div></div>
       <div id="grp_triangle" style="display:none; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;"><div class="control-row"><div class="control-group"><label>顶1 X</label><input type="number" id="p_tX1" oninput="updateActiveLayer('tX1', parseFloat(this.value))"></div><div class="control-group"><label>顶1 Y</label><input type="number" id="p_tY1" oninput="updateActiveLayer('tY1', parseFloat(this.value))"></div></div><div class="control-row"><div class="control-group"><label>顶2 X</label><input type="number" id="p_tX2" oninput="updateActiveLayer('tX2', parseFloat(this.value))"></div><div class="control-group"><label>顶2 Y</label><input type="number" id="p_tY2" oninput="updateActiveLayer('tY2', parseFloat(this.value))"></div></div><div class="control-row"><div class="control-group"><label>顶3 X</label><input type="number" id="p_tX3" oninput="updateActiveLayer('tX3', parseFloat(this.value))"></div><div class="control-group"><label>顶3 Y</label><input type="number" id="p_tY3" oninput="updateActiveLayer('tY3', parseFloat(this.value))"></div></div></div>
       <div id="grp_line" style="display:none; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;"><div class="control-row"><div class="control-group"><label>起点 X</label><input type="number" id="p_lX1" oninput="updateActiveLayer('lineX1', parseFloat(this.value))"></div><div class="control-group"><label>起点 Y</label><input type="number" id="p_lY1" oninput="updateActiveLayer('lineY1', parseFloat(this.value))"></div></div><div class="control-row"><div class="control-group"><label>终点 X</label><input type="number" id="p_lX2" oninput="updateActiveLayer('lineX2', parseFloat(this.value))"></div><div class="control-group"><label>终点 Y</label><input type="number" id="p_lY2" oninput="updateActiveLayer('lineY2', parseFloat(this.value))"></div></div></div>
 
       <hr>
-      <div id="grp_shadow_base"><div class="control-group"><label>常规阴影颜色</label><input type="color" id="p_shadowColor" oninput="updateActiveLayer('shadowColor', this.value)"></div><div class="control-row"><div class="control-group"><label>模糊</label><input type="range" id="p_shadowBlur" min="0" max="200" oninput="updateActiveLayer('shadowBlur', parseFloat(this.value))"></div><div class="control-group"><label>X 偏移</label><input type="range" id="p_shadowX" min="-200" max="200" oninput="updateActiveLayer('shadowX', parseFloat(this.value))"></div><div class="control-group"><label>Y 偏移</label><input type="range" id="p_shadowY" min="-200" max="200" oninput="updateActiveLayer('shadowY', parseFloat(this.value))"></div></div></div>
+      <div id="grp_shadow_base"><div class="control-group"><label>自定义阴影颜色 / 3层阴影基准色</label><input type="color" id="p_shadowColor" oninput="updateActiveLayer('shadowColor', this.value)"></div><div class="control-row"><div class="control-group"><label>模糊/弥散度</label><input type="range" id="p_shadowBlur" min="0" max="200" oninput="updateActiveLayer('shadowBlur', parseFloat(this.value))"></div><div class="control-group"><label>X 偏移</label><input type="range" id="p_shadowX" min="-200" max="200" oninput="updateActiveLayer('shadowX', parseFloat(this.value))"></div><div class="control-group"><label>Y 偏移/高度</label><input type="range" id="p_shadowY" min="-200" max="200" oninput="updateActiveLayer('shadowY', parseFloat(this.value))"></div></div></div>
     </div>
     
     <div class="panel properties-panel" id="emptyPanel" style="display: flex; justify-content: center; align-items: center;"><div style="color:#888;">请在左侧选择或添加一个图层</div></div>
@@ -213,7 +181,7 @@
     <!-- 右侧预览区 -->
     <div class="panel preview-panel">
       <div style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:10px;">
-        <h3 style="margin:0;">全局配置</h3>
+        <h3 style="margin:0;">全局画板配置</h3>
         <select id="bgToggle" onchange="togglePreviewBg(this.value)" style="padding:4px; background:rgba(0,0,0,0.5); color:white; border:none; border-radius:4px;"><option value="bg-dark">🌙 暗色棋盘</option><option value="bg-light">☀️ 亮色棋盘</option></select>
       </div>
       <div class="control-row" style="width: 100%; margin-bottom: 10px;">
@@ -242,24 +210,25 @@
 
   function createDefaultLayer() {
     return {
-      id: Date.now() + Math.random(), name: `图形 ${layerCounter++}`, type: 'circle', composite: 'source-over', visible: true, rotation: 0,
-      drawMode: 'fill', strokeWidth: 8, fillMode: 'solid', gradAngle: 45, filterBlur: 0, // V11 新增高斯羽化属性
+      id: Date.now() + Math.random(), name: `图形 ${layerCounter++}`, type: 'roundRect', composite: 'source-over', visible: true, 
+      rotation: 0, rotationX: 0, rotationY: 0, // V12.0 3D透视新增属性
+      drawMode: 'fill', strokeWidth: 8, fillMode: 'solid', gradAngle: 45, filterBlur: 0,
       color: '#ffffff', color2: '#7f5af0', alpha: 1.0, 
       enableIOSGlass: false, iosRimAlpha: 0.4, iosGlassAlpha: 0.5, iosNoiseAlpha: 0.5,
-      enableLighting: false, lightType: 'diagonal', lightAlpha: 0.7, enableFrosted: false, frostAlpha: 0.15, frostScale: 1.0, enableFloat: false,
+      enableLighting: false, lightType: 'diagonal', lightAlpha: 0.7, enableFrosted: false, frostAlpha: 0.15, frostScale: 1.0, 
+      enableFloat: false, // V12.0 改为控制 3层平滑阴影
       x: canvasW / 2, y: canvasH / 2, width: 600, height: 600, radius: 50,
-      polySides: 6, polyInset: 1.0,
-      textContent: "V11", fontSize: 180, fontWeight: "bold", fontFamily: "'Segoe UI', sans-serif",
+      polySides: 6, polyInset: 1.0, textContent: "V12", fontSize: 180, fontWeight: "bold", fontFamily: "'Segoe UI', sans-serif",
       tX1: -350, tY1: -350, tX2: -350, tY2: 300, tX3: 350, tY3: 300, lineX1: -400, lineY1: 0, lineX2: 400, lineY2: 0, moireSpokes: 2, moireDensity: 60,
-      shadowColor: '#000000', shadowBlur: 0, shadowX: 0, shadowY: 0
+      shadowColor: '#000000', shadowBlur: 40, shadowX: 0, shadowY: 25 // 调整默认阴影匹配更好的悬浮感
     };
   }
 
   function getSaveData() { return { layers, canvasW, canvasH, layerCounter }; }
   function exportJSON() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(getSaveData(), null, 2)); const a = document.createElement('a'); a.href = dataStr; a.download = `AlphaMask_Project.json`; a.click(); }
-  function importJSON(event) { const file = event.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = function(e) { try { const data = JSON.parse(e.target.result); layers = data.layers ||[]; canvasW = data.canvasW || 1000; canvasH = data.canvasH || 1000; layerCounter = data.layerCounter || layers.length+1; document.getElementById('globalW').value = canvasW; document.getElementById('globalH').value = canvasH; updateCanvasSize(); activeLayerId = layers.length > 0 ? layers[layers.length-1].id : null; refreshUI(); alert('✅ 成功导入工程文件！'); } catch(err) { alert('❌ 导入失败，文件格式错误。'); } event.target.value = ''; }; reader.readAsText(file); }
-  function saveProject() { try { localStorage.setItem('AlphaMaskV11', JSON.stringify(getSaveData())); alert('✅ 存档已保存到浏览器！'); } catch(e) { alert('❌ 保存失败'); } }
-  function loadProject() { try { const dataStr = localStorage.getItem('AlphaMaskV11'); if(dataStr) { const data = JSON.parse(dataStr); layers = data.layers; canvasW = data.canvasW; canvasH = data.canvasH; layerCounter = data.layerCounter; document.getElementById('globalW').value = canvasW; document.getElementById('globalH').value = canvasH; updateCanvasSize(); activeLayerId = layers.length ? layers[layers.length-1].id : null; refreshUI(); alert('📂 读取成功！'); } else { alert('📭 无本地存档。'); } } catch(e) { alert('❌ 读取失败。'); } }
+  function importJSON(event) { const file = event.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = function(e) { try { const data = JSON.parse(e.target.result); layers = data.layers ||[]; canvasW = data.canvasW || 1000; canvasH = data.canvasH || 1000; layerCounter = data.layerCounter || layers.length+1; document.getElementById('globalW').value = canvasW; document.getElementById('globalH').value = canvasH; updateCanvasSize(); activeLayerId = layers.length > 0 ? layers[layers.length-1].id : null; refreshUI(); alert('✅ 成功导入工程！'); } catch(err) { alert('❌ 导入失败，文件格式错误。'); } event.target.value = ''; }; reader.readAsText(file); }
+  function saveProject() { try { localStorage.setItem('AlphaMaskV12', JSON.stringify(getSaveData())); alert('✅ 存档已保存到浏览器！'); } catch(e) { alert('❌ 保存失败'); } }
+  function loadProject() { try { const dataStr = localStorage.getItem('AlphaMaskV12'); if(dataStr) { const data = JSON.parse(dataStr); layers = data.layers; canvasW = data.canvasW; canvasH = data.canvasH; layerCounter = data.layerCounter; document.getElementById('globalW').value = canvasW; document.getElementById('globalH').value = canvasH; updateCanvasSize(); activeLayerId = layers.length ? layers[layers.length-1].id : null; refreshUI(); alert('📂 读取成功！'); } else { alert('📭 无本地存档。'); } } catch(e) { alert('❌ 读取失败。'); } }
 
   function addLayer() { const l = createDefaultLayer(); layers.push(l); activeLayerId = l.id; refreshUI(); }
   function cloneLayer(id) { const src = layers.find(x => x.id === id); if(src) { const cloned = JSON.parse(JSON.stringify(src)); cloned.id = Date.now() + Math.random(); cloned.name = src.name + " 副本"; cloned.x += 30; cloned.y += 30; layers.push(cloned); activeLayerId = cloned.id; refreshUI(); } }
@@ -286,20 +255,21 @@
     pPanel.style.display = 'flex'; ePanel.style.display = 'none';
     const l = layers.find(x => x.id === activeLayerId);
     
-    document.getElementById('p_type').value = l.type; document.getElementById('p_composite').value = l.composite;
+    // V12 3D 旋转加载
+    document.getElementById('p_rotationX').value = l.rotationX || 0; document.getElementById('v_rotX').innerText = l.rotationX || 0;
+    document.getElementById('p_rotationY').value = l.rotationY || 0; document.getElementById('v_rotY').innerText = l.rotationY || 0;
     document.getElementById('p_rotation').value = l.rotation || 0; document.getElementById('v_rot').innerText = l.rotation || 0;
+
+    document.getElementById('p_type').value = l.type; document.getElementById('p_composite').value = l.composite;
     document.getElementById('p_drawMode').value = l.drawMode; document.getElementById('p_strokeWidth').value = l.strokeWidth; document.getElementById('v_stroke').innerText = l.strokeWidth;
     
     document.getElementById('p_fillMode').value = l.fillMode || 'solid';
-    // V11 UI 显示逻辑：径向渐变或线性渐变都显示颜色2
     const showColor2 = (l.fillMode === 'gradient' || l.fillMode === 'radial');
     document.getElementById('grp_color2').style.display = showColor2 ? 'flex' : 'none';
-    // 只有线性渐变显示角度
     document.getElementById('grp_gradAngle').style.display = (l.fillMode === 'gradient') ? 'block' : 'none';
     document.getElementById('grp_fillMode_bottom').style.display = (l.fillMode === 'gradient') ? 'none' : 'block';
     document.getElementById('p_gradAngle').value = l.gradAngle || 45; document.getElementById('v_gradAng').innerText = l.gradAngle || 45;
 
-    // V11 高斯模糊属性
     document.getElementById('p_filterBlur').value = l.filterBlur || 0; document.getElementById('v_filterBlur').innerText = l.filterBlur || 0;
 
     document.getElementById('p_iosGlass').checked = l.enableIOSGlass; document.getElementById('sub_iosGlass').style.display = l.enableIOSGlass ? 'flex' : 'none';
@@ -308,14 +278,14 @@
     document.getElementById('p_lightType').value = l.lightType || 'diagonal'; document.getElementById('p_lightAlpha').value = l.lightAlpha || 0.7;
     document.getElementById('p_frost').checked = l.enableFrosted; document.getElementById('sub_frost').style.display = l.enableFrosted ? 'flex' : 'none';
     document.getElementById('p_frostAlpha').value = l.frostAlpha || 0.15; document.getElementById('p_frostScale').value = l.frostScale || 1.0;
-    document.getElementById('p_float').checked = l.enableFloat;
+    
+    document.getElementById('p_float').checked = l.enableFloat; // 对应全新的 3 层阴影
 
     const isText = (l.type === 'text'); const isLine = (l.type === 'line'); const isTriangle = (l.type === 'triangle'); const isPoly = (l.type === 'polygon');
     document.getElementById('grp_text').style.display = isText ? 'block' : 'none'; document.getElementById('grp_line').style.display = isLine ? 'block' : 'none'; document.getElementById('grp_triangle').style.display = isTriangle ? 'block' : 'none'; document.getElementById('grp_moire').style.display = (l.type === 'vinyl') ? 'block' : 'none'; document.getElementById('grp_polygon').style.display = isPoly ? 'block' : 'none';
     
     document.getElementById('grp_size').style.display = (isText || isLine || isTriangle) ? 'none' : 'flex'; document.getElementById('grp_radius').style.display = (l.type === 'roundRect') ? 'flex' : 'none';
     document.getElementById('grp_strokeWidth').style.display = (l.drawMode === 'stroke' || isLine) ? 'block' : 'none';
-    document.getElementById('grp_effects').style.opacity = (l.drawMode === 'stroke' || isLine) ? '0.3' : '1'; document.getElementById('grp_effects').style.pointerEvents = (l.drawMode === 'stroke' || isLine) ? 'none' : 'auto';
     
     if(isPoly) { document.getElementById('p_polySides').value = l.polySides || 6; document.getElementById('p_polyInset').value = l.polyInset || 1.0; }
     document.getElementById('p_textContent').value = l.textContent || ""; document.getElementById('p_fontSize').value = l.fontSize || 180; document.getElementById('p_fontWeight').value = l.fontWeight || "bold"; document.getElementById('p_fontFamily').value = l.fontFamily || "'Segoe UI', sans-serif";
@@ -332,40 +302,41 @@
   }
   function togglePreviewBg(val) { document.getElementById('previewCanvasBox').className = `canvas-wrapper ${val}`; }
 
+  // Hex to RGBA helper for shadow opacity calculation
+  function hex2rgba(hex, alpha) { const r=parseInt(hex.substr(1,2),16), g=parseInt(hex.substr(3,2),16), b=parseInt(hex.substr(5,2),16); return `rgba(${r},${g},${b},${alpha})`; }
+
   function drawCanvas() {
     ctx.clearRect(0, 0, canvasW, canvasH);
     layers.forEach(l => {
       if (!l.visible) return;
       ctx.save();
       
-      // V11: 全局高斯模糊/羽化管线
-      if (l.filterBlur > 0) {
-        ctx.filter = `blur(${l.filterBlur}px)`;
-      } else {
-        ctx.filter = 'none';
-      }
+      if (l.filterBlur > 0) ctx.filter = `blur(${l.filterBlur}px)`; else ctx.filter = 'none';
 
-      const rotAngle = (l.rotation || 0) * Math.PI / 180;
-      ctx.translate(l.x, l.y); if (rotAngle !== 0) { ctx.rotate(rotAngle); }
+      // ===== V12.0 3D 空间形变透视引擎 =====
+      const rotZ = (l.rotation || 0) * Math.PI / 180;
+      const rotX = (l.rotationX || 0) * Math.PI / 180;
+      const rotY = (l.rotationY || 0) * Math.PI / 180;
+      
+      ctx.translate(l.x, l.y); 
+      // X、Y轴的正交透视压缩映射
+      ctx.scale(Math.cos(rotY), Math.cos(rotX));
+      // Z轴旋转
+      if (rotZ !== 0) ctx.rotate(rotZ);
+
       ctx.globalCompositeOperation = l.composite;
 
-      const hex2rgba = (hex, al) => { const r=parseInt(hex.substr(1,2),16), g=parseInt(hex.substr(3,2),16), b=parseInt(hex.substr(5,2),16); return `rgba(${r},${g},${b},${al})`; };
       let fillStyle = hex2rgba(l.color, l.alpha);
       const w2 = l.width/2, h2 = l.height/2;
 
-      // V11: 径向与线性渐变引擎
       if(l.fillMode === 'gradient') {
-        const ga = (l.gradAngle || 45) * Math.PI / 180;
-        const R = Math.max(w2, h2) * Math.sqrt(2); 
+        const ga = (l.gradAngle || 45) * Math.PI / 180; const R = Math.max(w2, h2) * Math.sqrt(2); 
         const grad = ctx.createLinearGradient(-Math.cos(ga)*R, -Math.sin(ga)*R, Math.cos(ga)*R, Math.sin(ga)*R);
-        grad.addColorStop(0, hex2rgba(l.color, l.alpha)); grad.addColorStop(1, hex2rgba(l.color2||'#ffffff', l.alpha));
-        fillStyle = grad;
+        grad.addColorStop(0, hex2rgba(l.color, l.alpha)); grad.addColorStop(1, hex2rgba(l.color2||'#ffffff', l.alpha)); fillStyle = grad;
       } else if (l.fillMode === 'radial') {
-        // 以原点为中心的径向发散
         const R = Math.max(w2, h2) * Math.sqrt(2); 
         const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
-        grad.addColorStop(0, hex2rgba(l.color, l.alpha)); grad.addColorStop(1, hex2rgba(l.color2||'#ffffff', l.alpha));
-        fillStyle = grad;
+        grad.addColorStop(0, hex2rgba(l.color, l.alpha)); grad.addColorStop(1, hex2rgba(l.color2||'#ffffff', l.alpha)); fillStyle = grad;
       }
 
       ctx.beginPath();
@@ -385,21 +356,42 @@
       }
       else if (l.type === 'text') { isPathBased = false; }
 
-      if (l.enableFloat) { ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 45; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 25; } 
-      else { ctx.shadowColor = l.shadowColor; ctx.shadowBlur = l.shadowBlur; ctx.shadowOffsetX = l.shadowX; ctx.shadowOffsetY = l.shadowY; }
-
       const isStrokeMode = (l.drawMode === 'stroke' || l.type === 'line');
-      if (isPathBased) {
-        if (isStrokeMode) { ctx.lineWidth = l.strokeWidth; ctx.strokeStyle = fillStyle; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke(); } 
-        else { ctx.fillStyle = fillStyle; ctx.fill(); }
-      } else if (l.type === 'text') {
-        const fontF = l.fontFamily || "'Segoe UI', sans-serif";
-        ctx.font = `${l.fontWeight} ${l.fontSize}px ${fontF}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        if (isStrokeMode) { ctx.lineWidth = l.strokeWidth; ctx.strokeStyle = fillStyle; ctx.lineJoin = 'round'; ctx.strokeText(l.textContent, 0, 0); } 
-        else { ctx.fillStyle = fillStyle; ctx.fillText(l.textContent, 0, 0); }
+
+      // 通用绘制管线
+      const drawShapePass = () => {
+        if (isPathBased) {
+          if (isStrokeMode) { ctx.lineWidth = l.strokeWidth; ctx.strokeStyle = fillStyle; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke(); } 
+          else { ctx.fillStyle = fillStyle; ctx.fill(); }
+        } else if (l.type === 'text') {
+          ctx.font = `${l.fontWeight} ${l.fontSize}px ${l.fontFamily || "'Segoe UI', sans-serif"}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          if (isStrokeMode) { ctx.lineWidth = l.strokeWidth; ctx.strokeStyle = fillStyle; ctx.lineJoin = 'round'; ctx.strokeText(l.textContent, 0, 0); } 
+          else { ctx.fillStyle = fillStyle; ctx.fillText(l.textContent, 0, 0); }
+        }
+      };
+
+      // ===== V12.0 3层平滑物理阴影引擎 =====
+      if (l.enableFloat) {
+        const bB = l.shadowBlur || 40; const bY = l.shadowY || 25; const bX = l.shadowX || 0; const sCol = l.shadowColor || '#000000';
+        
+        // 层1: 大环境弥散漫反射 (超大模糊，极低透明度)
+        ctx.shadowColor = hex2rgba(sCol, 0.08); ctx.shadowBlur = bB * 1.8; ctx.shadowOffsetX = bX * 1.5; ctx.shadowOffsetY = bY * 1.5;
+        drawShapePass();
+        
+        // 层2: 中距离阻光
+        ctx.shadowColor = hex2rgba(sCol, 0.15); ctx.shadowBlur = bB * 0.8; ctx.shadowOffsetX = bX * 0.8; ctx.shadowOffsetY = bY * 0.8;
+        drawShapePass();
+        
+        // 层3: 近距离接触阴影 (为即将渲染的最后一次实体铺垫)
+        ctx.shadowColor = hex2rgba(sCol, 0.4); ctx.shadowBlur = bB * 0.3; ctx.shadowOffsetX = bX * 0.2; ctx.shadowOffsetY = bY * 0.2;
+      } else {
+        ctx.shadowColor = l.shadowColor; ctx.shadowBlur = l.shadowBlur; ctx.shadowOffsetX = l.shadowX; ctx.shadowOffsetY = l.shadowY;
       }
 
-      // 材质特效引擎 (非描边独享)
+      // 最后渲染真实实体
+      drawShapePass();
+
+      // 材质特效引擎
       if (!isStrokeMode && (l.enableLighting || l.enableFrosted || l.enableIOSGlass || l.type === 'vinyl')) {
         ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
         if (l.type === 'text') { ctx.globalCompositeOperation = 'source-atop'; } else { ctx.clip(); }
@@ -441,7 +433,7 @@
     });
   }
 
-  function downloadImage() { const link = document.createElement('a'); link.download = `mask_v11_genesis.png`; link.href = canvas.toDataURL('image/png'); link.click(); }
+  function downloadImage() { const link = document.createElement('a'); link.download = `mask_v12_spatial.png`; link.href = canvas.toDataURL('image/png'); link.click(); }
   function copyToClipboard() {
     canvas.toBlob(blob => {
       try { navigator.clipboard.write([new ClipboardItem({'image/png': blob})]).then(() => alert('✅ 成功复制！可直接粘贴到 Photoshop/Figma。'));
