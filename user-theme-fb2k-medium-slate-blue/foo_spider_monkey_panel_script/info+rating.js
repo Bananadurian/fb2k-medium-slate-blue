@@ -2,8 +2,8 @@
  * @file info+rating.js
  * @author XYSRe
  * @created 2025-12-16
- * @updated 2026-04-14
- * @version 1.4.4
+ * @updated 2026-04-26
+ * @version 1.4.5
  * @description 终极重构版：
  * 1. 代码结构化整理，分离配置、工具、逻辑与视图。
  * 2. 将星星拆分为独立对象，纳入全局状态机管理，彻底解决交互闪烁。
@@ -15,7 +15,7 @@
 // 注册脚本信息
 window.DefineScript("Info And Rating", {
   author: "XYSRe",
-  version: "1.4.3",
+  version: "1.4.5",
   options: { grab_focus: false },
 });
 
@@ -350,26 +350,27 @@ const AQ_BADGES = {
   ATMOS: new AQBadgeStyle("AQ-ATMOS", COLORS.dolby_hd, "Dolby Atmos"), // 可选
 };
 
-// 来源图标映射表
+// 来源图标映射,注意键全部使用大小命名！！！
 const SOURCE_ICON_MAP = {
-  CD: "disc-2.png",
-  SACD: "sacd.png",
-  "SACD (CD LAYER)": "sacd.png",
-  "JAPAN FIRST PRESS": "disc-3.png",
-  WEB: "cloud.png",
-  TIDAL: "Tidal.png",
-  QOBUZ: "Qobuz.png",
-  HDTRACKS: "HDtracks.png",
-  MORA: "mora.png",
-  "APPLE MUSIC": "AppleMusic.png",
-  "AMAZON MUSIC": "AmazonMusic.png",
-  DEEZER: "Deezer.png",
-  GENIUS: "Genius.png",
-  NETEASE: "NetEase.png",
-  "QQ MUSIC": "QQMusic.png",
-  "7DIGITAL": "7digital.png",
-  BANDCAMP: "Bandcamp.png",
-  SOUNDCLOUD: "SoundCloud.png",
+    "OFFICIAL DIGITAL": "shopping-bag.png",
+    "CD": "disc-2.png",
+    "SACD": "sacd.png",
+    "SACD (CD LAYER)": "sacd.png",
+    "JAPAN FIRST PRESS": "disc-3.png",
+    "WEB": "cloud.png",
+    "TIDAL": "Tidal.png",
+    "QOBUZ": "Qobuz.png",
+    "HDTRACKS": "HDtracks.png",
+    "MORA": "mora.png",
+    "APPLE MUSIC": "AppleMusic.png",
+    "AMAZON MUSIC": "AmazonMusic.png",
+    "DEEZER": "Deezer.png",
+    "GENIUS": "Genius.png",
+    "NETEASE": "NetEase.png",
+    "QQ MUSIC": "QQMusic.png",
+    "7DIGITAL": "7digital.png",
+    "BANDCAMP": "Bandcamp.png",
+    "SOUNDCLOUD": "SoundCloud.png"
 };
 
 // 来源图标缓存
