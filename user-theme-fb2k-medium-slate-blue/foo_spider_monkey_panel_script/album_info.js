@@ -2,8 +2,8 @@
  * @file album_info.js
  * @author XYSRe
  * @created 2025-12-28
- * @updated 2026-04-14
- * @version 1.8.9
+ * @updated 2026-04-26
+ * @version 1.8.10
  * @description 专辑资料面板 (优化版：Flags 详解 + 单行/多行排版分离 + 布局逻辑优化)
  * 几个常用开关：
  * SHOW_COVER 设置封面是否显示
@@ -19,7 +19,7 @@
 
 window.DefineScript("Album Info", {
     author: "XYSRe",
-    version: "1.8.9",
+    version: "1.8.10",
     options: { grab_focus: false }
 });
 
@@ -172,8 +172,9 @@ const LINK_ICONS = {
     "Edition":  load_image(LINK_ICONS_DIR + "badge.png"),
 };
 
-// 来源图标映射
+// 来源图标映射,注意键全部使用大小命名！！！
 const SOURCE_ICON_MAP = {
+    "OFFICIAL DIGITAL": "shopping-bag.png",
     "CD": "disc-2.png",
     "SACD": "sacd.png",
     "SACD (CD LAYER)": "sacd.png",
@@ -783,6 +784,7 @@ function manage_cycle_timer() {
 
 // 来源图标缓存更新
 function update_source_icon(sourceText) {
+    // console.log("========sourceText:" + sourceText)
     let filename = SOURCE_ICON_MAP[sourceText];
     if (!filename) filename = DEFAULT_SOURCE_ICON_FILENAME;
 
