@@ -1,17 +1,22 @@
 /**
- * @file title.js
+ * @file panel_title.js
  * @author XYSRe
  * @created 2025-12-16
  * @updated 2026-04-14
- * @version 1.2.3
- * @description 优化版：单例测量工具 + 布局逻辑统一 + 资源释放
+ * @version 1.3.0
+ * @description 重构版：引入共享库，消除重复代码。
  */
 
 "use strict";
 
+// 共享库
+include("lib/utils.js");
+include("lib/interaction.js");
+include("lib/theme.js");
+
 window.DefineScript("title", {
   author: "XYSRe",
-  version: "1.2.3",
+  version: "1.3.0",
   options: { grab_focus: false },
 });
 
@@ -19,62 +24,28 @@ window.DefineScript("title", {
 // 1. 工具函数与常量
 // ============================================================================
 
-function _RGB(r, g, b) {
-  return 0xff000000 | (r << 16) | (g << 8) | b;
-}
-function _scale(size) {
-  return Math.round((size * window.DPI) / 72);
-}
+const COL = THEME.COL;
+// _init_tooltip 来自 lib/interaction.js
+let _tt = _init_tooltip(THEME.FONT.GLOBAL, _scale(13), 1200);
 
-function _load_image(path) {
-  if (utils.IsFile(path)) {
-    return gdi.Image(path);
-  }
-  console.log("Image not found: " + path);
-  return null;
-}
-
-const IMGS_FOLDER =
-  fb.ProfilePath + "\\user-theme-fb2k-medium-slate-blue\\imgs\\Lucide\\";
-
-const colors = {
-  fg: window.GetColourCUI(1), // CUI 全局 选中文案 颜色
-  bg: window.GetColourCUI(3), // CUI 全局 背景 颜色
-  bg_slider: window.GetColourCUI(3, "{4E20CEED-42F6-4743-8EB3-610454457E19}"), // CUI Item Details 背景色
-};
-
-const CUI_GLOBAL_FONT = window.GetFontCUI(0).Name; // CUI Item字体名字
-const tooltip = window.CreateTooltip(CUI_GLOBAL_FONT, _scale(13));
-tooltip.SetMaxWidth(1200);
-
-// Tooltip 封装
-function _tt(value) {
-  if (tooltip.Text !== value) {
-    tooltip.Text = value;
-    tooltip.Activate();
-  }
-}
-
-const g_font = window.GetFontCUI(1);
+const g_font = THEME.FONT.TITLEBAR;
 // 播放列表icon
 const g_imgs = {
-  icon: _load_image(IMGS_FOLDER + "list-music.png"),
-  chevron: _load_image(IMGS_FOLDER + "chevron-down.png"),
-  button: _load_image(IMGS_FOLDER + "plus.png"),
-  button_hover: _load_image(IMGS_FOLDER + "plus_hover.png"),
+  icon: _load_image(IMGS_LUCIDE_DIR + "list-music.png"),
+  chevron: _load_image(IMGS_LUCIDE_DIR + "chevron-down.png"),
+  button: _load_image(IMGS_LUCIDE_DIR + "plus.png"),
+  button_hover: _load_image(IMGS_LUCIDE_DIR + "plus_hover.png"),
 };
 
 // 资料库icon
 // const g_imgs = {
-//     icon: _load_image(IMGS_FOLDER + "list-music.png"),
-//     chevron: _load_image(IMGS_FOLDER + "chevron-down.png"),
-//     button: _load_image(IMGS_FOLDER + "folder-search.png"),
-//     button_hover: _load_image(IMGS_FOLDER + "folder-search_hover.png"),
+//     icon: _load_image(IMGS_LUCIDE_DIR + "list-music.png"),
+//     chevron: _load_image(IMGS_LUCIDE_DIR + "chevron-down.png"),
+//     button: _load_image(IMGS_LUCIDE_DIR + "folder-search.png"),
+//     button_hover: _load_image(IMGS_LUCIDE_DIR + "folder-search_hover.png"),
 // };
 
-// [优化] 全局单例测量工具
-let _measureImg = null;
-let _measureGr = null;
+// [优化] 文本测量工具 _measure 对象来自 lib/utils.js (_measure.img, _measure.gr)
 
 // ============================================================================
 // 2. 状态与布局 (State & Layout)
@@ -119,14 +90,14 @@ function on_size() {
 }
 
 function on_paint(gr) {
-  gr.FillSolidRect(0, 0, window.Width, window.Height, colors.bg);
+  gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
 
   gr.FillSolidRect(
     window.Width - layout.slider_w + _scale(0.8),
     0,
     layout.slider_w,
     window.Height,
-    colors.bg_slider,
+    COL.ITEMDETAIL_BG,
   );
 
   if (!layout.is_metrics_ready) return;
@@ -150,7 +121,7 @@ function on_paint(gr) {
   gr.GdiDrawText(
     display_text,
     g_font,
-    colors.fg,
+    COL.SELECTED_TEXT,
     layout.start_x + layout.text_h + _scale(5),
     layout.content_y,
     layout.text_w,
@@ -199,19 +170,8 @@ function on_playlists_changed() {
 
 // [新增] 资源清理
 function on_script_unload() {
-  // 释放测量工具
-  if (_measureImg) {
-    _measureImg.ReleaseGraphics(_measureGr);
-    if (typeof _measureImg.Dispose === "function") _measureImg.Dispose();
-    _measureImg = null;
-    _measureGr = null;
-  }
-  // 释放图片 (可选，SMP会自动回收，但手动更严谨)
-  for (let key in g_imgs) {
-    if (g_imgs[key] && typeof g_imgs[key].Dispose === "function") {
-      g_imgs[key].Dispose();
-    }
-  }
+  _measure_dispose();
+  _dispose_image_dict(g_imgs);
 }
 
 // ============================================================================
@@ -247,10 +207,10 @@ function on_mouse_move(x, y) {
     window.RepaintRect(target.x, target.y, target.w, target.h);
     // _tt(target.name || target.tooltip || "");
     _tt(target.tooltip || "");
-    window.SetCursor(32649); // Hand
+    _setCursor(CURSOR_HAND); // Hand
   } else {
     _tt("");
-    window.SetCursor(32512); // Arrow
+    _setCursor(CURSOR_ARROW); // Arrow
   }
 
   g_activeElement = target;
@@ -268,7 +228,7 @@ function on_mouse_leave() {
     g_activeElement = null;
   }
   _tt("");
-  window.SetCursor(32512);
+  _setCursor(CURSOR_ARROW);
 }
 
 function on_mouse_lbtn_up(x, y) {
@@ -287,10 +247,10 @@ function update_text() {
 
 // [新增] 统一布局计算函数
 function update_layout_metrics() {
-  // 1. 初始化测量工具 (单例)
-  if (!_measureImg) {
-    _measureImg = gdi.CreateImage(1, 1);
-    _measureGr = _measureImg.GetGraphics();
+  // 1. 初始化测量工具 (单例，_measure 来自 lib/utils.js)
+  if (!_measure.img) {
+    _measure.img = gdi.CreateImage(1, 1);
+    _measure.gr = _measure.img.GetGraphics();
   }
 
   // 2. 更新固定参数
@@ -299,8 +259,8 @@ function update_layout_metrics() {
 
   // 3. 测量文字
   // 注意：CalcTextHeight 第一个参数无所谓，主要是测字体高度
-  layout.text_h = _measureGr.CalcTextHeight("Test", g_font);
-  layout.text_w = _measureGr.CalcTextWidth(display_text, g_font);
+  layout.text_h = _measure.gr.CalcTextHeight("Test", g_font);
+  layout.text_w = _measure.gr.CalcTextWidth(display_text, g_font);
 
   // 4. 计算垂直位置
   layout.content_y = window.Height - layout.text_h - _scale(4);
@@ -314,6 +274,4 @@ function update_layout_metrics() {
   layout.is_metrics_ready = true;
 }
 
-function _element_trace(x, y, ele) {
-  return x >= ele.x && x <= ele.x + ele.w && y >= ele.y && y <= ele.y + ele.h;
-}
+// _element_trace 来自 lib/utils.js

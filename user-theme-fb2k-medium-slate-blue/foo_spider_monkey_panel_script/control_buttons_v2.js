@@ -3,16 +3,21 @@
  * @author XYSRe
  * @created 2025-12-12
  * @updated 2026-04-14  
- * @version 1.3.4 (Fix Crash)
- * @description 一个包含 [声音输出设备按钮 + 声音控制 + 打开搜索 + 打开队列 + 菜单] 的控件
- *              修复：volumeBar 未定义错误，移除 menu.Dispose 防止报错。
+ * @version 1.4.0
+ * @description 重构版：引入共享库，使用统一的 Button 类。
+ *              一个包含 [声音输出设备按钮 + 声音控制 + 打开搜索 + 打开队列 + 菜单] 的控件
  */
 
 "use strict";
 
+// 共享库
+include("lib/utils.js");
+include("lib/interaction.js");
+include("lib/theme.js");
+
 window.DefineScript("Control Buttons", {
     author: "XYSRe",
-    version: "1.3.4",
+    version: "1.4.0",
     options: { grab_focus: false },
 });
 
@@ -20,80 +25,37 @@ window.DefineScript("Control Buttons", {
 // 1. 工具函数
 // ============================================================================
 
-const MF_STRING = 0x00000000;
-const DPI = window.DPI;
-
-function _scale(size) {
-    return Math.round((size * DPI) / 72);
-}
-
-function _RGB(r, g, b) {
-    return 0xff000000 | (r << 16) | (g << 8) | b;
-}
-
-function _load_image(path) {
-    if (utils.IsFile(path)) {
-        return gdi.Image(path);
-    }
-    return null;
-}
-
-// Tooltip
-const CUI_GLOBAL_FONT = window.GetFontCUI(0).Name;    // CUI Item字体名字
-const tooltip = window.CreateTooltip(CUI_GLOBAL_FONT, _scale(13));
-tooltip.SetMaxWidth(1200);
-
-function _tt(value) {
-    if (tooltip.Text !== value) {
-        tooltip.Text = value;
-        tooltip.Activate();
-    }
-}
-
-// 光标缓存
-let lastCursorId = 32512; 
-function _setCursor(id) {
-    if (lastCursorId === id) return;
-    lastCursorId = id;
-    window.SetCursor(id);
-}
+// _init_tooltip / _setCursor 来自 lib/interaction.js
+let _tt = _init_tooltip(THEME.FONT.GLOBAL, _scale(13), 1200);
 
 // ============================================================================
 // 2. 资源定义
 // ============================================================================
 
-const colors = {
-    slider_bg: window.GetColourCUI(0),                        // CUI 全局 item 颜色
-    slider_fg: window.GetColourCUI(1),                        // CUI 全局 select item 颜色
-    slider_fg_hover: window.GetColourCUI(6),                  // CUI 全局 Active item 颜色
-    bg:  window.GetColourCUI(3, "{4E20CEED-42F6-4743-8EB3-610454457E19}"),      // CUI Item Details 背景色
-};
-
-const IMGS_FOLDER = fb.ProfilePath + "\\user-theme-fb2k-medium-slate-blue\\imgs\\Lucide\\";
 const imgs = {
-    recent: _load_image(IMGS_FOLDER + "history.png"),
-    recent_hover: _load_image(IMGS_FOLDER + "history_hover.png"),
-    favorite: _load_image(IMGS_FOLDER + "flame.png"),
-    favorite_hover: _load_image(IMGS_FOLDER + "flame_hover.png"),
-    rg_off: _load_image(IMGS_FOLDER + "replaygain_off.png"),
-    rg_track: _load_image(IMGS_FOLDER + "replaygain_track_on.png"),
-    rg_album: _load_image(IMGS_FOLDER + "replaygain_other_on.png"),
-    rg_hover: _load_image(IMGS_FOLDER + "replaygain_hover.png"),
-    vol: _load_image(IMGS_FOLDER + "volume.png"),
-    vol_hover: _load_image(IMGS_FOLDER + "volume_hover.png"),
-    mute: _load_image(IMGS_FOLDER + "volume_mute.png"),
-    mute_hover: _load_image(IMGS_FOLDER + "volume_mute_hover.png"),
-    asio: _load_image(IMGS_FOLDER + "asio.png"),
-    asio_hover: _load_image(IMGS_FOLDER + "asio_hover.png"),
-    wasapi: _load_image(IMGS_FOLDER + "wasapi.png"), 
-    wasapi_share: _load_image(IMGS_FOLDER + "wasapi_share.png"), 
-    wasapi_hover: _load_image(IMGS_FOLDER + "wasapi_hover.png"),
-    search: _load_image(IMGS_FOLDER + "search.png"),
-    search_hover: _load_image(IMGS_FOLDER + "search_hover.png"),
-    queue: _load_image(IMGS_FOLDER + "queue.png"),
-    queue_hover: _load_image(IMGS_FOLDER + "queue_hover.png"),
-    menu: _load_image(IMGS_FOLDER + "menu.png"),
-    menu_hover: _load_image(IMGS_FOLDER + "menu_hover.png"),
+    recent: _load_image(IMGS_LUCIDE_DIR + "history.png"),
+    recent_hover: _load_image(IMGS_LUCIDE_DIR + "history_hover.png"),
+    favorite: _load_image(IMGS_LUCIDE_DIR + "flame.png"),
+    favorite_hover: _load_image(IMGS_LUCIDE_DIR + "flame_hover.png"),
+    rg_off: _load_image(IMGS_LUCIDE_DIR + "replaygain_off.png"),
+    rg_track: _load_image(IMGS_LUCIDE_DIR + "replaygain_track_on.png"),
+    rg_album: _load_image(IMGS_LUCIDE_DIR + "replaygain_other_on.png"),
+    rg_hover: _load_image(IMGS_LUCIDE_DIR + "replaygain_hover.png"),
+    vol: _load_image(IMGS_LUCIDE_DIR + "volume.png"),
+    vol_hover: _load_image(IMGS_LUCIDE_DIR + "volume_hover.png"),
+    mute: _load_image(IMGS_LUCIDE_DIR + "volume_mute.png"),
+    mute_hover: _load_image(IMGS_LUCIDE_DIR + "volume_mute_hover.png"),
+    asio: _load_image(IMGS_LUCIDE_DIR + "asio.png"),
+    asio_hover: _load_image(IMGS_LUCIDE_DIR + "asio_hover.png"),
+    wasapi: _load_image(IMGS_LUCIDE_DIR + "wasapi.png"),
+    wasapi_share: _load_image(IMGS_LUCIDE_DIR + "wasapi_share.png"),
+    wasapi_hover: _load_image(IMGS_LUCIDE_DIR + "wasapi_hover.png"),
+    search: _load_image(IMGS_LUCIDE_DIR + "search.png"),
+    search_hover: _load_image(IMGS_LUCIDE_DIR + "search_hover.png"),
+    queue: _load_image(IMGS_LUCIDE_DIR + "queue.png"),
+    queue_hover: _load_image(IMGS_LUCIDE_DIR + "queue_hover.png"),
+    menu: _load_image(IMGS_LUCIDE_DIR + "menu.png"),
+    menu_hover: _load_image(IMGS_LUCIDE_DIR + "menu_hover.png"),
 };
 
 const ICON_W = _scale(15);
@@ -104,85 +66,14 @@ const DEFAULT_MARGIN = _scale(6);
 // 3. UI 组件类
 // ============================================================================
 
-class Button {
-    constructor(config) {
-        this.x = 0; this.y = 0; this.w = 0; this.h = 0;
-        this.img_normal = config.img_normal || null;
-        this.img_hover = config.img_hover || this.img_normal;
-        this.img_current = this.img_normal;
-        this.fn_click = config.func || null;
-        this.fn_rclick = config.func_rclick || null;
-        this.tiptext = config.tiptext || "";
-        this.is_hover = false;
-    }
-
-    updateState(img_normal, img_hover, tiptext, func) {
-        if (this.img_normal === img_normal && this.tiptext === tiptext) return;
-
-        this.img_normal = img_normal;
-        this.img_hover = img_hover || img_normal;
-        this.tiptext = tiptext;
-        
-        this.img_current = this.is_hover ? this.img_hover : this.img_normal;
-        
-        if (func) this.fn_click = func;
-        
-        this.repaint();
-    }
-
-    repaint() {
-        window.RepaintRect(this.x, this.y, this.w, this.h);
-    }
-
-    paint(gr) {
-        if (this.img_current) {
-            gr.DrawImage(this.img_current, this.x, this.y, this.w, this.h, 0, 0, this.img_current.Width, this.img_current.Height);
-        }
-    }
-
-    trace(x, y) {
-        return x >= this.x && x <= this.x + this.w && y >= this.y && y <= this.y + this.h;
-    }
-
-    // 状态机行为：激活
-    activate() {
-        if (this.is_hover) return;
-        this.is_hover = true;
-        this.img_current = this.img_hover;
-        this.repaint();
-    }
-
-    // 状态机行为：休眠
-    deactivate() {
-        if (!this.is_hover) return;
-        this.is_hover = false;
-        this.img_current = this.img_normal;
-        this.repaint();
-    }
-
-    on_mouse_lbtn_up(x, y) {
-        if (this.trace(x, y) && this.fn_click) {
-            this.fn_click(x, y);
-            return true;
-        }
-        return false;
-    }
-    
-    on_mouse_rbtn_down(x, y) {
-        if (this.trace(x, y) && this.fn_rclick) {
-            this.fn_rclick(x, y);
-            return true;
-        }
-        return false;
-    }
-}
+// Button 类来自 lib/interaction.js (含 fn_rclick 支持)
 
 class VolumeControl {
     constructor() {
         this.x = 0; this.y = 0; this.w = 0; this.h = 0;
         this.drag = false;
         this.hover = false;
-        this.color = colors.slider_fg;
+        this.color = THEME.COL.SELECTED_TEXT;
         this.current_tip = "";
     }
 
@@ -195,7 +86,7 @@ class VolumeControl {
         const arc = Math.max(1, _scale(1));
         // 抗锯齿
         gr.SetSmoothingMode(4); 
-        gr.FillRoundRect(this.x, this.y, this.w, this.h, arc, arc, colors.slider_bg);
+        gr.FillRoundRect(this.x, this.y, this.w, this.h, arc, arc, THEME.COL.ITEM_TEXT);
         
         const posW = this.getPosWidth();
         // 这里如果值posW太小的话绘制不了arc值得圆角矩形
@@ -230,7 +121,7 @@ class VolumeControl {
         
         if (isOver !== this.hover) {
             this.hover = isOver;
-            this.color = isOver ? colors.slider_fg_hover : colors.slider_fg;
+            this.color = isOver ? THEME.COL.ACTIVE_ITEM : THEME.COL.SELECTED_TEXT;
             this.repaint();
         }
         
@@ -505,7 +396,7 @@ function on_size() {
 }
 
 function on_paint(gr) {
-    gr.FillSolidRect(0, 0, window.Width, window.Height, colors.bg);
+    gr.FillSolidRect(0, 0, window.Width, window.Height, THEME.COL.ITEMDETAIL_BG);
     for (let key in buttons) {
         buttons[key].paint(gr);
     }
@@ -610,10 +501,5 @@ function on_replaygain_mode_changed() {
 }
 
 function on_script_unload() {
-    for (let key in imgs) {
-        const img = imgs[key];
-        if (img && typeof img.Dispose === 'function') {
-            img.Dispose();
-        }
-    }
+    _dispose_image_dict(imgs);
 }
