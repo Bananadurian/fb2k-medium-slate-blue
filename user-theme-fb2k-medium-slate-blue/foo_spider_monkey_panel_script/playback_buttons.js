@@ -1,16 +1,14 @@
 /**
- * @file playback_buttons_v2.js
+ * @file playback_buttons.js
  * @author XYSRe
  * @created 2025-12-14
- * @updated 2026-04-14
- * @version 1.5.0
- * @description 重构版：引入共享库，使用统一的 Button 类。
- *              播放控制按钮, 播放模式(Order)写死了几个模式！
+ * @updated 2026-04-27
+ * @version 1.6.0
+ * @description 播放控制按钮 — 播放/暂停、停止、上下曲、快进快退、播放模式、随机
  */
 
 "use strict";
 
-// 共享库
 include("lib/utils.js");
 include("lib/data.js");
 include("lib/interaction.js");
@@ -18,17 +16,15 @@ include("lib/theme.js");
 
 window.DefineScript("Playback Buttons", {
     author: "XYSRe",
-    version: "1.5.0",
-    options: { grab_focus: false },
+    version: "1.6.0",
+    options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 
 // ============================================================================
-// 1. 工具函数
+// 1. 工具与别名
 // ============================================================================
 
-// 主题别名
 const COL = THEME.COL;
-// _init_tooltip / _setCursor 来自 lib/interaction.js
 let _tt = _init_tooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
 
 // ============================================================================
@@ -186,7 +182,7 @@ init_ui();
 function on_size() {
     if (window.Width <= 0 || window.Height <= 0) return;
 
-    const totalW = (ICON_W * 5) + (ICON_W * 1.5 * 3) + (MARGIN * 8); 
+    const totalW = (ICON_W * 6) + (ICON_W * 1.5 * 3) + (MARGIN * 8); 
     let currentX = Math.round((window.Width - totalW) / 2);
     const centerY = Math.round(window.Height / 2);
     const midY = Math.round(centerY - ICON_H / 2);
@@ -235,7 +231,7 @@ function on_paint(gr) {
     }
 }
 
-// [核心] 状态机 + 原版 TT
+// UI 状态机
 function on_mouse_move(x, y) {
     let newHoverBtn = null;
 
@@ -259,7 +255,7 @@ function on_mouse_move(x, y) {
             _tt(newHoverBtn.tiptext);
             _setCursor(CURSOR_HAND);
         } else {
-            _tt(""); // 清除
+            _tt("");
             _setCursor(CURSOR_ARROW);
         }
 

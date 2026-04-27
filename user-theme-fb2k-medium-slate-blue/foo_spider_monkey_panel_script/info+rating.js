@@ -3,24 +3,21 @@
  * @author XYSRe
  * @created 2025-12-16
  * @updated 2026-04-27
- * @version 1.5.0
- * @description 重构版：引入共享库 lib/utils.js, lib/data.js, lib/interaction.js。
- * 消除重复代码，统一工具函数、音质标识系统和来源图标缓存。
+ * @version 1.6.0
+ * @description 歌曲信息+评分面板: 标题/艺人/专辑/年份、星级评分、音质标识、来源图标。
  */
 
 "use strict";
 
-// 共享库
 include("lib/utils.js");
 include("lib/data.js");
 include("lib/interaction.js");
 include("lib/theme.js");
 
-// 注册脚本信息
 window.DefineScript("Info And Rating", {
   author: "XYSRe",
-  version: "1.5.0",
-  options: { grab_focus: false },
+  version: "1.6.0",
+  options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 
 // ============================================================================
@@ -54,16 +51,7 @@ const LINE_H = _scale(14);
 const MARGIN = _scale(1);
 const ALBUM_YEAR_GAP = _scale(2);
 const STAR_SIZE = _scale(16);
-const SOURCE_ICON_SIZE = _scale(10); // 来源图标尺寸
-// DEFAULT_SOURCE_ICON_FILENAME 来自 lib/data.js
-
-// 音质标识布局配置
-const AQ_BADGE_LAYOUT = {
-  paddingX: _scale(4),
-  paddingY: _scale(4),
-  radius: _scale(4),
-  borderW: _scale(1),
-};
+// THEME.CFG.SOURCE_ICON_SIZE / AQ_BADGE 来自 THEME.CFG
 
 // ============================================================================
 // 2. 状态变量与 TitleFormat (State & TF)
@@ -85,8 +73,8 @@ const ratingArea = { x: 0, y: 0, w: 0, h: 0 };
 let currentSourceIcon = {
   x: 0,
   y: 0,
-  w: SOURCE_ICON_SIZE,
-  h: SOURCE_ICON_SIZE,
+  w: THEME.CFG.SOURCE_ICON_SIZE,
+  h: THEME.CFG.SOURCE_ICON_SIZE,
   img: null,
   is_hover: false,
   tooltip: "",
@@ -349,7 +337,7 @@ function on_size() {
 
   // 2. 垂直布局计算 (自上而下)
   const totalContentH =
-    CONTENTS.title.h + LINE_H * 2 + MARGIN * 4 + STAR_SIZE + SOURCE_ICON_SIZE;
+    CONTENTS.title.h + LINE_H * 2 + MARGIN * 4 + STAR_SIZE + THEME.CFG.SOURCE_ICON_SIZE;
   let startY = Math.round((window.Height - totalContentH) / 2);
 
   // --- Title ---
@@ -411,8 +399,8 @@ function on_size() {
       max_text_w,
       BADGE_TEXT_ALIGN,
     );
-    currentAQBadgeRect.w = badgeTextSize.Width + AQ_BADGE_LAYOUT.paddingX;
-    currentAQBadgeRect.h = badgeTextSize.Height + AQ_BADGE_LAYOUT.paddingY;
+    currentAQBadgeRect.w = badgeTextSize.Width + THEME.CFG.AQ_BADGE.paddingX;
+    currentAQBadgeRect.h = badgeTextSize.Height + THEME.CFG.AQ_BADGE.paddingY;
     sourchIconAQBadgeTotalW += currentAQBadgeRect.w;
   }
   currentSourceIcon.x = Math.ceil((window.Width - sourchIconAQBadgeTotalW) / 2);
@@ -519,8 +507,8 @@ function on_paint(gr) {
       currentAQBadgeRect.y,
       currentAQBadgeRect.w,
       currentAQBadgeRect.h,
-      AQ_BADGE_LAYOUT.radius,
-      AQ_BADGE_LAYOUT.radius,
+      THEME.CFG.AQ_BADGE.radius,
+      THEME.CFG.AQ_BADGE.radius,
       currentAQBadge.bgColor,
     );
 

@@ -1,23 +1,23 @@
 /**
  * @file cover_panel.js
- * @description 彻底解耦版：增加CUI背景色适配，支持按需阻断颜色提取的性能优化
- * @author SMP Scripting Expert
- * @version 3.2.0
- * @description 重构版：引入共享库，添加资源清理。
+ * @author XYSRe
+ * @created 2025-12-16
+ * @updated 2026-04-27
+ * @version 3.3.0
+ * @description 封面显示面板: 圆角渲染、颜色提取渐变背景、Async 封面加载。
  */
 
 "use strict";
 
-// 共享库
 include("lib/utils.js");
 include("lib/data.js");
 include("lib/theme.js");
 
 // ==========================================
-// ## 1. 配置区域 (CONFIGURATION)
+// 1. 面板配置
 // ==========================================
 
-const CONFIG = {
+const PANEL_CFG = {
     CORNER_RADIUS: _scale(20),       // 封面圆角半径
     MARGIN: _scale(40),              // 封面周围的全局边距 (Padding)
     
@@ -155,15 +155,15 @@ function update_cover_ui() {
         return;
     }
     
-    let max_w = Math.max(10, ww - CONFIG.MARGIN);
-    let max_h = Math.max(10, wh - CONFIG.MARGIN);
+    let max_w = Math.max(10, ww - PANEL_CFG.MARGIN);
+    let max_h = Math.max(10, wh - PANEL_CFG.MARGIN);
     
     let scale = Math.min(max_w / g_img.Width, max_h / g_img.Height);
     
     let target_w = Math.floor(g_img.Width * scale);
     let target_h = Math.floor(g_img.Height * scale);
     
-    g_img_rounded = create_rounded_image(g_img, target_w, target_h, CONFIG.CORNER_RADIUS);
+    g_img_rounded = create_rounded_image(g_img, target_w, target_h, PANEL_CFG.CORNER_RADIUS);
 }
 
 /**
@@ -171,7 +171,7 @@ function update_cover_ui() {
  */
 function update_panel_data(metadb) {
     // 传入控制开关和 CUI 全局背景色
-    get_album_art_data(metadb, 0, CONFIG.USE_COVER_COLOR, CONFIG.USE_GRADIENT, g_theme_bg_color)
+    get_album_art_data(metadb, 0, PANEL_CFG.USE_COVER_COLOR, PANEL_CFG.USE_GRADIENT, g_theme_bg_color)
         .then(data => {
             g_img = data.image;
             g_bg_color1 = data.colors.c1;
@@ -198,7 +198,7 @@ function on_size() {
 }
 
 function on_paint(gr) {
-    gr.FillGradRect(0, 0, ww, wh, CONFIG.GRADIENT_ANGLE, g_bg_color1, g_bg_color2, 1.0);
+    gr.FillGradRect(0, 0, ww, wh, PANEL_CFG.GRADIENT_ANGLE, g_bg_color1, g_bg_color2, 1.0);
     
     if (g_img_rounded) {
         let x = Math.round((ww - g_img_rounded.Width) / 2);
@@ -207,7 +207,7 @@ function on_paint(gr) {
     } else {
         let text = fb.IsPlaying ? "No Cover Found" : "Stopped";
         if (g_font) {
-            gr.GdiDrawText(text, g_font, CONFIG.TEXT_COLOR, 0, 0, ww, wh, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            gr.GdiDrawText(text, g_font, PANEL_CFG.TEXT_COLOR, 0, 0, ww, wh, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
         }
     }
 }

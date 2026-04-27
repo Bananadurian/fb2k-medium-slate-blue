@@ -19,7 +19,7 @@ include("lib/theme.js");
 window.DefineScript("Playback Buttons", {
     author: "XYSRe",
     version: "1.5.0",
-    options: { grab_focus: false },
+    options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 
 // ============================================================================
@@ -186,7 +186,7 @@ init_ui();
 function on_size() {
     if (window.Width <= 0 || window.Height <= 0) return;
 
-    const totalW = (ICON_W * 5) + (ICON_W * 1.5 * 3) + (MARGIN * 8); 
+    const totalW = (ICON_W * 6) + (ICON_W * 1.5 * 3) + (MARGIN * 8); 
     let currentX = Math.round((window.Width - totalW) / 2);
     const centerY = Math.round(window.Height / 2);
     const midY = Math.round(centerY - ICON_H / 2);
