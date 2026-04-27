@@ -2,20 +2,24 @@
  * @file info+rating.js
  * @author XYSRe
  * @created 2025-12-16
- * @updated 2026-04-26
- * @version 1.4.5
- * @description 终极重构版：
- * 1. 代码结构化整理，分离配置、工具、逻辑与视图。
- * 2. 将星星拆分为独立对象，纳入全局状态机管理，彻底解决交互闪烁。
- * 3. 增强了音质标识与来源图标的逻辑封装。
+ * @updated 2026-04-27
+ * @version 1.5.0
+ * @description 重构版：引入共享库 lib/utils.js, lib/data.js, lib/interaction.js。
+ * 消除重复代码，统一工具函数、音质标识系统和来源图标缓存。
  */
 
 "use strict";
 
+// 共享库
+include("lib/utils.js");
+include("lib/data.js");
+include("lib/interaction.js");
+include("lib/theme.js");
+
 // 注册脚本信息
 window.DefineScript("Info And Rating", {
   author: "XYSRe",
-  version: "1.4.5",
+  version: "1.5.0",
   options: { grab_focus: false },
 });
 
@@ -23,143 +27,41 @@ window.DefineScript("Info And Rating", {
 // 1. 全局常量与配置 (Constants & Config)
 // ============================================================================
 
-const DPI = window.DPI;
-
-/**
- * 屏幕适配缩放函数
- * @param {number} size - 原始像素值
- * @returns {number} - 适配 DPI 后的像素值
- */
-function _scale(size) {
-  return Math.round((size * DPI) / 72);
-}
-
-/**
- * 生成颜色整数值
- * @param {number} r - Red (0-255)
- * @param {number} g - Green (0-255)
- * @param {number} b - Blue (0-255)
- * @returns {number} - 0xAARRGGBB 格式整数
- */
-function _RGB(r, g, b) {
-  return 0xff000000 | (r << 16) | (g << 8) | b;
-}
-
-// --- GDI 文本绘制标志位说明 (Flags) ---
-// 详见: http://msdn.microsoft.com/en-us/library/dd162498(VS.85).aspx
-const DT_LEFT = 0x00000000; // 左对齐
-const DT_CENTER = 0x00000001; // 水平居中
-const DT_RIGHT = 0x00000002; // 右对齐
-const DT_VCENTER = 0x00000004; // 垂直居中 (仅限单行)
-const DT_BOTTOM = 0x00000008; // 底部对齐
-const DT_WORDBREAK = 0x00000010; // 自动换行
-const DT_NOPREFIX = 0x00000800; // 禁用 '&' 转义
-const DT_EDITCONTROL = 0x00002000; // 编辑控件样式 (显示部分最后一行)
-const DT_END_ELLIPSIS = 0x00008000; // 超出显示省略号
-const DT_SINGLELINE = 0x00000020; // 单行模式
-
-// 常用文本对齐组合
+// 常用文本对齐组合 (依赖 lib/data.js 中的 DT_ 基础标志)
 // 1. 通用文本: 双居中 + 禁用前缀 + 省略号 + 单行
 const TEXT_FLAGS =
   DT_CENTER | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS | DT_SINGLELINE;
-// 2. 专辑信息: 左对齐 + 垂直居中 + 禁用前缀 + 省略号 (多行支持取决于是否加了 SINGLELINE，此处未加)
+// 2. 专辑信息: 左对齐 + 垂直居中 + 禁用前缀 + 省略号
 const ALBUM_FLAGS = DT_LEFT | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS;
-// 3. 音质标识: 双居中 + 单行
-const BADGE_TEXT_ALIGN = DT_CENTER | DT_VCENTER | DT_SINGLELINE;
 
-// --- 颜色配置 (Colors) ---
-const COLORS = {
-  bg: window.GetColourCUI(3, "{4E20CEED-42F6-4743-8EB3-610454457E19}"), // CUI Item Details 背景色
-  Title: window.GetColourCUI(1), // CUI 全局 选中文案 颜色
-  Accent: window.GetColourCUI(6), // CUI 全局 Active item 颜色
-  Body: window.GetColourCUI(0), // CUI 全局 Item 颜色
-  Dim: _RGB(114, 117, 126),
+// --- 颜色 (来自 lib/theme.js) ---
+const COL = THEME.COL;
 
-  // --- 音质标识标准色 (Audio Quality Badge COLORS) ---
-  // 对应不同采样率/位深的视觉分级
-  // ===== 基础音质 =====
-  silver: _RGB(178, 180, 188), // AQ-CD   冷灰
-  teal: _RGB(155, 160, 200), // AQ-CD+  紫调冷灰蓝
-
-  // ===== Studio / Pro =====
-  green: _RGB(120, 190, 182), // AQ-ST   冷静青绿（Studio Cyan）
-
-  // ===== Hi-Res（传统黄 × 现代 UI）=====
-  amber: _RGB(195, 173, 100), // AQ-HR   驯化琥珀黄
-  gold: _RGB(214, 194, 127), // AQ-HR+  亮阶琥珀
-
-  // ===== 极限音质 =====
-  titanium: _RGB(230, 232, 240), // AQ-UHR  冷白
-  purple: _RGB(127, 90, 240), // AQ-DSD  主题紫
-
-  // ===== Fallback =====
-  fallback: _RGB(115, 115, 115), // LOSSY   稍亮的中灰，保证可读性
-
-  // ===== Dolby =====
-  dolby_lossy: _RGB(100, 165, 215), // DD / DD+ 柔和科技蓝
-  dolby_hd: _RGB(130, 195, 255), // TrueHD / Atmos 高亮但不刺眼
-};
-
-/**
- * 计算公式来自tidal音质标识 low、high、max 图标，让AI通过已知前景色和背景色计算转换公式
- * https://tidal.com/sound-quality
- * 计算背景色 (颜色2)
- * 公式：亮度 * 0.2，如果是纯白则转换为冷灰
- * @param {number} color - 原始颜色整数 (例如 COLORS.silver)
- * @returns {number} - 计算后的背景色整数
- */
-function getDimColor(color) {
-  // 1. 通过位运算提取 R, G, B 分量
-  const r = (color >> 16) & 0xff;
-  const g = (color >> 8) & 0xff;
-  const b = color & 0xff;
-
-  // 2. 特殊处理：纯白色 (#FFFFFF) -> 冷灰色 (#393940)
-  // 对应 RGB(255, 255, 255) -> RGB(57, 57, 64)
-  if (r === 255 && g === 255 && b === 255) {
-    return 0xff000000 | (57 << 16) | (57 << 8) | 64;
-  }
-
-  // 3. 通用公式：乘以 0.2 并取整
-  const r2 = Math.round(r * 0.2);
-  const g2 = Math.round(g * 0.2);
-  const b2 = Math.round(b * 0.2);
-
-  // 4. 重新组合为整数返回 (保持 Alpha 为 0xff)
-  return 0xff000000 | (r2 << 16) | (g2 << 8) | b2;
-}
-
-// --- 字体配置 (Fonts) ---
-const CUI_GLOBAL_FONT = window.GetFontCUI(0).Name; // CUI Item字体名字
+// --- 字体 (来自 lib/theme.js) ---
 const FONTS = {
-  Title: gdi.Font(CUI_GLOBAL_FONT, _scale(12), 1), // Bold
-  Body: gdi.Font(CUI_GLOBAL_FONT, _scale(10), 0),
-  BadgeLabel: gdi.Font(CUI_GLOBAL_FONT, _scale(8), 0), // Bold for Badge
-  BadgeInfo: gdi.Font(CUI_GLOBAL_FONT, _scale(9), 0),
+  Title: gdi.Font(THEME.FONT.GLOBAL, _scale(12), 1),
+  Body: gdi.Font(THEME.FONT.GLOBAL, _scale(10), 0),
+  BadgeLabel: gdi.Font(THEME.FONT.GLOBAL, _scale(8), 0),
+  BadgeInfo: gdi.Font(THEME.FONT.GLOBAL, _scale(9), 0),
 };
 
 // --- 路径与图片资源 (Paths & Images) ---
-function load_image(path) {
-  return utils.IsFile(path) ? gdi.Image(path) : null;
-}
-
-const LINK_ICONS_DIR =
-  fb.ProfilePath + "\\user-theme-fb2k-medium-slate-blue\\imgs\\Links\\";
-const STAR_ICONS_DIR =
-  fb.ProfilePath + "\\user-theme-fb2k-medium-slate-blue\\imgs\\Lucide\\";
 const STAR_ICONS = {
-  StarOff: load_image(STAR_ICONS_DIR + "star1.png"),
-  StarOn: load_image(STAR_ICONS_DIR + "star.png"),
+  StarOff: _load_image(IMGS_LUCIDE_DIR + "star1.png"),
+  StarOn: _load_image(IMGS_LUCIDE_DIR + "star.png"),
 };
 
+// 来源图标缓存 (使用共享库 SourceIconCache)
+const g_sourceIconCache = new SourceIconCache(IMGS_LINKS_DIR);
+
 // --- 布局参数 (Layout Constants) ---
-const MAX_BUFFER_H = _scale(2000); // 文本缓冲最大高度 (防显存溢出)
+// MAX_BUFFER_H 由 _measure_string 内部处理 (lib/utils.js)
 const LINE_H = _scale(14);
 const MARGIN = _scale(1);
 const ALBUM_YEAR_GAP = _scale(2);
 const STAR_SIZE = _scale(16);
 const SOURCE_ICON_SIZE = _scale(10); // 来源图标尺寸
-const DEFAULT_SOURCE_ICON_FILENAME = "cloud.png"; // 默认来源图标
+// DEFAULT_SOURCE_ICON_FILENAME 来自 lib/data.js
 
 // 音质标识布局配置
 const AQ_BADGE_LAYOUT = {
@@ -223,42 +125,12 @@ const tf_codec = fb.TitleFormat("%codec%");
 const tf_samplerate = fb.TitleFormat("%samplerate%");
 const tf_bitdepth = fb.TitleFormat("%__bitspersample%");
 
-// 测量专用GDI对象
-let _measureImg = null;
-let _measureGr = null;
-
 // ============================================================================
-// 3. 辅助组件类 (Classes)
+// 3. 辅助组件 (Tooltip)
 // ============================================================================
 
-// --- Tooltip 管理 ---
-let tooltip = window.CreateTooltip(CUI_GLOBAL_FONT, _scale(13));
-tooltip.SetMaxWidth(1200);
+let _tt = _init_tooltip(THEME.FONT.GLOBAL, _scale(13), 1200);
 
-function _tt(value) {
-  if (tooltip.Text !== value) {
-    tooltip.Text = value;
-    tooltip.Activate();
-  }
-}
-
-// --- 光标管理 ---
-let lastCursorId = 32512;
-function _setCursor(id) {
-  if (lastCursorId === id) return;
-  lastCursorId = id;
-  window.SetCursor(id);
-}
-
-// --- 音质标识样式类 ---
-class AQBadgeStyle {
-  constructor(label, color, desc) {
-    this.label = label;
-    this.color = color; // 前景色 (文字/边框)
-    this.bgColor = getDimColor(color); // 自动计算背景色
-    this.desc = desc;
-  }
-}
 
 // --- 独立星星组件类 (StarElement) ---
 class StarElement {
@@ -325,59 +197,7 @@ for (let i = 1; i <= 5; i++) {
 }
 
 // ============================================================================
-// 4. 音质与图标配置数据 (Badges & Icons Data)
-// ============================================================================
-
-// 音质标识定义表
-const AQ_BADGES = {
-  CD: new AQBadgeStyle("AQ-CD", COLORS.silver, "16bit / 44.1kHz"),
-  CD_PLUS: new AQBadgeStyle("AQ-CD+", COLORS.teal, "24bit / 44.1kHz"),
-  ST: new AQBadgeStyle("AQ-ST", COLORS.green, "24bit / 48kHz"),
-  HR: new AQBadgeStyle("AQ-HR", COLORS.amber, "24bit / 88.2k-96k"),
-  HR_PLUS: new AQBadgeStyle("AQ-HR+", COLORS.gold, "24bit / 176k-192k"),
-  UHR: new AQBadgeStyle("AQ-UHR", COLORS.titanium, "≥352.8kHz (DXD)"),
-  DSD: new AQBadgeStyle("AQ-DSD", COLORS.purple, "Native DSD"),
-  LOSSY: new AQBadgeStyle("LOSSY", COLORS.fallback, "Compressed"),
-  UNKNOWN: new AQBadgeStyle("UNKNOWN", COLORS.fallback, "Unknown"),
-  // 杜比系列
-  DD: new AQBadgeStyle("AQ-DD", COLORS.dolby_lossy, "Dolby Digital (AC3)"),
-  DD_PLUS: new AQBadgeStyle("AQ-DD+", COLORS.dolby_lossy, "Dolby Digital Plus"),
-  TRUEHD: new AQBadgeStyle(
-    "AQ-THD",
-    COLORS.dolby_hd,
-    "Dolby TrueHD (Lossless)",
-  ),
-  ATMOS: new AQBadgeStyle("AQ-ATMOS", COLORS.dolby_hd, "Dolby Atmos"), // 可选
-};
-
-// 来源图标映射,注意键全部使用大小命名！！！
-const SOURCE_ICON_MAP = {
-    "OFFICIAL DIGITAL": "shopping-bag.png",
-    "CD": "disc-2.png",
-    "SACD": "sacd.png",
-    "SACD (CD LAYER)": "sacd.png",
-    "JAPAN FIRST PRESS": "disc-3.png",
-    "WEB": "cloud.png",
-    "TIDAL": "Tidal.png",
-    "QOBUZ": "Qobuz.png",
-    "HDTRACKS": "HDtracks.png",
-    "MORA": "mora.png",
-    "APPLE MUSIC": "AppleMusic.png",
-    "AMAZON MUSIC": "AmazonMusic.png",
-    "DEEZER": "Deezer.png",
-    "GENIUS": "Genius.png",
-    "NETEASE": "NetEase.png",
-    "QQ MUSIC": "QQMusic.png",
-    "7DIGITAL": "7digital.png",
-    "BANDCAMP": "Bandcamp.png",
-    "SOUNDCLOUD": "SoundCloud.png"
-};
-
-// 来源图标缓存
-const SOURCE_IMG_CACHE = {};
-
-// ============================================================================
-// 5. 核心逻辑 (Logic)
+// 4. 核心逻辑 (Logic)
 // ============================================================================
 
 // 文本内容状态对象
@@ -412,29 +232,7 @@ const CONTENTS = {
   year: { text: "", w: 0, x: 0, y: 0, h: LINE_H, is_hover: false, tooltip: "" },
 };
 
-/**
- * 测量字符串宽高
- */
-function measure_string(text, font, maxWidth, text_style_flag) {
-  if (!_measureImg) {
-    _measureImg = gdi.CreateImage(1, 1);
-    _measureGr = _measureImg.GetGraphics();
-  }
-  const result = _measureGr.MeasureString(
-    text,
-    font,
-    0,
-    0,
-    maxWidth,
-    MAX_BUFFER_H,
-    text_style_flag,
-  );
-
-  return {
-    Width: Math.ceil(result.Width),
-    Height: Math.ceil(result.Height),
-  };
-}
+// _measure_string 来自 lib/utils.js
 
 /**
  * 核心数据更新函数：读取元数据并更新UI状态
@@ -455,7 +253,7 @@ function update_contents() {
     CONTENTS.album.text =
       tf_track_album.EvalWithMetadb(g_metadb) || "Unknown Album";
     const y = tf_track_year.EvalWithMetadb(g_metadb);
-    CONTENTS.year.text = y && y !== "?" ? `(${y})` : "";
+    CONTENTS.year.text = y && y !== "?" ? `©${y}` : "";
 
     // 更新评分
     g_currentRating = parseInt(tf_rating.EvalWithMetadb(g_metadb)) || 0;
@@ -487,56 +285,20 @@ function update_contents() {
 }
 
 /**
- * 判断音质分级
- * 优先级: DSD > 杜比 > 高采样率/位深 > CD > 有损
+ * 判断音质分级 (委托给共享库 _get_aq_badge_state)
+ * @param {FbMetadbHandle} metadb
+ * @returns {AQBadgeStyle|null}
  */
 function get_aq_badge_state(metadb) {
   if (!metadb) return null;
-
   const codec = tf_codec.EvalWithMetadb(metadb).toUpperCase();
   const sr = parseInt(tf_samplerate.EvalWithMetadb(metadb));
   let bits = parseInt(tf_bitdepth.EvalWithMetadb(metadb));
-
-  if (isNaN(bits)) bits = 0;
-
-  if (codec.indexOf("DSD") !== -1 || codec.indexOf("DST") !== -1)
-    return AQ_BADGES.DSD;
-
-  // ================= [新增] 杜比格式判定 =================
-
-  // TrueHD (无损)
-  if (codec === "TRUEHD") {
-    // 如果能检测到 Atmos 元数据可返回 ATMOS，否则返回 THD
-    // if (profile.indexOf("ATMOS") !== -1) return AQ_BADGES.ATMOS;
-    return AQ_BADGES.TRUEHD;
-  }
-
-  // E-AC3 (Dolby Digital Plus)
-  if (codec === "E-AC3") {
-    return AQ_BADGES.DD_PLUS;
-  }
-
-  // AC3 (Dolby Digital) - 注: 有些插件显示 "ATSC A/52"
-  if (codec === "AC3" || codec === "ATSC A/52") {
-    return AQ_BADGES.DD;
-  }
-  // ======================================================
-
-  if (["MP3", "AAC", "VORBIS", "OPUS", "MUSEPACK"].includes(codec))
-    return AQ_BADGES.LOSSY;
-
-  if (sr >= 352800) return AQ_BADGES.UHR;
-  if (sr >= 176400) return AQ_BADGES.HR_PLUS;
-  if (sr >= 88200) return AQ_BADGES.HR;
-  if (sr === 48000 && bits >= 24) return AQ_BADGES.ST;
-  if (sr === 44100 && bits >= 24) return AQ_BADGES.CD_PLUS;
-  if (bits === 16 && sr >= 44100 && sr <= 48000) return AQ_BADGES.CD;
-
-  return AQ_BADGES.CD;
+  return _get_aq_badge_state(codec, sr, bits);
 }
 
 /**
- * 更新来源图标
+ * 更新来源图标 (使用共享库 SourceIconCache)
  */
 function update_source_icon(metadb) {
   const sourceText = tf_album_source
@@ -546,31 +308,12 @@ function update_source_icon(metadb) {
   let filename = SOURCE_ICON_MAP[sourceText];
   if (!filename) filename = DEFAULT_SOURCE_ICON_FILENAME;
 
-  let img = get_source_image_from_cache(filename);
+  let img = g_sourceIconCache.get(filename);
   if (!img && filename !== DEFAULT_SOURCE_ICON_FILENAME) {
-    img = get_source_image_from_cache(DEFAULT_SOURCE_ICON_FILENAME);
+    img = g_sourceIconCache.get(DEFAULT_SOURCE_ICON_FILENAME);
   }
   currentSourceIcon.img = img;
   currentSourceIcon.tooltip = sourceText;
-}
-
-/**
- * 获取或缓存来源图标
- */
-function get_source_image_from_cache(filename) {
-  if (SOURCE_IMG_CACHE[filename]) {
-    return SOURCE_IMG_CACHE[filename];
-  }
-
-  const path = LINK_ICONS_DIR + filename;
-  if (utils.IsFile(path)) {
-    const img = gdi.Image(path);
-    if (img) {
-      SOURCE_IMG_CACHE[filename] = img;
-      return img;
-    }
-  }
-  return null;
 }
 
 // ============================================================================
@@ -590,7 +333,7 @@ function on_size() {
   const max_text_w = window.Width - MARGIN * 8;
 
   // 1. 测量各元素的尺寸
-  const titleMeasureFull = measure_string(
+  const titleMeasureFull = _measure_string(
     CONTENTS.title.text,
     FONTS.Title,
     max_text_w,
@@ -599,14 +342,14 @@ function on_size() {
   CONTENTS.title.w = titleMeasureFull.Width + _scale(1);
   CONTENTS.title.h = Math.min(titleMeasureFull.Height, LINE_H);
   CONTENTS.artist.w =
-    measure_string(CONTENTS.artist.text, FONTS.Body, max_text_w, TEXT_FLAGS)
+    _measure_string(CONTENTS.artist.text, FONTS.Body, max_text_w, TEXT_FLAGS)
       .Width + _scale(1);
   // _scale(1) GDI、GDI+计算偏差 一个像素容差
   CONTENTS.album.w =
-    measure_string(CONTENTS.album.text, FONTS.Body, max_text_w, TEXT_FLAGS)
+    _measure_string(CONTENTS.album.text, FONTS.Body, max_text_w, TEXT_FLAGS)
       .Width + _scale(1);
   CONTENTS.year.w = CONTENTS.year.text
-    ? measure_string(CONTENTS.year.text, FONTS.Body, max_text_w, TEXT_FLAGS)
+    ? _measure_string(CONTENTS.year.text, FONTS.Body, max_text_w, TEXT_FLAGS)
         .Width
     : 0;
 
@@ -668,7 +411,7 @@ function on_size() {
     sourchIconAQBadgeTotalW += currentSourceIcon.w;
   }
   if (currentAQBadge) {
-    const badgeTextSize = measure_string(
+    const badgeTextSize = _measure_string(
       currentAQBadge.label,
       FONTS.BadgeLabel,
       max_text_w,
@@ -689,14 +432,14 @@ function on_size() {
  * 绘制回调
  */
 function on_paint(gr) {
-  gr.FillSolidRect(0, 0, window.Width, window.Height, COLORS.bg);
+  gr.FillSolidRect(0, 0, window.Width, window.Height, COL.ITEMDETAIL_BG);
   gr.SetTextRenderingHint(5); // ClearType
 
   // --- 绘制文本 ---
   gr.GdiDrawText(
     CONTENTS.title.text,
     FONTS.Title,
-    CONTENTS.title.is_hover ? COLORS.Accent : COLORS.Title,
+    CONTENTS.title.is_hover ? COL.ACTIVE_ITEM : COL.SELECTED_TEXT,
     CONTENTS.title.x,
     CONTENTS.title.y,
     CONTENTS.title.w,
@@ -707,7 +450,7 @@ function on_paint(gr) {
   gr.GdiDrawText(
     CONTENTS.artist.text,
     FONTS.Body,
-    CONTENTS.artist.is_hover ? COLORS.Accent : COLORS.Body,
+    CONTENTS.artist.is_hover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT,
     CONTENTS.artist.x,
     CONTENTS.artist.y,
     CONTENTS.artist.w,
@@ -718,7 +461,7 @@ function on_paint(gr) {
   gr.GdiDrawText(
     CONTENTS.album.text,
     FONTS.Body,
-    CONTENTS.album.is_hover ? COLORS.Accent : COLORS.Body,
+    CONTENTS.album.is_hover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT,
     CONTENTS.album.x,
     CONTENTS.album.y,
     CONTENTS.album.w,
@@ -730,7 +473,7 @@ function on_paint(gr) {
     gr.GdiDrawText(
       CONTENTS.year.text,
       FONTS.Body,
-      COLORS.Body,
+      COL.ITEM_TEXT,
       CONTENTS.year.x,
       CONTENTS.year.y,
       CONTENTS.year.w,
@@ -746,7 +489,7 @@ function on_paint(gr) {
     ratingArea.y,
     ratingArea.w,
     ratingArea.h,
-    COLORS.bg,
+    COL.ITEMDETAIL_BG,
   );
 
   if (HAS_PLAYCOUNT && g_metadb) {
@@ -805,9 +548,7 @@ function on_paint(gr) {
 /**
  * 元素碰撞检测辅助函数
  */
-function _element_trace(x, y, ele) {
-  return x >= ele.x && x <= ele.x + ele.w && y >= ele.y && y <= ele.y + ele.h;
-}
+// _element_trace 来自 lib/utils.js
 
 /**
  * [核心] 状态机：处理鼠标移动事件
@@ -982,24 +723,7 @@ function on_metadb_changed() {
  * 必须在此处释放所有 GDI 资源，防止内存泄漏
  */
 function on_script_unload() {
-  // 释放测量用的临时 Image
-  if (_measureImg) {
-    _measureImg.ReleaseGraphics(_measureGr);
-    if (typeof _measureImg.Dispose === "function") _measureImg.Dispose();
-  }
-
-  // 释放星星图标
-  for (let key in STAR_ICONS) {
-    if (STAR_ICONS[key] && typeof STAR_ICONS[key].Dispose === "function") {
-      STAR_ICONS[key].Dispose();
-    }
-  }
-
-  // 释放来源图标缓存
-  for (let key in SOURCE_IMG_CACHE) {
-    const img = SOURCE_IMG_CACHE[key];
-    if (img && typeof img.Dispose === "function") {
-      img.Dispose();
-    }
-  }
+  _measure_dispose();
+  _dispose_image_dict(STAR_ICONS);
+  g_sourceIconCache.clear();
 }
