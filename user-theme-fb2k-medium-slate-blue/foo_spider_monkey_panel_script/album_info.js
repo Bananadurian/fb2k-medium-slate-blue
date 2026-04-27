@@ -107,10 +107,8 @@ const ALBUM_CACHE = new LRUCache(50); // LRU 缓存 (lib/data.js)
 const g_sourceIconCache = new SourceIconCache(IMGS_LINKS_DIR); // 来源图标缓存
 
 // 封面与轮播
-let imgList = [];                   // 封面列表
-let curImgIndex = 0;                // 当前封面索引
-let imgTimer = null;                // 轮播计时器
-// IMG_CYCLE_MS 来自 IMG_CYCLE_MS
+const carousel = { images: [], index: 0, timer: null };
+// IMG_CYCLE_MS 来自 THEME.LAYOUT.IMG_CYCLE_MS
 
 // 视图与交互状态
 let showTracklist = false;          // False=介绍, True=曲目
@@ -403,8 +401,8 @@ function on_paint(gr) {
     }
 
     // --- 1. 绘制封面 (仅当 SHOW_COVER 为 true 时) ---
-    if (SHOW_COVER && imgList.length > 0 && imgList[curImgIndex]) {
-        let currentImg = imgList[curImgIndex];
+    if (SHOW_COVER && carousel.images.length > 0 && carousel.images[carousel.index]) {
+        let currentImg = carousel.images[carousel.index];
         if (isCoverFit) {
             _drawImageFit(gr, currentImg, 0, 0, window.Width, cover_h);
         } else {
@@ -412,8 +410,8 @@ function on_paint(gr) {
         }
         
         // 绘制页码 (半透明圆角矩形)
-        if (imgList.length > 1) {
-            let pageText = (curImgIndex + 1) + " / " + imgList.length;
+        if (carousel.images.length > 1) {
+            let pageText = (carousel.index + 1) + " / " + carousel.images.length;
             gr.SetSmoothingMode(4); // 开启抗锯齿
             gr.FillRoundRect(MARGIN, cover_h - MARGIN - LINE_H, _scale(50), LINE_H, _scale(6), _scale(6), 0x99000000);
             gr.SetSmoothingMode(0); 
@@ -520,16 +518,16 @@ function on_paint(gr) {
 
 // 封面图片加载逻辑
 function load_album_images(metadb) {
-    if (imgList && imgList.length > 0) {
-        imgList.forEach(img => {
+    if (carousel.images && carousel.images.length > 0) {
+        carousel.images.forEach(img => {
             if (img && typeof img.Dispose === "function") img.Dispose();
         });
     }
     // 封面开关控制
     if (!SHOW_COVER) return;
 
-    imgList = [];
-    curImgIndex = 0;
+    carousel.images = [];
+    carousel.index = 0;
     // const AlbumArtId = {
     //     front: 0,
     //     back: 1,
@@ -543,7 +541,7 @@ function load_album_images(metadb) {
     for (const typeId of tryTypes) {
         const internalArt = utils.GetAlbumArtV2(metadb, typeId);
         if (internalArt) {
-            imgList.push(internalArt);
+            carousel.images.push(internalArt);
         }
     }
     manage_cycle_timer();
@@ -551,17 +549,7 @@ function load_album_images(metadb) {
 
 // 图片轮播定时器
 function manage_cycle_timer() {
-    if (imgTimer) {
-        window.ClearInterval(imgTimer);
-        imgTimer = null;
-    }
-    if (imgList.length > 1) {
-        imgTimer = window.SetInterval(() => {
-            curImgIndex++;
-            if (curImgIndex >= imgList.length) curImgIndex = 0;
-            window.RepaintRect(0, 0, window.Width, cover_h);
-        }, IMG_CYCLE_MS);
-    }
+    _manage_carousel(carousel, cover_h, IMG_CYCLE_MS);
 }
 
 // 来源图标缓存更新 (使用 SourceIconCache)
@@ -646,14 +634,11 @@ function on_mouse_leave() {
 
 function on_mouse_lbtn_up(x, y) {
     // 封面点击 -> 切换下一张图 (仅在开启封面显示时有效)
-    if (SHOW_COVER && y < cover_h && imgList.length > 1) {
-        curImgIndex++;
-        if (curImgIndex >= imgList.length) curImgIndex = 0;
-        manage_cycle_timer(); 
-        window.RepaintRect(0, 0, window.Width, cover_h);
-        return; 
+    if (SHOW_COVER && y < cover_h && carousel.images.length > 1) {
+        _carousel_next(carousel, cover_h, IMG_CYCLE_MS);
+        return;
     }
-    
+
     if (_element_trace(x, y, elements.descBtn)) {
         showTracklist = false;
         create_text_buffer();
@@ -684,12 +669,12 @@ function on_playlist_items_selection_change() {
 
 // 脚本资源清理
 function on_script_unload() {
-    if (imgTimer) {
-        window.ClearInterval(imgTimer);
-        imgTimer = null;
+    if (carousel.timer) {
+        window.ClearInterval(carousel.timer);
+        carousel.timer = null;
     }
-    if (imgList && imgList.length > 0) {
-        imgList.forEach(img => {
+    if (carousel.images && carousel.images.length > 0) {
+        carousel.images.forEach(img => {
             if (img && typeof img.Dispose === "function") img.Dispose();
         });
     }

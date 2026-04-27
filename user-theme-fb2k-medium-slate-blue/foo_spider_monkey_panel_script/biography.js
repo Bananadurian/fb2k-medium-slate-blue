@@ -1,5 +1,5 @@
 /**
- * @file BIOGRAPHY.js
+ * @file biography.js
  * @author XYSRe
  * @created 2025-12-23
  * @updated 2026-04-14
@@ -98,13 +98,10 @@ let _tt = _init_tooltip(THEME.FONT.GLOBAL, _scale(13), 1200);
 // 数据状态
 let artist_name = null;      // 缓存当前加载的艺人名 (用于比对是否需要重载)
 let artistData = null;       // 解析后的艺人 JSON 数据对象
-const ARTIST_CACHE = new Map(); // LRU 缓存 (存储最近访问的艺人数据和图片路径)
-const CACHE_MAX_SIZE = 50;   // 缓存最大条目数
+const ARTIST_CACHE = new LRUCache(50); // LRU 缓存 (存储最近访问的艺人数据和图片路径)
 
 // 图片与轮播状态
-let imgList = [];            // 当前加载的封面图对象列表
-let curImgIndex = 0;         // 当前显示的图片索引
-let imgTimer = null;         // 图片轮播定时器 ID
+const carousel = { images: [], index: 0, timer: null };
 // IMG_CYCLE_MS 来自上方别名 (THEME.LAYOUT.IMG_CYCLE_MS)
 
 // UI 视图状态
@@ -166,8 +163,8 @@ function on_paint(gr) {
     }
 
     // 2. 绘制封面区
-    if (imgList.length > 0 && imgList[curImgIndex]) {
-        let currentImg = imgList[curImgIndex];
+    if (carousel.images.length > 0 && carousel.images[carousel.index]) {
+        let currentImg = carousel.images[carousel.index];
         if (isCoverFit) {
             _drawImageFit(gr, currentImg, 0, 0, window.Width, cover_h);
         } else {
@@ -175,8 +172,8 @@ function on_paint(gr) {
         }
         
         // 绘制页码指示器 (半透明圆角矩形)
-        if (imgList.length > 1) {
-            let pageText = (curImgIndex + 1) + " / " + imgList.length;
+        if (carousel.images.length > 1) {
+            let pageText = (carousel.index + 1) + " / " + carousel.images.length;
             gr.SetSmoothingMode(4); // 开启抗锯齿画圆角
             gr.FillRoundRect(MARGIN, cover_h - MARGIN - LINE_H, _scale(50), LINE_H, _scale(6), _scale(6), 0x99000000);
             gr.SetSmoothingMode(0); 
@@ -326,13 +323,9 @@ function scan_image_paths(safeName) {
  * 获取缓存的艺人数据，如果不存在则读取文件
  */
 function get_artist_cache_entry(safeName) {
-    // 命中缓存：直接返回，并刷新 LRU 位置（删旧插新）
-    if (ARTIST_CACHE.has(safeName)) {
-        const entry = ARTIST_CACHE.get(safeName);
-        ARTIST_CACHE.delete(safeName); 
-        ARTIST_CACHE.set(safeName, entry);
-        return entry;
-    }
+    // 命中缓存：直接返回 (LRUCache.get 自动刷新到最新位置)
+    const cached = ARTIST_CACHE.get(safeName);
+    if (cached !== undefined) return cached;
 
     // 未命中：读取 JSON
     let jsonData = null;
@@ -358,11 +351,6 @@ function get_artist_cache_entry(safeName) {
     const paths = scan_image_paths(safeName);
     const entry = { json: jsonData, imgPaths: paths, jsonError: jsonErrorData};
 
-    // 缓存清理 (LRU)
-    if (ARTIST_CACHE.size >= CACHE_MAX_SIZE) {
-        const oldestKey = ARTIST_CACHE.keys().next().value;
-        ARTIST_CACHE.delete(oldestKey);
-    }
     ARTIST_CACHE.set(safeName, entry);
     return entry;
 }
@@ -374,29 +362,29 @@ function get_artist_cache_entry(safeName) {
  */
 function load_images_from_cache(paths, metadb) {
     // 释放旧资源
-    if (imgList && imgList.length > 0) {
-        imgList.forEach(img => {
+    if (carousel.images && carousel.images.length > 0) {
+        carousel.images.forEach(img => {
             if (img && typeof img.Dispose === "function") img.Dispose();
         });
     }
-    imgList = [];
-    curImgIndex = 0;
+    carousel.images = [];
+    carousel.index = 0;
 
     // 1. 加载本地扫描到的图片
     if (paths && paths.length > 0) {
         paths.forEach(path => {
             let img = gdi.Image(path); 
-            if (img) imgList.push(img);
+            if (img) carousel.images.push(img);
         });
     }
 
     // 2. Fallback: 如果没有本地图，尝试获取内嵌封面
-    if (imgList.length === 0) {
+    if (carousel.images.length === 0) {
         const tryTypes = [4, 0]; // 4=Artist, 0=Front
         for (const typeId of tryTypes) {
             const internalArt = utils.GetAlbumArtV2(metadb, typeId);
             if (internalArt) {
-                imgList.push(internalArt);
+                carousel.images.push(internalArt);
                 break; 
             }
         }
@@ -410,17 +398,7 @@ function load_images_from_cache(paths, metadb) {
  * 管理图片轮播定时器
  */
 function manage_cycle_timer() {
-    if (imgTimer) {
-        window.ClearInterval(imgTimer);
-        imgTimer = null;
-    }
-    if (imgList.length > 1) {
-        imgTimer = window.SetInterval(() => {
-            curImgIndex++;
-            if (curImgIndex >= imgList.length) curImgIndex = 0;
-            window.RepaintRect(0, 0, window.Width, cover_h);
-        }, IMG_CYCLE_MS);
-    }
+    _manage_carousel(carousel, cover_h, IMG_CYCLE_MS);
 }
 
 /**
@@ -686,14 +664,11 @@ function on_mouse_leave() {
 
 function on_mouse_lbtn_up(x, y) {
     // 1. 封面点击 (切换图片)
-    if (y < cover_h && imgList.length > 1) {
-        curImgIndex++;
-        if (curImgIndex >= imgList.length) curImgIndex = 0;
-        manage_cycle_timer(); 
-        window.RepaintRect(0, 0, window.Width, cover_h);
-        return; 
+    if (y < cover_h && carousel.images.length > 1) {
+        _carousel_next(carousel, cover_h, IMG_CYCLE_MS);
+        return;
     }
-    
+
     // 2. Tab 切换
     if (_element_trace(x, y, elements.profileBtn)) {
         showDiscography = false;
@@ -737,12 +712,12 @@ function on_playlist_items_selection_change() {
 
 // 脚本卸载/重载时释放资源
 function on_script_unload() {
-    if (imgTimer) {
-        window.ClearInterval(imgTimer);
-        imgTimer = null;
+    if (carousel.timer) {
+        window.ClearInterval(carousel.timer);
+        carousel.timer = null;
     }
-    if (imgList && imgList.length > 0) {
-        imgList.forEach(img => {
+    if (carousel.images && carousel.images.length > 0) {
+        carousel.images.forEach(img => {
             if (img && typeof img.Dispose === "function") img.Dispose();
         });
     }

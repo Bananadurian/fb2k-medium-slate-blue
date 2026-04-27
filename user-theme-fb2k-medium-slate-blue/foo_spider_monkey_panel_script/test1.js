@@ -12,6 +12,7 @@
 
 // 共享库
 include("lib/utils.js");
+include("lib/data.js");
 include("lib/interaction.js");
 include("lib/theme.js");
 
@@ -25,6 +26,8 @@ window.DefineScript("Playback Buttons", {
 // 1. 工具函数
 // ============================================================================
 
+// 主题别名
+const COL = THEME.COL;
 // _init_tooltip / _setCursor 来自 lib/interaction.js
 let _tt = _init_tooltip(THEME.FONT.GLOBAL, _scale(13), 1200);
 
@@ -226,7 +229,7 @@ function on_size() {
 }
 
 function on_paint(gr) {
-    gr.FillSolidRect(0, 0, window.Width, window.Height, THEME.COL.ITEMDETAIL_BG);
+    gr.FillSolidRect(0, 0, window.Width, window.Height, COL.ITEMDETAIL_BG);
     for (let key in buttons) {
         buttons[key].paint(gr);
     }
@@ -254,10 +257,10 @@ function on_mouse_move(x, y) {
         if (newHoverBtn) {
             newHoverBtn.activate();
             _tt(newHoverBtn.tiptext);
-            _setCursor(32649); // Hand
+            _setCursor(CURSOR_HAND);
         } else {
             _tt(""); // 清除
-            _setCursor(32512); // Arrow
+            _setCursor(CURSOR_ARROW);
         }
 
         currentHoverBtn = newHoverBtn;
@@ -270,7 +273,7 @@ function on_mouse_leave() {
         currentHoverBtn = null;
     }
     _tt("");
-    _setCursor(32512);
+    _setCursor(CURSOR_ARROW);
 }
 
 function on_mouse_lbtn_up(x, y) {
