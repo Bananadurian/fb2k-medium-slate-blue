@@ -1,16 +1,14 @@
 /**
- * @file control_buttons_v2.js
+ * @file control_buttons.js
  * @author XYSRe
  * @created 2025-12-12
- * @updated 2026-04-14  
- * @version 1.4.0
- * @description 重构版：引入共享库，使用统一的 Button 类。
- *              一个包含 [声音输出设备按钮 + 声音控制 + 打开搜索 + 打开队列 + 菜单] 的控件
+ * @updated 2026-04-27
+ * @version 1.5.0
+ * @description 控制按钮 — 输出设备切换、音量控制、搜索、队列、最近播放、最受欢迎、主菜单
  */
 
 "use strict";
 
-// 共享库
 include("lib/utils.js");
 include("lib/data.js");
 include("lib/interaction.js");
@@ -18,17 +16,15 @@ include("lib/theme.js");
 
 window.DefineScript("Control Buttons", {
     author: "XYSRe",
-    version: "1.4.0",
-    options: { grab_focus: false },
+    version: "1.5.0",
+    options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 
 // ============================================================================
-// 1. 工具函数
+// 1. 工具与别名
 // ============================================================================
 
-// 主题别名
 const COL = THEME.COL;
-// _init_tooltip / _setCursor 来自 lib/interaction.js
 let _tt = _init_tooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
 
 // ============================================================================
@@ -168,10 +164,9 @@ class VolumeControl {
 // 4. 业务逻辑
 // ============================================================================
 
-// [修复] 全局变量定义
 const buttons = {};
-const volumeBar = new VolumeControl(); // 修复这里漏掉的实例化
-let currentHoverBtn = null; 
+const volumeBar = new VolumeControl();
+let currentHoverBtn = null;
 
 const TF = {
     recent: {
@@ -230,7 +225,6 @@ function show_main_menu(x, y) {
     else if (idx < 6000) mm_library.ExecuteByID(idx - 5000);
     else if (idx < 7000) mm_help.ExecuteByID(idx - 6000);
     
-    // [修复] 移除 menu.Dispose()
 }
 
 function show_devices_menu(x, y) {
@@ -251,7 +245,6 @@ function show_devices_menu(x, y) {
     if (idx > 0 && (idx - 1) !== active_idx) {
         fb.RunMainMenuCommand(`Playback/Device/${devices[idx - 1].name}`);
     }
-    // [修复] 移除 menu.Dispose()
 }
 
 const rg_configs = [

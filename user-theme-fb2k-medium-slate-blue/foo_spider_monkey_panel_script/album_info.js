@@ -2,31 +2,23 @@
  * @file album_info.js
  * @author XYSRe
  * @created 2025-12-28
- * @updated 2026-04-26
- * @version 1.9.0
- * @description 重构版：引入共享库消除重复代码，统一工具函数和音质系统。
- * 几个常用开关：
- * SHOW_COVER 设置封面是否显示
- * COVER_SCALE 封面比例
- * SHOW_ARTIST_COVER 是否显示艺人封面
+ * @updated 2026-04-27
+ * @version 2.0.0
+ * @description 专辑信息面板: 封面轮播、版本/来源/AQ标识、艺人、风格、日期、语言、简介/曲目切换。
  */
 
 "use strict";
 
-// 共享库
 include("lib/utils.js");
 include("lib/data.js");
 include("lib/interaction.js");
 include("lib/theme.js");
 
-// =========================================================================
-// 1. 脚本定义与基础工具 (Script Definition & Utils)
-// =========================================================================
 
 window.DefineScript("Album Info", {
     author: "XYSRe",
-    version: "1.9.0",
-    options: { grab_focus: false }
+    version: "2.0.0",
+    options: { grab_focus: THEME.CFG.GRAB_FOCUS }
 });
 
 // =========================================================================
@@ -42,12 +34,14 @@ const LINE_H = THEME.LAYOUT.LINE_H;
 const LINE_SPACE = THEME.LAYOUT.LINE_SPACE;
 const ICON_SIZE = THEME.LAYOUT.ICON_SIZE;
 const IMG_CYCLE_MS = THEME.LAYOUT.IMG_CYCLE_MS;
-const COVER_SCALE = 1 / 1;              // 封面宽高比 (正方形)
-const SHOW_COVER = true;                // 开关：是否显示封面
-const SHOW_ARTIST_COVER = false;        // 显示封面情况下，是否显示艺人图片
-// ICON_SIZE 提供通用图标尺寸
-const SOURCE_ICON_SIZE = _scale(10);    // 来源/格式图标尺寸
-// DEFAULT_SOURCE_ICON_FILENAME 来自 lib/data.js
+
+// 面板配置开关
+const PANEL_CFG = {
+    coverScale:      1 / 1,   // 封面宽高比
+    showCover:       true,    // 是否显示封面
+    showArtistCover: false,   // 是否显示艺人封面
+    coverFit:        false,   // true=适配, false=裁剪
+};
 
 // DT_ 标志位和组合样式 (MULTI_LINE_FLAGS, ONE_LINE_FLAGS, BTN_STYLE_FLAGS, BADGE_TEXT_ALIGN) 来自 lib/data.js
 
@@ -96,7 +90,7 @@ const LANGUAGE_MAP = {
 // 数据状态
 let current_album_key = null;       // 当前显示的专辑 Key (去重用)
 let albumData = null;               // 当前解析好的专辑数据
-const ALBUM_CACHE = new LRUCache(50); // LRU 缓存 (lib/data.js)
+const ALBUM_CACHE = new LRUCache(THEME.CFG.CACHE_SIZE);
 const g_sourceIconCache = new SourceIconCache(IMGS_LINKS_DIR); // 来源图标缓存
 
 // 封面与轮播
@@ -109,7 +103,7 @@ let scrollY = 0;
 let maxScrollY = 0;             
 let textImg = null;                 // 离屏渲染缓冲图 (GdiBitmap)
 let errorText = "请选择或播放歌曲..."; 
-let isCoverFit = false;         
+let isCoverFit = PANEL_CFG.coverFit;         
 let g_activeElement = null;         // [状态机] 当前激活的 UI 元素
 
 // 布局计算变量 (动态更新)
@@ -134,17 +128,11 @@ const elements = {
 // 音质标识状态
 let currentAQBadge = null;
 let currentAQBadgeRect = { x: 0, y: 0, w: 0, h: 0, is_hover: false, tooltip: ""};
-let currentSourceIcon = { x: 0, y: 0, w: SOURCE_ICON_SIZE, h: SOURCE_ICON_SIZE, img: null, is_hover: false, tooltip: "" };
+let currentSourceIcon = { x: 0, y: 0, w: THEME.CFG.SOURCE_ICON_SIZE, h: THEME.CFG.SOURCE_ICON_SIZE, img: null, is_hover: false, tooltip: "" };
 
 // AQBadgeStyle 和 AQ_BADGES 来自 lib/data.js
 
-// 音质标识布局
-const AQ_BADGE_LAYOUT = {
-    paddingX: _scale(4),
-    paddingY: _scale(4),
-    radius:   _scale(4),
-    borderW:  _scale(1)
-};
+// AQ 音质标识布局 来自 THEME.CFG.AQ_BADGE
 
 // =========================================================================
 // 5. TitleFormatting & UI Utils
@@ -249,7 +237,7 @@ function update_layout_metrics() {
     // 没有播放歌曲的时候数据为空
     if (!albumData) return;
 
-    cover_h = SHOW_COVER ? Math.floor(window.Width * COVER_SCALE) : 0;
+    cover_h = PANEL_CFG.showCover ? Math.floor(window.Width * PANEL_CFG.coverScale) : 0;
     line_w = window.Width - MARGIN * 4;  
     line_start_y = cover_h + MARGIN;
 
@@ -274,8 +262,8 @@ function update_layout_metrics() {
     }
     if(currentAQBadge) {
         const badgeTextSize = _measure_string(currentAQBadge.label, THEME.FONT.BADGE, line_w, ONE_LINE_FLAGS);
-        currentAQBadgeRect.w = badgeTextSize.Width + AQ_BADGE_LAYOUT.paddingX;
-        currentAQBadgeRect.h = badgeTextSize.Height + AQ_BADGE_LAYOUT.paddingY;
+        currentAQBadgeRect.w = badgeTextSize.Width + THEME.CFG.AQ_BADGE.paddingX;
+        currentAQBadgeRect.h = badgeTextSize.Height + THEME.CFG.AQ_BADGE.paddingY;
     }
 
     // 3. 计算风格高度
@@ -393,8 +381,8 @@ function on_paint(gr) {
         return;
     }
 
-    // --- 1. 绘制封面 (仅当 SHOW_COVER 为 true 时) ---
-    if (SHOW_COVER && carousel.images.length > 0 && carousel.images[carousel.index]) {
+    // --- 1. 绘制封面 (仅当 PANEL_CFG.showCover 为 true 时) ---
+    if (PANEL_CFG.showCover && carousel.images.length > 0 && carousel.images[carousel.index]) {
         let currentImg = carousel.images[carousel.index];
         if (isCoverFit) {
             _drawImageFit(gr, currentImg, 0, 0, window.Width, cover_h);
@@ -443,7 +431,7 @@ function on_paint(gr) {
             currentSourceIcon.y = currentY + Math.ceil(((LINE_H - currentSourceIcon.h) / 2));
             gr.SetInterpolationMode(7); // HighQualityBicubic
             gr.DrawImage(currentSourceIcon.img, currentSourceIcon.x, currentSourceIcon.y, currentSourceIcon.w, currentSourceIcon.h, 0, 0, currentSourceIcon.img.Width, currentSourceIcon.img.Height);
-            currentLineX += SOURCE_ICON_SIZE + _scale(2);
+            currentLineX += THEME.CFG.SOURCE_ICON_SIZE + _scale(2);
         }
 
         // AQ 音质徽章
@@ -454,7 +442,7 @@ function on_paint(gr) {
             gr.SetSmoothingMode(4); 
             
             // 背景 & 边框
-            gr.FillRoundRect(currentAQBadgeRect.x, currentAQBadgeRect.y, currentAQBadgeRect.w, currentAQBadgeRect.h, AQ_BADGE_LAYOUT.radius, AQ_BADGE_LAYOUT.radius, currentAQBadge.bgColor);
+            gr.FillRoundRect(currentAQBadgeRect.x, currentAQBadgeRect.y, currentAQBadgeRect.w, currentAQBadgeRect.h, THEME.CFG.AQ_BADGE.radius, THEME.CFG.AQ_BADGE.radius, currentAQBadge.bgColor);
             
             gr.SetSmoothingMode(0); 
             // 文字
@@ -517,7 +505,7 @@ function load_album_images(metadb) {
         });
     }
     // 封面开关控制
-    if (!SHOW_COVER) return;
+    if (!PANEL_CFG.showCover) return;
 
     carousel.images = [];
     carousel.index = 0;
@@ -529,7 +517,7 @@ function load_album_images(metadb) {
     //     artist: 4
     // };
     const tryTypes = [0, 1, 2];
-    if (SHOW_ARTIST_COVER) {tryTypes.push(4)};
+    if (PANEL_CFG.showArtistCover) {tryTypes.push(4)};
     
     for (const typeId of tryTypes) {
         const internalArt = utils.GetAlbumArtV2(metadb, typeId);
@@ -627,7 +615,7 @@ function on_mouse_leave() {
 
 function on_mouse_lbtn_up(x, y) {
     // 封面点击 -> 切换下一张图 (仅在开启封面显示时有效)
-    if (SHOW_COVER && y < cover_h && carousel.images.length > 1) {
+    if (PANEL_CFG.showCover && y < cover_h && carousel.images.length > 1) {
         _carousel_next(carousel, cover_h, IMG_CYCLE_MS);
         return;
     }

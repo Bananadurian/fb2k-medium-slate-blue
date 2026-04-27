@@ -2,37 +2,37 @@
  * @file biography.js
  * @author XYSRe
  * @created 2025-12-23
- * @updated 2026-04-14
- * @version 1.7.0
- * @description 重构版：引入共享库消除重复代码。
+ * @updated 2026-04-27
+ * @version 1.8.0
+ * @description 艺人资料面板: 封面轮播、风格/生日/地区、外部链接、简介/作品集切换。
  */
 
 "use strict";
 
-// 共享库
 include("lib/utils.js");
 include("lib/data.js");
 include("lib/interaction.js");
 include("lib/theme.js");
 
-// =========================================================================
-// 1. 脚本定义与基础工具 (Script Definition & Utils)
-// =========================================================================
 
 window.DefineScript("BIOGRAPHY", {
     author: "XYSRe",
-    version: "1.7.0",
-    options: { grab_focus: false }
+    version: "1.8.0",
+    options: { grab_focus: THEME.CFG.GRAB_FOCUS }
 });
 
 // =========================================================================
 // 2. 全局常量配置 (Configuration)
 // =========================================================================
 
-// [路径配置] 
-const BASE_PATH = "D:\\11_MusicLib\\_Extras\\"; 
-const JSON_DIR = BASE_PATH + "ArtistBiography\\";
-const ARTIST_COVER_DIR = BASE_PATH + "ArtistCover\\";
+// 面板配置开关
+const PANEL_CFG = {
+    dataPath:    "D:\\11_MusicLib\\_Extras\\",  // 数据根目录
+    coverScale:  3 / 4,                          // 封面宽高比
+    coverFit:    true,                            // true=适配, false=裁剪
+};
+const JSON_DIR = PANEL_CFG.dataPath + "ArtistBiography\\";
+const ARTIST_COVER_DIR = PANEL_CFG.dataPath + "ArtistCover\\";
 // IMGS_LINKS_DIR / THEME.LAYOUT 来自 lib/theme.js
 const SCROLL_STEP = THEME.LAYOUT.SCROLL_STEP;
 const ICON_SIZE = THEME.LAYOUT.ICON_SIZE;
@@ -40,7 +40,6 @@ const MARGIN = THEME.LAYOUT.MARGIN;
 const LINE_H = THEME.LAYOUT.LINE_H;
 const LINE_SPACE = THEME.LAYOUT.LINE_SPACE;
 const IMG_CYCLE_MS = THEME.LAYOUT.IMG_CYCLE_MS;
-const COVER_SCALE = 3 / 4;            // 封面图片宽高比 9 / 16
 const COVER_IDENTIFER = "_Cover_";    // 封面文件名特征匹配符
 
 // DT_ 标志位和组合样式 (MULTI_LINE_FLAGS, ONE_LINE_FLAGS, BTN_STYLE_FLAGS) 来自 lib/data.js
@@ -105,7 +104,7 @@ let scrollY = 0;             // 当前垂直滚动条位置
 let maxScrollY = 0;          // 最大可滚动距离
 let textImg = null;          // 文本内容的离屏渲染缓冲图 (GdiBitmap)
 let errorText = "请选择或播放歌曲..."; // 空状态或错误提示文案
-let isCoverFit = true;      // 封面显示模式 (Fit/Cover)
+let isCoverFit = PANEL_CFG.coverFit;
 
 // 交互状态
 let activeLinkBtns = [];     // 当前生成的外部链接按钮数组
@@ -464,7 +463,7 @@ function get_disco_text() {
  * 负责计算所有元素的坐标和尺寸，实现逻辑与渲染分离
  */
 function update_layout_metrics() {
-    cover_h = Math.floor(window.Width * COVER_SCALE);
+    cover_h = Math.floor(window.Width * PANEL_CFG.coverScale);
     line_w = window.Width - MARGIN * 4;
     line_start_y = cover_h + MARGIN;
 

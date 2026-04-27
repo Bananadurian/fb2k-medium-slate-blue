@@ -19,8 +19,8 @@ This project contains 7 SMP panel scripts for a foobar2000 theme ("medium-slate-
 | `info+rating.js` | Info And Rating | Track info display (title/artist/album/year), star rating widget, audio quality badge, source icon. The main "now playing" panel. |
 | `album_info.js` | Album Info | Album detail panel: cover art (with carousel), edition/source/AQ badge, artist, genres, date, language, and tab-switchable description/tracklist. |
 | `biography.js` | BIOGRAPHY | Artist biography panel: artist cover carousel, genres, born/country, external link buttons, tab-switchable profile/discography. Reads JSON from `D:\11_MusicLib\_Extras\`. |
-| `playback_buttons_v2.js` | Playback Buttons | Transport controls: play/pause, stop, prev/next, seek, playback order, random. Uses Button class. |
-| `control_buttons_v2.js` | Control Buttons | Utility buttons: recent tracks, favorites, search, queue, replaygain, output device, volume slider+mute, main menu. Uses Button + VolumeControl classes. |
+| `playback_buttons.js` | Playback Buttons | Transport controls: play/pause, stop, prev/next, seek, playback order, random. Uses Button class. |
+| `control_buttons.js` | Control Buttons | Utility buttons: recent tracks, favorites, search, queue, replaygain, output device, volume slider+mute, main menu. Uses Button + VolumeControl classes. |
 | `panel_title.js` | title | Playlist name display with icon, chevron, and "new playlist" button. |
 | `cover_panel.js` | (no DefineScript) | Cover art display panel: rounded corners, cover color extraction for gradient background, Async art loading. |
 
@@ -200,7 +200,7 @@ class Button {
 
 | Export | Signature | Description |
 |--------|-----------|-------------|
-| `_init_tooltip(fontName, fontSize, maxWidth?)` | `(string, number, number?) → function(string)` | Factory: creates a tooltip once, returns a `_tt(value)` setter with text dedup. Usage: `let _tt = _init_tooltip(THEME.FONT.GLOBAL, _scale(13), 1200);` |
+| `_init_tooltip(gdiFont, fontSize, maxWidth?)` | `(GdiFont, number, number?) → function(string)` | Factory: creates a tooltip once, returns a `_tt(value)` setter with text dedup. Usage: `let _tt = _init_tooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);` |
 | `_draw_scrollbar(gr, viewH, contentH, scrollY, maxScrollY, panelW, headerH, color)` | `(GdiGraphics, ...) → void` | Draws a rounded vertical scrollbar at the right edge of the panel |
 | `_manage_carousel(state, coverH, cycleMs?, panelW?)` | `({images,index,timer}, number, number?, number?) → void` | Creates/destroys a SetInterval timer for cover image cycling. Only active when `state.images.length > 1` |
 | `_carousel_next(state, coverH, cycleMs?, panelW?)` | `(...) → void` | Advances carousel to next image and repaints |
@@ -228,9 +228,13 @@ const THEME = {
         DIM_TEXT:       _RGB(114, 117, 126),      // Hardcoded dim text color
     },
     FONT: {
-        GLOBAL:   window.GetFontCUI(0).Name,                                         // Default item font name
-        PLAYLIST: window.GetFontCUI(0, "{19F8E0B3-E822-4F07-B200-D4A67E4872F9}").Name, // NG Playlist font name
-        TITLEBAR: window.GetFontCUI(1),                                              // Title bar font (GdiFont object)
+        TITLE:       gdi.Font(..., _scale(18), 1),  // Large heading (album/artist)
+        HEADING:     gdi.Font(..., _scale(12), 1),  // Sub-heading / selected button
+        TEXT:        gdi.Font(..., _scale(12), 0),  // Body text (NG Playlist font)
+        TEXT_SM:     gdi.Font(..., _scale(10), 0),  // Compact body / tooltip source
+        BTN:         gdi.Font(..., _scale(12), 0),  // Button default
+        BADGE:       gdi.Font(..., _scale(8),  1),  // Audio quality badge
+        TITLE_PANEL: window.GetFontCUI(1),           // Panel title bar (CUI Labels)
     },
     LAYOUT: {
         MARGIN:       _scale(10),
@@ -239,6 +243,17 @@ const THEME = {
         ICON_SIZE:    _scale(10),
         SCROLL_STEP:  _scale(30),
         IMG_CYCLE_MS: 8000,
+    },
+    CFG: {
+        GRAB_FOCUS:       false,         // DefineScript default
+        CACHE_SIZE:       50,            // LRU cache max entries
+        SOURCE_ICON_SIZE: _scale(10),    // Source icon dimensions
+        AQ_BADGE: {                      // Audio quality badge layout
+            paddingX: _scale(4),
+            paddingY: _scale(4),
+            radius:   _scale(4),
+            borderW:  _scale(1),
+        },
     },
 };
 ```
@@ -257,6 +272,17 @@ const IMGS_LINKS_DIR  = IMGS_BASE + "\\Links\\";   // Source/platform icons
 const COL = THEME.COL;                          // Color alias (most common)
 const MARGIN = THEME.LAYOUT.MARGIN;             // Layout aliases (as needed)
 const LINE_H = THEME.LAYOUT.LINE_H;
+```
+
+**Panel-specific config (`PANEL_CFG`):** Each panel declares a `PANEL_CFG` object for its own boolean/numeric switches. Examples:
+
+```javascript
+// album_info.js
+const PANEL_CFG = { showCover: true, coverScale: 1/1, showArtistCover: false, coverFit: false };
+// biography.js
+const PANEL_CFG = { dataPath: "D:\\...", coverScale: 3/4, coverFit: true };
+// cover_panel.js
+const PANEL_CFG = { useCoverColor: true, useGradient: true, gradientAngle: 90, cornerRadius: _scale(20) };
 ```
 
 ### 5.2. UI State Machine Pattern (Critical)
@@ -366,8 +392,8 @@ function on_script_unload() {
 | album_info.js | — | — | — | Yes | Yes |
 | biography.js | — | — | — | Yes | Yes |
 | panel_title.js | Yes | Yes (g_imgs) | — | — | — |
-| playback_buttons_v2.js | — | Yes (imgs) | — | — | — |
-| control_buttons_v2.js | — | Yes (imgs) | — | — | — |
+| playback_buttons.js | — | Yes (imgs) | — | — | — |
+| control_buttons.js | — | Yes (imgs) | — | — | — |
 | cover_panel.js | — | — | — | — | Yes (g_img, g_img_rounded) |
 
 ### 5.6. Data Initialization Pattern

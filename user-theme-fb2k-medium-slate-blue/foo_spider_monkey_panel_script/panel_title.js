@@ -2,50 +2,39 @@
  * @file panel_title.js
  * @author XYSRe
  * @created 2025-12-16
- * @updated 2026-04-14
- * @version 1.3.0
- * @description 重构版：引入共享库，消除重复代码。
+ * @updated 2026-04-27
+ * @version 1.4.0
+ * @description 播放列表标题栏: 图标、播放列表名称、新建按钮。
  */
 
 "use strict";
 
-// 共享库
 include("lib/utils.js");
 include("lib/interaction.js");
 include("lib/theme.js");
 
-window.DefineScript("title", {
+window.DefineScript("Panel Title", {
   author: "XYSRe",
-  version: "1.3.0",
-  options: { grab_focus: false },
+  version: "1.4.0",
+  options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 
 // ============================================================================
-// 1. 工具函数与常量
+// 1. 资源与常量
 // ============================================================================
 
 const COL = THEME.COL;
-// _init_tooltip 来自 lib/interaction.js
 let _tt = _init_tooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
-
 const g_font = THEME.FONT.TITLE_PANEL;
-// 播放列表icon
+
+// 播放列表模式图标: list-music + chevron + plus
+// 资料库模式图标: list-music + chevron + folder-search (替换 plus/plus_hover)
 const g_imgs = {
   icon: _load_image(IMGS_LUCIDE_DIR + "list-music.png"),
   chevron: _load_image(IMGS_LUCIDE_DIR + "chevron-down.png"),
   button: _load_image(IMGS_LUCIDE_DIR + "plus.png"),
   button_hover: _load_image(IMGS_LUCIDE_DIR + "plus_hover.png"),
 };
-
-// 资料库icon
-// const g_imgs = {
-//     icon: _load_image(IMGS_LUCIDE_DIR + "list-music.png"),
-//     chevron: _load_image(IMGS_LUCIDE_DIR + "chevron-down.png"),
-//     button: _load_image(IMGS_LUCIDE_DIR + "folder-search.png"),
-//     button_hover: _load_image(IMGS_LUCIDE_DIR + "folder-search_hover.png"),
-// };
-
-// [优化] 文本测量工具 _measure 对象来自 lib/utils.js (_measure.img, _measure.gr)
 
 // ============================================================================
 // 2. 状态与布局 (State & Layout)
@@ -161,14 +150,14 @@ function on_paint(gr) {
 
 function on_playlists_changed() {
   update_text();
-  // [优化] 文本变了，尺寸和布局都会变，重新计算布局
+  // 文本变了，尺寸和布局都会变，重新计算布局
   if (window.Width > 0) {
     update_layout_metrics();
     window.Repaint();
   }
 }
 
-// [新增] 资源清理
+// 资源清理
 function on_script_unload() {
   _measure_dispose();
   _dispose_image_dict(g_imgs);
@@ -178,7 +167,7 @@ function on_script_unload() {
 // 4. 交互处理 (Interaction)
 // ============================================================================
 
-// [核心] 状态机：on_mouse_move
+// 状态机：on_mouse_move
 function on_mouse_move(x, y) {
   let target = null;
 
@@ -245,7 +234,7 @@ function update_text() {
   display_text = `播放列表 (${plman.PlaylistCount})`;
 }
 
-// [新增] 统一布局计算函数
+// 统一布局计算函数
 function update_layout_metrics() {
   // 1. 初始化测量工具 (单例，_measure 来自 lib/utils.js)
   if (!_measure.img) {
