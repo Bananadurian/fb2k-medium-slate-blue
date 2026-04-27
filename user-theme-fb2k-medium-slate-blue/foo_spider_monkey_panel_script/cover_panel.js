@@ -191,7 +191,7 @@ function on_size() {
     wh = window.Height;
     
     if (!g_font) {
-        g_font = gdi.Font(THEME.FONT.GLOBAL, _scale(16), 0); 
+        g_font = THEME.FONT.TITLE; 
     }
     
     update_cover_ui();

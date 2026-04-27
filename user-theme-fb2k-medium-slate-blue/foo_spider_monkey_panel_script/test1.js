@@ -29,7 +29,7 @@ window.DefineScript("Playback Buttons", {
 // 主题别名
 const COL = THEME.COL;
 // _init_tooltip / _setCursor 来自 lib/interaction.js
-let _tt = _init_tooltip(THEME.FONT.GLOBAL, _scale(13), 1200);
+let _tt = _init_tooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
 
 // ============================================================================
 // 2. 资源定义
