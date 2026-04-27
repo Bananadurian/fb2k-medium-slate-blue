@@ -26,6 +26,7 @@ This project contains 7 SMP panel scripts for a foobar2000 theme ("medium-slate-
 
 ### 2.2. Directory Layout
 
+- `lib/` — Shared libraries: `utils.js` (core utilities), `data.js` (constants/classes), `interaction.js` (UI components), `theme.js` (theme config)
 - `old/` — Deprecated/archived scripts (gitignored from Claude context)
 - `simple/` — Simple example scripts (gitignored from Claude context)
 - `test1.js`, `test2.js` — Test/dev copies (gitignored from Claude context)
@@ -88,75 +89,181 @@ let artist = artists[0]; // Access directly
 // No .Dispose() needed
 ```
 
-## 5. Project-Specific Conventions & Patterns
+## 5. Shared Library System & Panel Patterns
 
-### 5.1. DPI Scaling
+All 7 SMP panels share code through the `include()` mechanism. The 4 library files in `lib/` form a dependency chain; each panel includes only what it needs.
 
-Every script uses a `_scale(size)` function for DPI-aware pixel values:
-```javascript
-const DPI = window.DPI;
-function _scale(size) {
-    return Math.round((size * DPI) / 72);
-}
 ```
-All layout constants (margins, line heights, icon sizes) must be passed through `_scale()`.
-
-### 5.2. Color Utilities
-
-```javascript
-function _RGB(r, g, b) {     // Opaque RGB
-    return 0xff000000 | (r << 16) | (g << 8) | b;
-}
-function _ARGB(a, r, g, b) {  // With alpha
-    return ((a & 0xff) << 24) | ((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff);
-}
+lib/utils.js  (独立 — 无 lib 依赖)
+  ├── lib/theme.js       — 依赖 _scale(), _RGB()
+  ├── lib/data.js        — 依赖 _RGB(), _getDimColor()
+  └── lib/interaction.js — 依赖 _scale(), _measure_string()
 ```
 
-### 5.3. Image Loading
+### 5.1. Library Reference
 
-Safe image loading that returns null on missing files:
-```javascript
-function load_image(path) {
-    return utils.IsFile(path) ? gdi.Image(path) : null;
-}
-```
+#### 5.1.1. `lib/utils.js` — Core Utilities
 
-### 5.4. GDI DrawText Flags
+**No dependencies.** Included by all 7 panels.
 
-Standard flag constants are defined in each file that does text rendering:
-- `DT_LEFT` (0x00), `DT_CENTER` (0x01), `DT_RIGHT` (0x02), `DT_VCENTER` (0x04)
-- `DT_WORDBREAK` (0x10), `DT_SINGLELINE` (0x20), `DT_NOPREFIX` (0x800)
-- `DT_END_ELLIPSIS` (0x8000), `DT_EDITCONTROL` (0x2000)
+| Export | Signature | Description |
+|--------|-----------|-------------|
+| `_scale(size)` | `(number) → number` | DPI-aware pixel scaling: `Math.round((size * window.DPI) / 72)` |
+| `_RGB(r, g, b)` | `(int, int, int) → number` | Opaque ARGB color: `0xff000000 \| (r<<16) \| (g<<8) \| b` |
+| `_ARGB(a, r, g, b)` | `(int, int, int, int) → number` | ARGB color with alpha |
+| `_getDimColor(color)` | `(number) → number` | Darkens a color (brightness * 0.2). Pure white (#FFFFFF) → cool gray (#393940) |
+| `_load_image(path)` | `(string) → GdiBitmap\|null` | Loads image if file exists, else returns null |
+| `_element_trace(x, y, ele)` | `(number, number, {x,y,w,h}) → boolean` | Hit-test: `x >= ele.x && x <= ele.x + ele.w && y >= ele.y && y <= ele.y + ele.h` |
+| `_measure` | `{ img: GdiBitmap, gr: GdiGraphics }` | Lazy singleton for text measurement (initially `{ img: null, gr: null }`) |
+| `_measure_string(text, font, maxWidth, flags?)` | `(string, GdiFont, number, number?) → {Width, Height}` | Measures rendered text size. Height is `ceil() - _scale(1)` to correct GDI/GDI+ discrepancy |
+| `_measure_dispose()` | `() → void` | Releases the `_measure` singleton. Call in `on_script_unload()` |
+| `_drawImageFit(gr, img, x, y, w, h)` | `(GdiGraphics, GdiBitmap, ...) → void` | Aspect-fit: scales image to fully fit target, centered with letterboxing |
+| `_drawImageCover(gr, img, x, y, w, h)` | `(GdiGraphics, GdiBitmap, ...) → void` | Aspect-cover: scales image to fill target, crops overflow |
 
-Common combinations defined as named constants:
+#### 5.1.2. `lib/data.js` — Data Constants & Systems
+
+**Requires `lib/utils.js`.** Included by panels that render text or use AQ/source/cache systems.
+
+**GDI DrawText Flags:**
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `DT_LEFT` | `0x00000000` | Left align |
+| `DT_CENTER` | `0x00000001` | Horizontal center |
+| `DT_RIGHT` | `0x00000002` | Right align |
+| `DT_VCENTER` | `0x00000004` | Vertical center (single-line) |
+| `DT_BOTTOM` | `0x00000008` | Bottom align |
+| `DT_WORDBREAK` | `0x00000010` | Word break / multi-line |
+| `DT_SINGLELINE` | `0x00000020` | Single-line mode |
+| `DT_NOPREFIX` | `0x00000800` | Disable `&` accelerator prefix |
+| `DT_EDITCONTROL` | `0x00002000` | Edit-control style (shows partial last line) |
+| `DT_END_ELLIPSIS` | `0x00008000` | End with ellipsis on overflow |
+| `DT_CALCRECT` | `0x00000400` | Calculate rectangle only |
+
+Composite styles:
 - `MULTI_LINE_FLAGS` = `DT_LEFT | DT_WORDBREAK | DT_END_ELLIPSIS | DT_NOPREFIX`
 - `ONE_LINE_FLAGS` = `DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX`
 - `BTN_STYLE_FLAGS` = `DT_CENTER | DT_VCENTER | DT_NOPREFIX | DT_WORDBREAK`
 - `BADGE_TEXT_ALIGN` = `DT_CENTER | DT_VCENTER | DT_SINGLELINE`
 
-### 5.5. Text Measurement (Singleton Pattern)
+**Audio Quality Badge System:**
 
-All scripts use a lazy-initialized singleton for measuring text dimensions:
+- `AQ_COLORS` — 10 named colors (silver, teal, green, amber, gold, titanium, purple, fallback, dolby_lossy, dolby_hd)
+- `AQBadgeStyle` class — properties: `label` (string), `color` (number), `bgColor` (dimmed via `_getDimColor()`), `desc` (string)
+- `AQ_BADGES` — 13 predefined badges: CD, CD_PLUS, ST, HR, HR_PLUS, UHR, DSD, LOSSY, UNKNOWN, DD, DD_PLUS, TRUEHD, ATMOS
+- `_get_aq_badge_state(codec, sr, bits)` → `AQBadgeStyle` — classifies audio: DSD > Dolby (TrueHD/E-AC3/AC3) > Hi-Res PCM (by sample rate) > CD > Lossy. `codec` should be uppercased.
+
+**Source Icon System:**
+
+- `SOURCE_ICON_MAP` — Object mapping 19 uppercase source names to icon filenames (e.g. `"OFFICIAL DIGITAL"` → `"shopping-bag.png"`)
+- `DEFAULT_SOURCE_ICON_FILENAME` = `"cloud.png"` — fallback when source is unknown
+- `SourceIconCache` class — caches loaded `gdi.Image` objects by filename
+  - `constructor(iconsDir)` — pass the icon directory path (typically `IMGS_LINKS_DIR`)
+  - `get(filename)` → `GdiBitmap|null` — returns cached or newly loaded image
+  - `clear()` — disposes all cached images
+
+**LRU Cache:**
+
+- `LRUCache` class — Map-based LRU cache with max-size limit
+  - `constructor(maxSize)`, `has(key)`, `get(key)`, `set(key, value)`, `clear()`, `get size()`
+
+**Misc:**
+- `MF_STRING` = `0x00000000` — popup menu item flag
+
+#### 5.1.3. `lib/interaction.js` — UI Interaction Components
+
+**Requires `lib/utils.js`.** Included by 6 of 7 panels (all except `cover_panel.js`).
+
+| Export | Signature | Description |
+|--------|-----------|-------------|
+| `CURSOR_ARROW` | `32512` | Win32 IDC_ARROW |
+| `CURSOR_HAND` | `32649` | Win32 IDC_HAND |
+| `_setCursor(id)` | `(number) → void` | Set cursor with dedup (skips redundant calls) |
+
+**`Button` class** — Interactive icon button with hover state and optional right-click:
+
 ```javascript
-let _measureImg = null;
-let _measureGr = null;
-
-function measure_string(text, font, maxWidth, text_style_flag) {
-    if (!_measureImg) {
-        _measureImg = gdi.CreateImage(1, 1);
-        _measureGr = _measureImg.GetGraphics();
-    }
-    const result = _measureGr.MeasureString(text, font, 0, 0, maxWidth, MAX_BUFFER_H, text_style_flag || MULTI_LINE_FLAGS);
-    return {
-        Width: Math.ceil(result.Width),
-        Height: Math.ceil(result.Height) - _scale(1)  // -1 corrects GDI/GDI+ measurement discrepancy
-    };
+class Button {
+    constructor(config)  // { img_normal, img_hover?, func?, func_rclick?, tiptext? }
+    updateState(img_normal, img_hover, tiptext, func)  // dynamic state change
+    paint(gr)             // draws img_current at (x, y, w, h)
+    trace(x, y)           // hit-test using inclusive boundaries
+    activate()            // is_hover=true, switches to img_hover, repaints
+    deactivate()          // is_hover=false, switches to img_normal, repaints
+    on_mouse_lbtn_up(x,y) // calls fn_click if traced, returns boolean
+    on_mouse_rbtn_down(x,y) // calls fn_rclick if traced, returns boolean
+    repaint()             // window.RepaintRect(this.x, this.y, this.w, this.h)
 }
 ```
 
-### 5.6. UI State Machine Pattern (Critical)
+**Other interaction utilities:**
 
-Almost every panel uses a **single active element state machine** for hover interactions. This is the project's most important interaction pattern:
+| Export | Signature | Description |
+|--------|-----------|-------------|
+| `_init_tooltip(fontName, fontSize, maxWidth?)` | `(string, number, number?) → function(string)` | Factory: creates a tooltip once, returns a `_tt(value)` setter with text dedup. Usage: `let _tt = _init_tooltip(THEME.FONT.GLOBAL, _scale(13), 1200);` |
+| `_draw_scrollbar(gr, viewH, contentH, scrollY, maxScrollY, panelW, headerH, color)` | `(GdiGraphics, ...) → void` | Draws a rounded vertical scrollbar at the right edge of the panel |
+| `_manage_carousel(state, coverH, cycleMs?, panelW?)` | `({images,index,timer}, number, number?, number?) → void` | Creates/destroys a SetInterval timer for cover image cycling. Only active when `state.images.length > 1` |
+| `_carousel_next(state, coverH, cycleMs?, panelW?)` | `(...) → void` | Advances carousel to next image and repaints |
+| `_draw_tab_indicator(gr, activeBtn, headerH, panelW, margin, accentColor, dimColor)` | `(GdiGraphics, ...) → void` | Draws a 2px accent line under the active tab button plus a 1px divider |
+| `_draw_empty_state(gr, text, font, color, panelW, panelH)` | `(GdiGraphics, ...) → void` | Draws centered placeholder/error text using `BTN_STYLE_FLAGS` |
+| `_create_text_buffer(text, font, color, viewW, textStyleFlags)` | `(string, GdiFont, number, number, number) → {img, fullH}` | Creates an offscreen GDI bitmap with rendered text for scrollable content. Max height capped at `_scale(2000)` |
+| `_dispose_image_dict(dict)` | `(Object<string, GdiBitmap>) → void` | Iterates all values in a dict and calls `.Dispose()` on each GDI image |
+
+#### 5.1.4. `lib/theme.js` — Theme Configuration
+
+**Requires `lib/utils.js`.** Included by 6 of 7 panels (all except `cover_panel.js`). Centralizes all CUI color/font/path lookups.
+
+**`THEME` object:**
+
+```javascript
+const THEME = {
+    COL: {
+        ITEM_TEXT:      window.GetColourCUI(0),   // Normal text
+        SELECTED_TEXT:  window.GetColourCUI(1),   // Selected text / highlight
+        BG:             window.GetColourCUI(3),   // Global background
+        SELECTED_BG:    window.GetColourCUI(4),   // Selected item background
+        ACTIVE_ITEM:    window.GetColourCUI(6),   // Active item / accent
+        ITEMDETAIL_BG:  window.GetColourCUI(3, "{4E20CEED-42F6-4743-8EB3-610454457E19}"),  // Item Details panel background
+        SCROLLBAR:      _RGB(149, 149, 149),      // Hardcoded scrollbar color
+        DIM_TEXT:       _RGB(114, 117, 126),      // Hardcoded dim text color
+    },
+    FONT: {
+        GLOBAL:   window.GetFontCUI(0).Name,                                         // Default item font name
+        PLAYLIST: window.GetFontCUI(0, "{19F8E0B3-E822-4F07-B200-D4A67E4872F9}").Name, // NG Playlist font name
+        TITLEBAR: window.GetFontCUI(1),                                              // Title bar font (GdiFont object)
+    },
+    LAYOUT: {
+        MARGIN:       _scale(10),
+        LINE_H:       _scale(16),
+        LINE_SPACE:   _scale(8),
+        ICON_SIZE:    _scale(10),
+        SCROLL_STEP:  _scale(30),
+        IMG_CYCLE_MS: 8000,
+    },
+};
+```
+
+**Image paths:**
+
+```javascript
+const IMGS_BASE      = fb.ProfilePath + "\\user-theme-fb2k-medium-slate-blue\\imgs";
+const IMGS_LUCIDE_DIR = IMGS_BASE + "\\Lucide\\";  // UI icons (stars, buttons, etc.)
+const IMGS_LINKS_DIR  = IMGS_BASE + "\\Links\\";   // Source/platform icons
+```
+
+**Panel-side alias convention:** Panels create short local aliases for readability:
+
+```javascript
+const COL = THEME.COL;                          // Color alias (most common)
+const MARGIN = THEME.LAYOUT.MARGIN;             // Layout aliases (as needed)
+const LINE_H = THEME.LAYOUT.LINE_H;
+```
+
+### 5.2. UI State Machine Pattern (Critical)
+
+Almost every panel uses a **single active element state machine** for hover interactions. This is the project's most important interaction pattern.
+
+The supporting utilities (`_element_trace`, `_setCursor`) come from the shared libraries, but the state machine logic is implemented per-panel:
 
 ```javascript
 let g_activeElement = null;  // Currently hovered/active UI element
@@ -165,7 +272,7 @@ function on_mouse_move(x, y) {
     let target = null;
 
     // 1. Hit-test all interactive elements in priority order
-    if (_element_trace(x, y, element1)) target = element1;
+    if (_element_trace(x, y, element1)) target = element1;       // _element_trace from lib/utils.js
     else if (_element_trace(x, y, element2)) target = element2;
 
     // 2. No change? Exit early
@@ -181,11 +288,11 @@ function on_mouse_move(x, y) {
     if (target) {
         target.is_hover = true;
         window.RepaintRect(target.x, target.y, target.w, target.h);
-        _tt(target.tooltip || "");
-        window.SetCursor(32649); // Hand
+        _tt(target.tooltip || "");         // _tt from _init_tooltip (lib/interaction.js)
+        _setCursor(CURSOR_HAND);           // _setCursor, CURSOR_HAND from lib/interaction.js
     } else {
         _tt("");
-        window.SetCursor(32512); // Arrow
+        _setCursor(CURSOR_ARROW);
     }
 
     g_activeElement = target;
@@ -198,142 +305,25 @@ function on_mouse_leave() {
         g_activeElement = null;
     }
     _tt("");
-    window.SetCursor(32512);
+    _setCursor(CURSOR_ARROW);
 }
 ```
 
 Key principles:
 - Use `window.RepaintRect()` (partial repaint) instead of full `window.Repaint()` whenever possible.
-- Use `_element_trace(x, y, element)` for hit-testing: `x >= ele.x && x <= ele.x + ele.w && y >= ele.y && y <= ele.y + ele.h`.
 - Interactive elements must have `x, y, w, h, is_hover` properties at minimum.
+- Star rating panels (info+rating.js) need special handling: `g_activeElement instanceof StarElement` checks for transitioning between stars within the rating area without resetting `g_hoverRating`.
 
-### 5.7. Tooltip & Cursor Management
+### 5.3. Offscreen Text Buffer for Scrolling
 
-Standard tooltip wrapper with deduplication:
+For scrollable text content, render text once to an offscreen `GdiBitmap`, then blit the visible portion in `on_paint()`. The shared `_create_text_buffer()` in `lib/interaction.js` handles the buffer creation, while scroll state and blit logic remain per-panel:
+
 ```javascript
-const tooltip = window.CreateTooltip(CUI_GLOBAL_FONT, _scale(13));
-tooltip.SetMaxWidth(1200);
-
-function _tt(value) {
-    if (tooltip.Text !== value) {
-        tooltip.Text = value;
-        tooltip.Activate();
-    }
-}
-```
-
-Cursor ID caching to avoid redundant `SetCursor` calls:
-```javascript
-let lastCursorId = 32512; // IDC_ARROW
-function _setCursor(id) {
-    if (lastCursorId === id) return;
-    lastCursorId = id;
-    window.SetCursor(id);
-}
-```
-
-Common cursor IDs: `32512` (Arrow), `32649` (Hand).
-
-### 5.8. CUI Color System
-
-Scripts pull colors from Columns UI's global palette:
-```javascript
-const COLORS = {
-    Bg:        window.GetColourCUI(3),  // Background
-    Title:     window.GetColourCUI(1),  // Selected text / highlight
-    Accent:    window.GetColourCUI(6),  // Active item
-    Accent1:   window.GetColourCUI(4),  // Selected item background
-    Body:      window.GetColourCUI(0),  // Normal item text
-};
-```
-
-Some panels use a specific CUI element GUID for matching Item Details panel color:
-- `"{4E20CEED-42F6-4743-8EB3-610454457E19}"` — CUI Item Details panel background
-
-### 5.9. Font System
-
-Fonts are derived from CUI configuration:
-```javascript
-const CUI_GLOBAL_FONT = window.GetFontCUI(0).Name;         // Default CUI font
-const CUI_TEXT_FONT = window.GetFontCUI(0, "{19F8E0B3-E822-4F07-B200-D4A67E4872F9}").Name; // NG Playlist font
-```
-
-Font objects created once at init:
-```javascript
-const FONTS = {
-    Title:  gdi.Font(CUI_GLOBAL_FONT, _scale(18), 1),  // 1 = Bold
-    Body:   gdi.Font(CUI_TEXT_FONT, _scale(12), 0),    // 0 = Regular
-};
-```
-
-### 5.10. Button Class Pattern
-
-`playback_buttons_v2.js` and `control_buttons_v2.js` share a consistent Button class:
-```javascript
-class Button {
-    constructor(config) {
-        this.x = 0; this.y = 0; this.w = 0; this.h = 0;
-        this.img_normal = config.img_normal || null;
-        this.img_hover = config.img_hover || this.img_normal;
-        this.img_current = this.img_normal;
-        this.fn_click = config.func || null;
-        this.fn_rclick = config.func_rclick || null;  // Optional right-click handler
-        this.tiptext = config.tiptext || "";
-        this.is_hover = false;
-    }
-    updateState(img_normal, img_hover, tiptext, func) { /* dynamic state update */ }
-    paint(gr) { /* draws this.img_current */ }
-    trace(x, y) { /* hit-test */ }
-    activate() { this.is_hover = true; this.img_current = this.img_hover; this.repaint(); }
-    deactivate() { this.is_hover = false; this.img_current = this.img_normal; this.repaint(); }
-    on_mouse_lbtn_up(x, y) { /* click handler */ }
-    on_mouse_rbtn_down(x, y) { /* right-click handler */ }
-    repaint() { window.RepaintRect(this.x, this.y, this.w, this.h); }
-}
-```
-
-### 5.11. LRU Cache Pattern
-
-Both `album_info.js` and `biography.js` use a Map-based LRU cache:
-```javascript
-const CACHE = new Map();
-const CACHE_MAX_SIZE = 50;
-
-function get_cache_entry(key) {
-    if (CACHE.has(key)) {
-        const entry = CACHE.get(key);
-        CACHE.delete(key);    // Remove from old position
-        CACHE.set(key, entry); // Re-insert at end (most recent)
-        return entry;
-    }
-    // ... load data ...
-    if (CACHE.size >= CACHE_MAX_SIZE) {
-        const oldestKey = CACHE.keys().next().value;
-        CACHE.delete(oldestKey);
-    }
-    CACHE.set(key, newEntry);
-    return newEntry;
-}
-```
-
-### 5.12. Offscreen Text Buffer for Scrolling
-
-For scrollable text content, render text once to an offscreen `GdiBitmap`, then blit the visible portion in `on_paint()`:
-```javascript
-function create_text_buffer() {
-    if (textImg && typeof textImg.Dispose === "function") textImg.Dispose();
-    textImg = null;
-
-    const measured = measure_string(text, FONTS.Body, view_w, MULTI_LINE_FLAGS);
-    let fullH = Math.max(1, Math.min(measured.Height, MAX_BUFFER_H));
-
-    textImg = gdi.CreateImage(view_w, fullH);
-    const gr = textImg.GetGraphics();
-    gr.GdiDrawText(text, FONTS.Body, COLORS.Body, 0, 0, view_w, fullH, MULTI_LINE_FLAGS);
-    textImg.ReleaseGraphics(gr);
-
-    maxScrollY = Math.max(0, fullH - view_h);
-}
+// Creating the buffer (using shared function):
+const buffer = _create_text_buffer(text, FONTS.Body, COL.ITEM_TEXT, view_w, MULTI_LINE_FLAGS);
+textImg = buffer.img;
+let fullH = buffer.fullH;
+maxScrollY = Math.max(0, fullH - view_h);
 
 // In on_paint:
 if (textImg) {
@@ -342,64 +332,45 @@ if (textImg) {
 }
 ```
 
-### 5.13. Scrollbar Rendering
+### 5.4. Scrollbar Rendering
 
-Standard scrollbar formula used in `album_info.js` and `biography.js`:
+Standard scrollbar formula used in `album_info.js` and `biography.js`. The shared `_draw_scrollbar()` in `lib/interaction.js` encapsulates this:
+
 ```javascript
-const barH = Math.max(_scale(20), (view_h / textImg.Height) * view_h);
-const barY = header_height + (scrollY / maxScrollY) * (view_h - barH);
-gr.FillRoundRect(window.Width - _scale(3), barY, _scale(2.5), barH, _scale(1), _scale(1), COLORS.Scroll);
+_draw_scrollbar(gr, viewH, contentH, scrollY, maxScrollY, panelW, headerH, color);
 ```
 
-### 5.14. Image Drawing Utilities
+Internally uses: `barH = Math.max(_scale(20), (viewH / contentH) * viewH)`, `barY = headerH + (scrollY / maxScrollY) * (viewH - barH)`, then draws via `gr.FillRoundRect()`.
 
-Two standard image fitting modes:
+### 5.5. Resource Cleanup
+
+Every script MUST implement `on_script_unload()` using the appropriate shared cleanup functions:
+
 ```javascript
-// Aspect-Fit: entire image visible, letterboxed
-function drawImageFit(gr, img, x, y, w, h) {
-    const ratio = Math.min(w / img.Width, h / img.Height);
-    const newW = img.Width * ratio, newH = img.Height * ratio;
-    gr.DrawImage(img, x + (w - newW) / 2, y + (h - newH) / 2, newW, newH, 0, 0, img.Width, img.Height);
-}
-
-// Aspect-Cover: fills area, cropped
-function drawImageCover(gr, img, x, y, w, h) {
-    const ratio = Math.max(w / img.Width, h / img.Height);
-    const srcW = w / ratio, srcH = h / ratio;
-    gr.DrawImage(img, x, y, w, h, (img.Width - srcW) / 2, (img.Height - srcH) / 2, srcW, srcH);
-}
-```
-
-### 5.15. Image Carousel Pattern
-
-Both `album_info.js` and `biography.js` implement cover art carousels:
-```javascript
-let imgList = [];
-let curImgIndex = 0;
-let imgTimer = null;
-const IMG_CYCLE_MS = 8000;
-
-function manage_cycle_timer() {
+function on_script_unload() {
+    _measure_dispose();          // from lib/utils.js — release measurement singleton
+    _dispose_image_dict(imgs);   // from lib/interaction.js — release all gdi.Image objects in a dict
+    g_sourceIconCache.clear();   // SourceIconCache.clear() from lib/data.js
+    // Clear timers
     if (imgTimer) { window.ClearInterval(imgTimer); imgTimer = null; }
-    if (imgList.length > 1) {
-        imgTimer = window.SetInterval(() => {
-            curImgIndex = (curImgIndex + 1) % imgList.length;
-            window.RepaintRect(0, 0, window.Width, cover_h);
-        }, IMG_CYCLE_MS);
-    }
+    // Dispose offscreen bitmaps
+    if (textImg && typeof textImg.Dispose === "function") textImg.Dispose();
 }
 ```
 
-### 5.16. Resource Cleanup
+**Which panels use which cleanup:**
 
-Every script MUST implement `on_script_unload()` to release:
-- GDI images (`gdi.Image`) via `.Dispose()`
-- Offscreen bitmaps (`textImg`)
-- Measurement singleton (`_measureImg.ReleaseGraphics()` + `.Dispose()`)
-- Timers (`window.ClearInterval()`)
-- Caches (`.clear()`)
+| Panel | `_measure_dispose` | `_dispose_image_dict` | `SourceIconCache.clear` | Timer clear | textImg dispose |
+|-------|--------------------|-----------------------|-------------------------|-------------|-----------------|
+| info+rating.js | Yes | Yes (STAR_ICONS) | Yes | — | — |
+| album_info.js | — | — | — | Yes | Yes |
+| biography.js | — | — | — | Yes | Yes |
+| panel_title.js | Yes | Yes (g_imgs) | — | — | — |
+| playback_buttons_v2.js | — | Yes (imgs) | — | — | — |
+| control_buttons_v2.js | — | Yes (imgs) | — | — | — |
+| cover_panel.js | — | — | — | — | Yes (g_img, g_img_rounded) |
 
-### 5.17. Data Initialization Pattern
+### 5.6. Data Initialization Pattern
 
 Scripts check both selection and now-playing on load:
 ```javascript
@@ -411,23 +382,7 @@ if (initSelection) {
 }
 ```
 
-### 5.18. Audio Quality Badge System
-
-Both `album_info.js` and `info+rating.js` share an identical AQ badge system:
-- `AQBadgeStyle` class with `label`, `color`, `bgColor` (auto-dimmed), `desc`
-- `getDimColor(color)` — darkens a color (multiplies RGB by 0.2, special case for pure white → #393940)
-- `get_aq_badge_state(metadb)` — classifies audio: DSD > Dolby (TrueHD/E-AC3/AC3) > PCM (by sample rate + bit depth) > Lossy
-- Badge layout: `paddingX`, `paddingY`, `radius`, `borderW` all DPI-scaled
-
-### 5.19. Source Icon System
-
-Both `album_info.js` and `info+rating.js` share an identical source icon system:
-- `SOURCE_ICON_MAP` — maps uppercase source names to icon filenames
-- `SOURCE_IMG_CACHE` — caches loaded `gdi.Image` objects
-- `update_source_icon(metadb)` — reads `$meta(SOURCE)` and resolves icon
-- Icons located at `fb.ProfilePath + "\\user-theme-fb2k-medium-slate-blue\\imgs\\Links\\"`
-
-### 5.20. ActiveX for External Links
+### 5.7. ActiveX for External Links
 
 `biography.js` is the only panel that uses ActiveX (to open URLs):
 ```javascript
@@ -436,7 +391,7 @@ WshShell.Run(btn.url);
 ```
 This is lazily instantiated only on click to save resources.
 
-### 5.21. Async Album Art
+### 5.8. Async Album Art
 
 `cover_panel.js` uses `utils.GetAlbumArtAsyncV2()` with Promises:
 ```javascript
@@ -445,11 +400,11 @@ utils.GetAlbumArtAsyncV2(window.ID, metadb, art_id)
     .catch(err => { /* handle */ });
 ```
 
-### 5.22. Popup Menu Pattern
+### 5.9. Popup Menu Pattern
 
-Menus are created with `window.CreatePopupMenu()`, populated, shown via `TrackPopupMenu(x, y)`, then the return index is used. No `.Dispose()` on menus.
+Menus are created with `window.CreatePopupMenu()`, populated, shown via `TrackPopupMenu(x, y)`, then the return index is used. No `.Dispose()` on menus. Use `MF_STRING` (from `lib/data.js`) as the default menu item flag.
 
-### 5.23. Playcount Component Dependency
+### 5.10. Playcount Component Dependency
 
 `info+rating.js` checks for optional component:
 ```javascript
