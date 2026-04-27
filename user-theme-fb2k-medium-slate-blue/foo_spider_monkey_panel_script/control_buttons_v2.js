@@ -1,5 +1,5 @@
 /**
- * @file control_buttons.js
+ * @file control_buttons_v2.js
  * @author XYSRe
  * @created 2025-12-12
  * @updated 2026-04-14  
@@ -12,6 +12,7 @@
 
 // 共享库
 include("lib/utils.js");
+include("lib/data.js");
 include("lib/interaction.js");
 include("lib/theme.js");
 
@@ -25,6 +26,8 @@ window.DefineScript("Control Buttons", {
 // 1. 工具函数
 // ============================================================================
 
+// 主题别名
+const COL = THEME.COL;
 // _init_tooltip / _setCursor 来自 lib/interaction.js
 let _tt = _init_tooltip(THEME.FONT.GLOBAL, _scale(13), 1200);
 
@@ -73,7 +76,7 @@ class VolumeControl {
         this.x = 0; this.y = 0; this.w = 0; this.h = 0;
         this.drag = false;
         this.hover = false;
-        this.color = THEME.COL.SELECTED_TEXT;
+        this.color = COL.SELECTED_TEXT;
         this.current_tip = "";
     }
 
@@ -86,7 +89,7 @@ class VolumeControl {
         const arc = Math.max(1, _scale(1));
         // 抗锯齿
         gr.SetSmoothingMode(4); 
-        gr.FillRoundRect(this.x, this.y, this.w, this.h, arc, arc, THEME.COL.ITEM_TEXT);
+        gr.FillRoundRect(this.x, this.y, this.w, this.h, arc, arc, COL.ITEM_TEXT);
         
         const posW = this.getPosWidth();
         // 这里如果值posW太小的话绘制不了arc值得圆角矩形
@@ -121,7 +124,7 @@ class VolumeControl {
         
         if (isOver !== this.hover) {
             this.hover = isOver;
-            this.color = isOver ? THEME.COL.ACTIVE_ITEM : THEME.COL.SELECTED_TEXT;
+            this.color = isOver ? COL.ACTIVE_ITEM : COL.SELECTED_TEXT;
             this.repaint();
         }
         
@@ -396,7 +399,7 @@ function on_size() {
 }
 
 function on_paint(gr) {
-    gr.FillSolidRect(0, 0, window.Width, window.Height, THEME.COL.ITEMDETAIL_BG);
+    gr.FillSolidRect(0, 0, window.Width, window.Height, COL.ITEMDETAIL_BG);
     for (let key in buttons) {
         buttons[key].paint(gr);
     }
@@ -419,10 +422,10 @@ function on_mouse_move(x, y) {
         
         if (volumeBar.drag) {
             _tt(volumeBar.current_tip);
-            _setCursor(32649); // Hand
+            _setCursor(CURSOR_HAND);
         } else {
-            _tt(""); 
-            _setCursor(32512); // Arrow
+            _tt("");
+            _setCursor(CURSOR_ARROW);
         }
         return;
     }
@@ -444,10 +447,10 @@ function on_mouse_move(x, y) {
         if (newHoverBtn) {
             newHoverBtn.activate();
             _tt(newHoverBtn.tiptext);
-            _setCursor(32649); // Hand
+            _setCursor(CURSOR_HAND);
         } else {
             _tt("");
-            _setCursor(32512); // Arrow
+            _setCursor(CURSOR_ARROW);
         }
 
         currentHoverBtn = newHoverBtn;
@@ -461,7 +464,7 @@ function on_mouse_leave() {
     }
     volumeBar.on_mouse_move(-1, -1);
     _tt("");
-    _setCursor(32512);
+    _setCursor(CURSOR_ARROW);
 }
 
 function on_mouse_lbtn_down(x, y) {

@@ -10,14 +10,16 @@
 
 // 共享库
 include("lib/utils.js");
+include("lib/data.js");
+include("lib/theme.js");
 
 // ==========================================
 // ## 1. 配置区域 (CONFIGURATION)
 // ==========================================
 
 const CONFIG = {
-    CORNER_RADIUS: 20,               // 封面圆角半径
-    MARGIN: 40,                      // 封面周围的全局边距 (Padding)
+    CORNER_RADIUS: _scale(20),       // 封面圆角半径
+    MARGIN: _scale(40),              // 封面周围的全局边距 (Padding)
     
     // --- 颜色与背景选项 ---
     USE_COVER_COLOR: true,           // 【新增开关】true: 提取封面颜色, false: 强制使用 CUI 全局背景色
@@ -31,7 +33,7 @@ const CONFIG = {
 // ==========================================
 
 // 初始化 CUI 全局背景色 (3 = ColourType.background)
-let g_theme_bg_color = window.GetColourCUI(3);
+let g_theme_bg_color = THEME.COL.BG;
 
 let g_img = null;           // 缓存原始封面图像 
 let g_img_rounded = null;   // 缓存处理好带有透明圆角的最终图像
@@ -189,7 +191,7 @@ function on_size() {
     wh = window.Height;
     
     if (!g_font) {
-        g_font = gdi.Font("Segoe UI", 16, 0); 
+        g_font = gdi.Font(THEME.FONT.GLOBAL, _scale(16), 0); 
     }
     
     update_cover_ui();
@@ -205,7 +207,7 @@ function on_paint(gr) {
     } else {
         let text = fb.IsPlaying ? "No Cover Found" : "Stopped";
         if (g_font) {
-            gr.GdiDrawText(text, g_font, CONFIG.TEXT_COLOR, 0, 0, ww, wh, 37);
+            gr.GdiDrawText(text, g_font, CONFIG.TEXT_COLOR, 0, 0, ww, wh, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
         }
     }
 }
@@ -222,7 +224,7 @@ function on_playback_stop(reason) {
 
 // 动态响应 CUI 颜色设置变化
 function on_colours_changed() {
-    g_theme_bg_color = window.GetColourCUI(3); // 重新获取 CUI 背景色
+    g_theme_bg_color = THEME.COL.BG;
     
     // 强制刷新当前界面的数据 (使得背景色变更立刻生效)
     update_panel_data(fb.GetNowPlaying());
