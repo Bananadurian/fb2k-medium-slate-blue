@@ -26,9 +26,9 @@ window.DefineScript("title", {
 
 const COL = THEME.COL;
 // _init_tooltip 来自 lib/interaction.js
-let _tt = _init_tooltip(THEME.FONT.GLOBAL, _scale(13), 1200);
+let _tt = _init_tooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
 
-const g_font = THEME.FONT.TITLEBAR;
+const g_font = THEME.FONT.TITLE_PANEL;
 // 播放列表icon
 const g_imgs = {
   icon: _load_image(IMGS_LUCIDE_DIR + "list-music.png"),

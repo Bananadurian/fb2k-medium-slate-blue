@@ -37,13 +37,7 @@ const ALBUM_FLAGS = DT_LEFT | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS;
 // --- 颜色 (来自 lib/theme.js) ---
 const COL = THEME.COL;
 
-// --- 字体 (来自 lib/theme.js) ---
-const FONTS = {
-  Title: gdi.Font(THEME.FONT.GLOBAL, _scale(12), 1),
-  Body: gdi.Font(THEME.FONT.GLOBAL, _scale(10), 0),
-  BadgeLabel: gdi.Font(THEME.FONT.GLOBAL, _scale(8), 0),
-  BadgeInfo: gdi.Font(THEME.FONT.GLOBAL, _scale(9), 0),
-};
+// 字体来自 lib/theme.js (THEME.FONT.HEADING / .TEXT_SM / .BADGE)
 
 // --- 路径与图片资源 (Paths & Images) ---
 const STAR_ICONS = {
@@ -129,7 +123,7 @@ const tf_bitdepth = fb.TitleFormat("%__bitspersample%");
 // 3. 辅助组件 (Tooltip)
 // ============================================================================
 
-let _tt = _init_tooltip(THEME.FONT.GLOBAL, _scale(13), 1200);
+let _tt = _init_tooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
 
 
 // --- 独立星星组件类 (StarElement) ---
@@ -335,21 +329,21 @@ function on_size() {
   // 1. 测量各元素的尺寸
   const titleMeasureFull = _measure_string(
     CONTENTS.title.text,
-    FONTS.Title,
+    THEME.FONT.HEADING,
     max_text_w,
     TEXT_FLAGS,
   );
   CONTENTS.title.w = titleMeasureFull.Width + _scale(1);
   CONTENTS.title.h = Math.min(titleMeasureFull.Height, LINE_H);
   CONTENTS.artist.w =
-    _measure_string(CONTENTS.artist.text, FONTS.Body, max_text_w, TEXT_FLAGS)
+    _measure_string(CONTENTS.artist.text, THEME.FONT.TEXT_SM, max_text_w, TEXT_FLAGS)
       .Width + _scale(1);
   // _scale(1) GDI、GDI+计算偏差 一个像素容差
   CONTENTS.album.w =
-    _measure_string(CONTENTS.album.text, FONTS.Body, max_text_w, TEXT_FLAGS)
+    _measure_string(CONTENTS.album.text, THEME.FONT.TEXT_SM, max_text_w, TEXT_FLAGS)
       .Width + _scale(1);
   CONTENTS.year.w = CONTENTS.year.text
-    ? _measure_string(CONTENTS.year.text, FONTS.Body, max_text_w, TEXT_FLAGS)
+    ? _measure_string(CONTENTS.year.text, THEME.FONT.TEXT_SM, max_text_w, TEXT_FLAGS)
         .Width
     : 0;
 
@@ -413,7 +407,7 @@ function on_size() {
   if (currentAQBadge) {
     const badgeTextSize = _measure_string(
       currentAQBadge.label,
-      FONTS.BadgeLabel,
+      THEME.FONT.BADGE,
       max_text_w,
       BADGE_TEXT_ALIGN,
     );
@@ -438,7 +432,7 @@ function on_paint(gr) {
   // --- 绘制文本 ---
   gr.GdiDrawText(
     CONTENTS.title.text,
-    FONTS.Title,
+    THEME.FONT.HEADING,
     CONTENTS.title.is_hover ? COL.ACTIVE_ITEM : COL.SELECTED_TEXT,
     CONTENTS.title.x,
     CONTENTS.title.y,
@@ -449,7 +443,7 @@ function on_paint(gr) {
 
   gr.GdiDrawText(
     CONTENTS.artist.text,
-    FONTS.Body,
+    THEME.FONT.TEXT_SM,
     CONTENTS.artist.is_hover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT,
     CONTENTS.artist.x,
     CONTENTS.artist.y,
@@ -460,7 +454,7 @@ function on_paint(gr) {
 
   gr.GdiDrawText(
     CONTENTS.album.text,
-    FONTS.Body,
+    THEME.FONT.TEXT_SM,
     CONTENTS.album.is_hover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT,
     CONTENTS.album.x,
     CONTENTS.album.y,
@@ -472,7 +466,7 @@ function on_paint(gr) {
   if (CONTENTS.year.text) {
     gr.GdiDrawText(
       CONTENTS.year.text,
-      FONTS.Body,
+      THEME.FONT.TEXT_SM,
       COL.ITEM_TEXT,
       CONTENTS.year.x,
       CONTENTS.year.y,
@@ -534,7 +528,7 @@ function on_paint(gr) {
     // 文字
     gr.GdiDrawText(
       currentAQBadge.label,
-      FONTS.BadgeLabel,
+      THEME.FONT.BADGE,
       currentAQBadge.color,
       currentAQBadgeRect.x,
       currentAQBadgeRect.y,
