@@ -2,74 +2,231 @@
 
 You are an expert developer specializing in creating scripts for the **foobar2000 Spider Monkey Panel (SMP)** component. Your objective is to write efficient, modern, and error-free JavaScript code that adheres to the specific API requirements of the SMP environment.
 
-## 1. Environment & Documentation
+## 1. Environment & API Reference
 
-- **Engine:** Mozilla SpiderMonkey (Supports ES6+ syntax).
+- **Engine:** Mozilla SpiderMonkey ESR68 (Supports ECMAScript 2019 / ES10).
 - **Component:** Spider Monkey Panel (Distinct from legacy JScript Panel or WSH Panel Mod).
 - **Reference:** [Spider Monkey Panel API Docs](https://theqwertiest.github.io/foo_spider_monkey_panel/assets/generated_files/docs/html/index.html)
+- **Syntax:** `let`/`const`, arrow functions, `Promise`, `async/await` are fully supported. No browser-specific objects (`XMLHttpRequest`, `DOM API`).
 
-## 2. Project Structure & File Map
+### 1.1. Memory Management
 
-This project contains 7 SMP panel scripts for a foobar2000 theme ("medium-slate-blue"). Each script is a self-contained panel that registers via `window.DefineScript()`.
+Modern SMP engine manages garbage collection automatically.
 
-### 2.1. Active Scripts
-
-| File | Panel Name | Purpose |
-|------|-----------|---------|
-| `info+rating.js` | Info And Rating | Track info display (title/artist/album/year), star rating widget, audio quality badge, source icon. The main "now playing" panel. |
-| `album_info.js` | Album Info | Album detail panel: cover art (with carousel), edition/source/AQ badge, artist, genres, date, language, and tab-switchable description/tracklist. |
-| `biography.js` | Biography | Artist biography panel: artist cover carousel, genres, born/country, external link buttons, tab-switchable profile/discography. Reads JSON from `D:\11_MusicLib\_Extras\`. |
-| `playback_buttons.js` | Playback Buttons | Transport controls: play/pause, stop, prev/next, seek, playback order, random. Uses Button class. |
-| `control_buttons.js` | Control Buttons | Utility buttons: recent tracks, favorites, search, queue, replaygain, output device, volume slider+mute, main menu. Uses Button + VolumeControl classes. |
-| `panel_title.js` | title | Playlist name display with icon, chevron, and "new playlist" button. |
-| `cover_panel.js` | (no DefineScript) | Cover art display panel: rounded corners, cover color extraction for gradient background, Async art loading. |
-
-### 2.2. Directory Layout
-
-- `lib/` — Shared libraries: `utils.js` (core utilities), `data.js` (constants/classes), `interaction.js` (UI components), `theme.js` (theme config)
-- `old/` — Deprecated/archived scripts (gitignored from Claude context)
-- `simple/` — Simple example scripts (gitignored from Claude context)
-- `test1.js`, `test2.js` — Test/dev copies (gitignored from Claude context)
-- `.claudeignore` — Excludes `old/`, `simple/`, `test*.js`
-
-## 3. Coding Standards & Best Practices
-
-- **Modern Syntax:** ALWAYS use `let` and `const`. Do NOT use `var`. Use Arrow Functions `=>` where appropriate.
+- **No manual Dispose:** Do NOT call `.Dispose()` on GDI objects (`gdi.Image`, `gdi.Font`, `GdiBitmap`) or standard objects (`TitleFormat`). The engine handles cleanup.
+- **Compatibility note:** If the script must also run on legacy js-panel3, GDI objects may use the guarded pattern: `if (obj && typeof obj.Dispose === "function") obj.Dispose();`. Pure modern SMP does not require this.
+- **No `.toArray()`:** Collections (`FbMetadbHandleList` etc.) are directly indexable and support `for...of`. Calling `.toArray()` will crash.
 - **Strict Mode:** Every file starts with `"use strict";`.
-- **File Header:** Every script uses the JSDoc header format:
-  ```javascript
-  /**
-   * @file filename.js
-   * @author XYSRe
-   * @created YYYY-MM-DD
-   * @updated YYYY-MM-DD
-   * @version x.y.z
-   * @description Brief description in Chinese/English
-   */
-  ```
-- **Section Organization:** Each file organizes code into numbered sections separated by `// ====` dividers, typically: Utils → Config/Constants → Theme/Resources → State → Logic → Rendering → Events → Init.
-- **Event-Driven Architecture:**
-  - Logic must be placed inside appropriate callbacks (`on_paint(gr)`, `on_size()`, `on_mouse_lbtn_up(x,y)`, etc.).
-  - **Performance Critical:** NEVER create GDI objects (`gdi.Font`, `gdi.Image`) inside `on_paint()`. Initialize them globally or within `on_size()` and cache them.
-- **Global Namespaces:** `fb` (foobar core), `plman` (playlist manager), `utils` (helpers), `window` (panel window), `gr` (graphics, only in `on_paint`).
 
-## 4. Critical API Migration Rules
+### 1.2. Global Timers & Functions
 
-You must strictly follow the updated API usage for `TitleFormat` and collection objects. Legacy methods cause crashes.
+- `setTimeout(func, delay)` / `clearTimeout(timerID)` — one-shot timer.
+- `setInterval(func, delay)` / `clearInterval(timerID)` — repeating timer.
+- `include(path)` — include external JS scripts.
+
+### 1.3. ActiveXObject
+
+COM components are available on Windows:
+
+- `new ActiveXObject("Scripting.FileSystemObject")` — advanced file system operations.
+- `new ActiveXObject("WScript.Shell")` — run external commands / open URLs.
+- `new ActiveXObject("Microsoft.XMLHTTP")` — HTTP requests (replaces browser `XMLHttpRequest`).
+
+### 1.4. Global Namespaces
+
+#### 1.4.1. `fb` — foobar2000 Core
+
+Playback control, track handles, global state.
+
+- **Properties:** `fb.IsPlaying`, `fb.IsPaused`, `fb.Volume`, `fb.PlaybackLength`, `fb.PlaybackTime`, `fb.AlwaysOnTop`, `fb.StopAfterCurrent`.
+- **Methods:**
+  - `fb.GetNowPlaying()` → `FbMetadbHandle` — current playing track.
+  - `fb.GetFocusItem()` — focused playlist item (true or UI selection).
+  - `fb.GetSelection()` — selected tracks (null if nothing selected).
+  - `fb.GetLibraryItems()` → `FbMetadbHandleList` — all library tracks.
+  - `fb.GetQueryItems(handleList, query)` → `FbMetadbHandleList` — filter handles by TF query.
+  - `fb.Play()`, `fb.Pause()`, `fb.Stop()`, `fb.Next()`, `fb.Prev()`, `fb.Random()` — transport controls.
+  - `fb.PlayOrPause()` — toggle play/pause.
+  - `fb.VolumeUp()`, `fb.VolumeDown()`, `fb.VolumeMute()` — volume control.
+  - `fb.TitleFormat(expression)` — create `FbTitleFormat` object.
+  - `fb.RunMainMenuCommand(command)` — execute foobar2000 main menu item.
+  - `fb.RunContextCommandWithMetadb(command, handle, flags)` — execute context menu command on track.
+  - `fb.ShowPopupMessage(msg, title)` — popup message box.
+  - `fb.CreateMainMenuManager()` → `ContextMenuManager`.
+  - `fb.CreateProfiler(name)` — performance profiler.
+  - `fb.GetOutputDevices()` → JSON string of output devices.
+  - `fb.ReplaygainMode` — 0=None, 1=Track, 2=Album, 3=Smart.
+  - `fb.ProfilePath` — foobar2000 profile directory path.
+
+#### 1.4.2. `gdi` — Graphics Device Interface
+
+Image and font creation.
+
+- `gdi.CreateImage(w, h)` → `GdiBitmap` — create blank image.
+- `gdi.Font(name, size, style)` → `GdiFont` — style: 0=normal, 1=bold, 2=italic, 4=underline, 8=strikethrough.
+- `gdi.Image(path)` → `GdiBitmap` — synchronous local image load.
+- `gdi.LoadImageAsyncV2(window_id, path)` → `Promise<GdiBitmap>` — async image load.
+
+#### 1.4.3. `plman` — Playlist Manager
+
+- **Properties:** `plman.ActivePlaylist`, `plman.PlayingPlaylist`, `plman.PlaylistCount`, `plman.PlaybackOrder`.
+- **Methods:**
+  - `plman.GetPlaylistItems(playlistIndex)` → `FbMetadbHandleList`.
+  - `plman.FindOrCreatePlaylist(name, unlocked)` → playlist index.
+  - `plman.ClearPlaylist(index)`, `plman.RemovePlaylist(index)`.
+  - `plman.InsertPlaylistItems(index, pos, handleList, select)`.
+  - `plman.ExecutePlaylistDefaultAction(playlistIndex, itemIndex)`.
+
+#### 1.4.4. `utils` — Utilities
+
+File IO and async resources.
+
+- `utils.IsFile(path)`, `utils.ReadTextFile(path)`, `utils.WriteTextFile(path, content)`.
+- `utils.CheckComponent(name, is_dll)` — check if foobar2000 component is installed.
+- `utils.GetAlbumArtV2(metadb, art_id)` → `GdiBitmap` — synchronous cover art fetch.
+- `utils.GetAlbumArtAsyncV2(window_id, metadb, art_id)` → `Promise<{image, color_scheme}>` — async cover art.
+- `utils.GetSysColour(index)` — Windows system color.
+- `utils.FormatDuration(seconds)` — format to `MM:SS`.
+
+#### 1.4.5. `window` — Panel Window
+
+- **Properties:** `window.ID`, `window.Width`, `window.Height`, `window.DPI`, `window.InstanceType`.
+- **Methods:**
+  - `window.Repaint()` — full panel repaint.
+  - `window.RepaintRect(x, y, w, h)` — partial repaint.
+  - `window.GetColourCUI(type, client_guid?)` — CUI theme color.
+  - `window.GetFontCUI(type, client_guid?)` — CUI theme font.
+  - `window.SetCursor(id)` — set mouse cursor.
+  - `window.CreatePopupMenu()` → `MenuObject`.
+  - `window.CreateTooltip(fontName, fontSize)` → `FbTooltip`.
+  - `window.DefineScript(name, config)` — register panel.
+  - `window.SetInterval(func, delay)` / `window.ClearInterval(timerID)` — timers (also available globally).
+
+#### 1.4.6. `console`
+
+- `console.log(message)` — log to foobar2000 Console.
+
+## 2. Core Classes & Objects
+
+### 2.1. `FbMetadbHandle` / `FbMetadbHandleList`
+
+- **FbMetadbHandle** — single track handle.
+  - Properties: `Path`, `FileSize`, `Length`, `SubSong`.
+  - Methods: `Compare(handle)`, `GetFileInfo()`.
+- **FbMetadbHandleList** — track list (indexable, iterable via `for...of`).
+  - Properties: `Count`.
+  - Methods: `Add(handle)`, `RemoveAll()`, `Sort()`, `OrderByFormat(tf, direction)`, `RemoveRange(from, count)`, `UpdateFileInfoFromJSON(json)`.
+
+### 2.2. `FbTitleFormat`
+
+Parse foobar2000 title formatting expressions (e.g. `%artist%`).
+
+- `Eval()` — evaluate against current context.
+- `EvalWithMetadb(handle)` → `string` — evaluate against a specific track.
+- `EvalWithMetadbs(handleList)` → `string[]` — batch evaluate, returns native JS string array (no `.toArray()` needed).
+
+### 2.3. `GdiGraphics`
+
+Drawing context (valid ONLY in `on_paint(gr)`, or obtained via `GdiBitmap.GetGraphics()`).
+
+- **Fill/Draw:** `FillSolidRect()`, `FillGradRect()`, `DrawRect()`, `DrawRoundRect()`, `FillRoundRect()`, `FillEllipse()`.
+- **Image & Text:** `DrawImage()`, `GdiDrawText()`, `MeasureString()`, `CalcTextHeight()`, `CalcTextWidth()`, `DrawLine()`.
+- **Render Control:** `SetInterpolationMode(mode)` (7=HighQualityBicubic), `SetSmoothingMode(mode)` (4=AntiAlias, 0=None), `SetTextRenderingHint(hint)` (5=ClearType).
+- `ReleaseGraphics(gr)` must be called on the parent `GdiBitmap` after use.
+
+### 2.4. `GdiBitmap`
+
+Bitmap image object.
+
+- **Properties:** `Width`, `Height`.
+- **Methods:**
+  - `GetGraphics()` → `GdiGraphics` — obtain drawing context. MUST later call `ReleaseGraphics(gr)`.
+  - `ApplyMask(maskImage)` — apply alpha mask (white=transparent, black=opaque).
+  - `GetColourSchemeJSON(max_count)` → JSON string — extract dominant colors.
+  - `StackBlur(radius)` — apply Gaussian blur.
+
+### 2.5. Menu Objects
+
+- **MenuObject** (`window.CreatePopupMenu()`):
+  - `AppendMenuItem(flags, item_id, text)`, `AppendMenuSeparator()`, `AppendTo(parent_menu, flags, text)`.
+  - `CheckMenuRadioItem(first_id, last_id, checked_id)`.
+  - `TrackPopupMenu(x, y, flags)` → `int` — show menu and return selected item ID.
+- **ContextMenuManager** (`fb.CreateMainMenuManager()`):
+  - `Init(name)`, `BuildMenu(menu, base_id, max_id)`, `ExecuteByID(id)`.
+
+### 2.6. `FbTooltip`
+
+Tooltip object (`window.CreateTooltip(fontName, fontSize)`).
+
+- **Properties:** `Text`.
+- **Methods:** `Activate()`, `Deactivate()`, `SetMaxWidth(max)`, `TrackPosition(x, y)`.
+
+## 3. System Callbacks
+
+### 3.1. Render & Size
+
+- `on_paint(gr)` — panel needs repaint. **CRITICAL: Never create `gdi.Font` or `gdi.Image` inside this callback.** Pre-create GDI objects globally or in `on_size()`.
+- `on_size()` — panel resized. Recalculate layout dimensions.
+- `on_colours_changed()` — foobar2000 theme colors changed.
+
+### 3.2. Mouse & Keyboard
+
+- **Mouse move:** `on_mouse_move(x, y, mask)`, `on_mouse_leave()`.
+- **Mouse click:** `on_mouse_lbtn_down(x, y)`, `on_mouse_lbtn_up(x, y)`, `on_mouse_rbtn_up(x, y)`, `on_mouse_rbtn_down(x, y)`.
+- **Double-click & wheel:** `on_mouse_lbtn_dblclk(x, y)`, `on_mouse_wheel(step)`.
+- **Keyboard:** `on_key_down(vkey)`, `on_key_up(vkey)`.
+
+### 3.3. Playback State
+
+- `on_playback_new_track(metadb)` — new track started.
+- `on_playback_stop(reason)` — playback stopped. `reason == 2` means switching to next track; guard with `if (reason !== 2)` to avoid redundant UI updates.
+- `on_playback_time(time)` — playback position changed (per second).
+- `on_playback_starting()` — playback about to start.
+- `on_playback_pause(state)` — pause state changed.
+
+### 3.4. Playlist State
+
+- `on_playlist_switch()` — active playlist changed.
+- `on_playlist_items_selection_change()` — selection changed.
+- `on_playlist_items_added(playlistIndex)`, `on_playlist_items_removed()`.
+- `on_playlists_changed()` — playlist list changed (add/remove/rename).
+- `on_item_focus_change(playlistIndex, from, to)` — keyboard focus changed.
+
+### 3.5. Other Events
+
+- `on_metadb_changed()` — track metadata tags edited.
+- `on_playback_order_changed()` — playback order changed.
+- `on_volume_change(val)` — volume changed.
+- `on_output_device_changed()` — output device changed.
+- `on_replaygain_mode_changed()` — ReplayGain mode changed.
+
+### 3.6. Drag & Drop
+
+- `on_drag_enter()`, `on_drag_over()`, `on_drag_leave()`, `on_drag_drop()`.
+- Modify `action.Effect` to control allowed drop types.
+
+## 4. Critical API Rules
 
 ### 4.1. Removal of `.toArray()`
 
-Collections returned by SMP methods are now directly indexable.
+Collections are directly indexable. `.toArray()` is deprecated and will crash.
+
 - **Deprecated:** `var list = obj.Method().toArray();`
 - **Correct:** `let list = obj.Method();`
 
 ### 4.2. Removal of `.Dispose()`
 
-Manual memory management for standard objects like `TitleFormat` is no longer required or supported.
-- **Deprecated:** `tfo.Dispose();`
-- **Correct:** Simply let the object go out of scope; the engine handles garbage collection.
+Manual memory management for standard objects (`TitleFormat`, etc.) is no longer needed. The engine handles garbage collection.
 
-**Exception:** GDI objects (`gdi.Image`, `gdi.Font`, `GdiBitmap`) and COM objects still need explicit cleanup. Always release in `on_script_unload()`.
+- **Deprecated:** `tfo.Dispose();`
+- **Correct:** Let the object go out of scope.
+
+**Modern SMP:** GDI objects (`gdi.Image`, `gdi.Font`, `GdiBitmap`) also do NOT need `.Dispose()`. GC handles everything.
+
+**js-panel3 compatibility:** If backward compatibility is required, use guarded Dispose for GDI objects only:
+```javascript
+if (obj && typeof obj.Dispose === "function") obj.Dispose();
+```
 
 ### 4.3. Example Correction
 
@@ -89,9 +246,88 @@ let artist = artists[0]; // Access directly
 // No .Dispose() needed
 ```
 
-## 5. Shared Library System & Panel Patterns
+### 4.4. `GdiBitmap.GetGraphics()` / `GdiBitmap.ReleaseGraphics()` Pairing
 
-All 7 SMP panels share code through the `include()` mechanism. The 4 library files in `lib/` form a dependency chain; each panel includes only what it needs.
+When using `gdi.CreateImage(w, h)` and calling `GetGraphics()` to obtain a drawing context, you MUST always call `ReleaseGraphics()` on the bitmap afterwards. Forgetting this causes GDI context leaks.
+
+**Correct pattern:**
+```javascript
+let bmp = gdi.CreateImage(w, h);
+let gr = bmp.GetGraphics();
+try {
+    // ... draw operations using gr ...
+} finally {
+    bmp.ReleaseGraphics(gr);  // MUST be called
+}
+```
+
+**Wrong (leaks GDI context):**
+```javascript
+let bmp = gdi.CreateImage(w, h);
+let gr = bmp.GetGraphics();
+gr.DrawImage(...);
+// ❌ Missing bmp.ReleaseGraphics(gr)
+```
+
+## 5. Development Best Practices
+
+### 5.1. Graphic Computation
+
+- All coordinates and dimensions passed to `GdiGraphics` methods must use `Math.round()` or `Math.floor()` to integers. Floating-point values cause GDI+ rendering misalignment.
+- Always include an opaque alpha channel when generating colors: `0xff000000 | (r << 16) | (g << 8) | b`.
+
+### 5.2. Performance
+
+- `on_paint(gr)` must contain ONLY pure drawing instructions. Logic, image cropping, and font instantiation belong in external callbacks or `on_size()`.
+- For hover effects, use `window.RepaintRect(x, y, w, h)` (partial repaint) instead of `window.Repaint()` (full panel).
+- NEVER create `gdi.Font` or `gdi.Image` inside `on_paint()`.
+
+### 5.3. Async
+
+- All `xxxAsyncV2` methods return `Promise`. Always use `.then().catch()`. Do not use legacy global callbacks.
+
+## 6. Project Structure & File Map
+
+This project contains 7 SMP panel scripts for a foobar2000 theme ("medium-slate-blue"). Each script is a self-contained panel that registers via `window.DefineScript()`.
+
+### 6.1. Active Scripts
+
+| File | Panel Name | Purpose |
+|------|-----------|---------|
+| `info+rating.js` | Info And Rating | Track info (title/artist/album/year), star rating, audio quality badge, source icon. |
+| `album_info.js` | Album Info | Album detail: cover carousel, edition/source/AQ badge, artist, genres, date, language, tab-switchable description/tracklist. |
+| `biography.js` | Biography | Artist biography: cover carousel, genres, born/country, external links, tab-switchable profile/discography. |
+| `playback_buttons.js` | Playback Buttons | Transport controls: play/pause, stop, prev/next, seek, playback order, random. Uses Button class. |
+| `control_buttons.js` | Control Buttons | Utility buttons: recent tracks, favorites, search, queue, replaygain, output device, volume slider+mute, main menu. Uses Button + VolumeControl classes. |
+| `panel_title.js` | Panel Title | Playlist name display with icon, chevron, and action button. |
+| `cover_panel.js` | Cover Panel | Cover art display: rounded corners, cover color extraction for gradient background, async art loading. |
+
+### 6.2. Directory Layout
+
+- `lib/` — Shared libraries: `utils.js`, `data.js`, `interaction.js`, `theme.js`
+- `old/` — Deprecated/archived scripts (gitignored)
+- `simple/` — Simple example scripts (gitignored)
+- `test1.js`, `test2.js` — Test/dev copies (gitignored)
+- `.claudeignore` — Excludes `old/`, `simple/`, `test*.js`
+
+### 6.3. File Header
+
+Every script uses the JSDoc header format:
+
+```javascript
+/**
+ * @file filename.js
+ * @author XYSRe
+ * @created YYYY-MM-DD
+ * @updated YYYY-MM-DD
+ * @version x.y.z
+ * @description Brief description in Chinese/English
+ */
+```
+
+## 7. Shared Library System & Panel Patterns
+
+All 7 SMP panels share code through the `include()` mechanism. The 4 library files form a dependency chain; each panel includes only what it needs.
 
 ```
 lib/utils.js  (独立 — 无 lib 依赖)
@@ -100,9 +336,9 @@ lib/utils.js  (独立 — 无 lib 依赖)
   └── lib/interaction.js — 依赖 _scale(), _measureString()
 ```
 
-### 5.1. Library Reference
+### 7.1. Library Reference
 
-#### 5.1.1. `lib/utils.js` — Core Utilities
+#### 7.1.1. `lib/utils.js` — Core Utilities
 
 **No dependencies.** Included by all 7 panels.
 
@@ -110,17 +346,16 @@ lib/utils.js  (独立 — 无 lib 依赖)
 |--------|-----------|-------------|
 | `_scale(size)` | `(number) → number` | DPI-aware pixel scaling: `Math.round((size * window.DPI) / 72)` |
 | `_rgb(r, g, b)` | `(int, int, int) → number` | Opaque ARGB color: `0xff000000 \| (r<<16) \| (g<<8) \| b` |
-| `_argb(a, r, g, b)` | `(int, int, int, int) → number` | ARGB color with alpha |
 | `_getDimColor(color)` | `(number) → number` | Darkens a color (brightness * 0.2). Pure white (#FFFFFF) → cool gray (#393940) |
 | `_loadImage(path)` | `(string) → GdiBitmap\|null` | Loads image if file exists, else returns null |
-| `_hitTest(x, y, ele)` | `(number, number, {x,y,w,h}) → boolean` | Hit-test: `x >= ele.x && x <= ele.x + ele.w && y >= ele.y && y <= ele.y + ele.h` |
+| `_hitTest(x, y, ele)` | `(number, number, {x,y,w,h}) → boolean` | Hit-test: `x >= ele.x && x <= ele.x + ele.w && y >= ele.y && y <= ele.y + ele.h`. Returns false if ele is null. |
 | `_measure` | `{ img: GdiBitmap, gr: GdiGraphics }` | Lazy singleton for text measurement (initially `{ img: null, gr: null }`) |
-| `_measureString(text, font, maxWidth, flags?)` | `(string, GdiFont, number, number?) → {Width, Height}` | Measures rendered text size. Height is `ceil() - _scale(1)` to correct GDI/GDI+ discrepancy |
+| `_measureString(text, font, maxWidth, flags?)` | `(string, GdiFont, number, number?) → {Width, Height}` | Measures rendered text size. Height is `ceil() - 1` to correct GDI/GDI+ discrepancy |
 | `_measureDispose()` | `() → void` | Releases the `_measure` singleton. Call in `on_script_unload()` |
 | `_drawImageFit(gr, img, x, y, w, h)` | `(GdiGraphics, GdiBitmap, ...) → void` | Aspect-fit: scales image to fully fit target, centered with letterboxing |
 | `_drawImageCover(gr, img, x, y, w, h)` | `(GdiGraphics, GdiBitmap, ...) → void` | Aspect-cover: scales image to fill target, crops overflow |
 
-#### 5.1.2. `lib/data.js` — Data Constants & Systems
+#### 7.1.2. `lib/data.js` — Data Constants & Systems
 
 **Requires `lib/utils.js`.** Included by panels that render text or use AQ/source/cache systems.
 
@@ -150,13 +385,15 @@ Composite styles:
 
 - `AQ_COLORS` — 10 named colors (silver, teal, green, amber, gold, titanium, purple, fallback, dolbyLossy, dolbyHd)
 - `AQBadgeStyle` class — properties: `label` (string), `color` (number), `bgColor` (dimmed via `_getDimColor()`), `desc` (string)
-- `AQ_BADGES` — 13 predefined badges: CD, CD_PLUS, ST, HR, HR_PLUS, UHR, DSD, LOSSY, UNKNOWN, DD, DD_PLUS, TRUEHD, ATMOS
+- `AQ_BADGES` — 11 predefined badges: CD, CD_PLUS, ST, HR, HR_PLUS, UHR, DSD, LOSSY, DD, DD_PLUS, TRUEHD
 - `_classifyAudioQuality(codec, sampleRate, bitDepth)` → `AQBadgeStyle` — classifies audio: DSD > Dolby (TrueHD/E-AC3/AC3) > Hi-Res PCM (by sample rate) > CD > Lossy. `codec` should be uppercased.
+- `_resolveBadge(codec, sampleRate, bitDepth)` → `AQBadgeStyle` — convenience wrapper: applies `toUpperCase()` and `parseInt` conversions before calling `_classifyAudioQuality`.
 
 **Source Icon System:**
 
 - `SOURCE_ICON_MAP` — Object mapping 19 uppercase source names to icon filenames (e.g. `"OFFICIAL DIGITAL"` → `"shopping-bag.png"`)
 - `DEFAULT_SOURCE_ICON_FILENAME` = `"cloud.png"` — fallback when source is unknown
+- `_resolveSourceIconFilename(sourceText)` → `string` — resolves uppercase source text to icon filename, falls back to `DEFAULT_SOURCE_ICON_FILENAME`
 - `SourceIconCache` class — caches loaded `gdi.Image` objects by filename
   - `constructor(iconsDir)` — pass the icon directory path (typically `IMGS_LINKS_DIR`)
   - `get(filename)` → `GdiBitmap|null` — returns cached or newly loaded image
@@ -165,12 +402,12 @@ Composite styles:
 **LRU Cache:**
 
 - `LRUCache` class — Map-based LRU cache with max-size limit
-  - `constructor(maxSize)`, `has(key)`, `get(key)`, `set(key, value)`, `clear()`, `get size()`
+  - `constructor(maxSize)`, `get(key)`, `set(key, value)`, `clear()`, `get size()`
 
 **Misc:**
 - `MF_STRING` = `0x00000000` — popup menu item flag
 
-#### 5.1.3. `lib/interaction.js` — UI Interaction Components
+#### 7.1.3. `lib/interaction.js` — UI Interaction Components
 
 **Requires `lib/utils.js`.** Included by 6 of 7 panels (all except `cover_panel.js`).
 
@@ -206,10 +443,11 @@ class Button {
 | `_carouselNext(carouselState, coverH, cycleMs?, panelW?)` | `(...) → void` | Advances carousel to next image and repaints |
 | `_drawTabIndicator(gr, activeBtn, headerH, panelW, margin, accentColor, dimColor)` | `(GdiGraphics, ...) → void` | Draws a 2px accent line under the active tab button plus a 1px divider |
 | `_drawEmptyState(gr, text, font, color, panelW, panelH)` | `(GdiGraphics, ...) → void` | Draws centered placeholder/error text using `BTN_STYLE_FLAGS` |
+| `_drawPageIndicator(gr, currentIndex, totalCount, x, y, w, h, font)` | `(GdiGraphics, number, number, number, number, number, number, GdiFont) → void` | Draws a semi-transparent rounded page counter (e.g. "2 / 5") on cover carousels |
 | `_createTextBuffer(text, font, color, viewW, textStyleFlags)` | `(string, GdiFont, number, number, number) → {img, fullH}` | Creates an offscreen GDI bitmap with rendered text for scrollable content. Max height capped at `_scale(2000)` |
 | `_disposeImageDict(dict)` | `(Object<string, GdiBitmap>) → void` | Iterates all values in a dict and calls `.Dispose()` on each GDI image |
 
-#### 5.1.4. `lib/theme.js` — Theme Configuration
+#### 7.1.4. `lib/theme.js` — Theme Configuration
 
 **Requires `lib/utils.js`.** Included by 6 of 7 panels (all except `cover_panel.js`). Centralizes all CUI color/font/path lookups.
 
@@ -225,7 +463,6 @@ const THEME = {
         ACTIVE_ITEM:    window.GetColourCUI(6),   // Active item / accent
         ITEM_DETAIL_BG:  window.GetColourCUI(3, "{4E20CEED-42F6-4743-8EB3-610454457E19}"),  // Item Details panel background
         SCROLLBAR:      _rgb(149, 149, 149),      // Hardcoded scrollbar color
-        DIM_TEXT:       _rgb(114, 117, 126),      // Hardcoded dim text color
     },
     FONT: {
         TITLE:       gdi.Font(..., _scale(18), 1),  // Large heading (album/artist)
@@ -251,8 +488,8 @@ const THEME = {
         AQ_BADGE: {                      // Audio quality badge layout
             PADDING_X: _scale(4),
             PADDING_Y: _scale(4),
-            radius:   _scale(4),
-            borderW:  _scale(1),
+            RADIUS:   _scale(4),
+            BORDER_W:  _scale(1),
         },
     },
 };
@@ -285,9 +522,9 @@ const PANEL_CFG = { dataPath: "D:\\...", coverScale: 3/4, isCoverFit: true };
 const PANEL_CFG = { useCoverColor: true, useGradient: true, gradientAngle: 90, cornerRadius: _scale(20) };
 ```
 
-### 5.2. UI State Machine Pattern (Critical)
+### 7.2. UI State Machine Pattern (Critical)
 
-Almost every panel uses a **single active element state machine** for hover interactions. This is the project's most important interaction pattern.
+Almost every panel uses a **single active element state machine** for hover interactions.
 
 The supporting utilities (`_hitTest`, `_setCursor`) come from the shared libraries, but the state machine logic is implemented per-panel:
 
@@ -298,7 +535,7 @@ function on_mouse_move(x, y) {
     let target = null;
 
     // 1. Hit-test all interactive elements in priority order
-    if (_hitTest(x, y, element1)) target = element1;       // _hitTest from lib/utils.js
+    if (_hitTest(x, y, element1)) target = element1;
     else if (_hitTest(x, y, element2)) target = element2;
 
     // 2. No change? Exit early
@@ -314,8 +551,8 @@ function on_mouse_move(x, y) {
     if (target) {
         target.isHover = true;
         window.RepaintRect(target.x, target.y, target.w, target.h);
-        tooltip(target.tooltip || "");         // tooltip from _initTooltip (lib/interaction.js)
-        _setCursor(CURSOR_HAND);           // _setCursor, CURSOR_HAND from lib/interaction.js
+        tooltip(target.tooltip || "");
+        _setCursor(CURSOR_HAND);
     } else {
         tooltip("");
         _setCursor(CURSOR_ARROW);
@@ -340,13 +577,13 @@ Key principles:
 - Interactive elements must have `x, y, w, h, isHover` properties at minimum.
 - Star rating panels (info+rating.js) need special handling: `activeElement instanceof StarElement` checks for transitioning between stars within the rating area without resetting `hoverRating`.
 
-### 5.3. Offscreen Text Buffer for Scrolling
+### 7.3. Offscreen Text Buffer for Scrolling
 
-For scrollable text content, render text once to an offscreen `GdiBitmap`, then blit the visible portion in `on_paint()`. The shared `_createTextBuffer()` in `lib/interaction.js` handles the buffer creation, while scroll state and blit logic remain per-panel:
+For scrollable text content, render text once to an offscreen `GdiBitmap`, then blit the visible portion in `on_paint()`. The shared `_createTextBuffer()` handles buffer creation:
 
 ```javascript
 // Creating the buffer (using shared function):
-const buffer = _createTextBuffer(text, FONTS.Body, COL.ITEM_TEXT, viewW, MULTI_LINE_FLAGS);
+const buffer = _createTextBuffer(text, THEME.FONT.TEXT, COL.ITEM_TEXT, viewW, MULTI_LINE_FLAGS);
 textImg = buffer.img;
 let fullH = buffer.fullH;
 maxScrollY = Math.max(0, fullH - viewH);
@@ -358,9 +595,9 @@ if (textImg) {
 }
 ```
 
-### 5.4. Scrollbar Rendering
+### 7.4. Scrollbar Rendering
 
-Standard scrollbar formula used in `album_info.js` and `biography.js`. The shared `_drawScrollbar()` in `lib/interaction.js` encapsulates this:
+Standard scrollbar via shared `_drawScrollbar()`:
 
 ```javascript
 _drawScrollbar(gr, viewH, contentH, scrollY, maxScrollY, panelW, headerH, color);
@@ -368,17 +605,17 @@ _drawScrollbar(gr, viewH, contentH, scrollY, maxScrollY, panelW, headerH, color)
 
 Internally uses: `barH = Math.max(_scale(20), (viewH / contentH) * viewH)`, `barY = headerH + (scrollY / maxScrollY) * (viewH - barH)`, then draws via `gr.FillRoundRect()`.
 
-### 5.5. Resource Cleanup
+### 7.5. Resource Cleanup
 
-Every script MUST implement `on_script_unload()` using the appropriate shared cleanup functions:
+Every script MUST implement `on_script_unload()`:
 
 ```javascript
 function on_script_unload() {
-    _measureDispose();          // from lib/utils.js — release measurement singleton
-    _disposeImageDict(images);   // from lib/interaction.js — release all gdi.Image objects in a dict
+    _measureDispose();          // lib/utils.js — release measurement singleton
+    _disposeImageDict(images);   // lib/interaction.js — release all gdi.Image objects in a dict
     sourceIconCache.clear();   // SourceIconCache.clear() from lib/data.js
     // Clear timers
-    if (imgTimer) { window.ClearInterval(imgTimer); imgTimer = null; }
+    if (carousel.timer) { window.ClearInterval(carousel.timer); carousel.timer = null; }
     // Dispose offscreen bitmaps
     if (textImg && typeof textImg.Dispose === "function") textImg.Dispose();
 }
@@ -389,65 +626,56 @@ function on_script_unload() {
 | Panel | `_measureDispose` | `_disposeImageDict` | `SourceIconCache.clear` | Timer clear | textImg dispose |
 |-------|--------------------|-----------------------|-------------------------|-------------|-----------------|
 | info+rating.js | Yes | Yes (STAR_ICONS) | Yes | — | — |
-| album_info.js | — | — | — | Yes | Yes |
-| biography.js | — | — | — | Yes | Yes |
+| album_info.js | Yes | Yes (LINK_ICONS) | Yes | Yes | Yes |
+| biography.js | Yes | Yes (LINK_ICONS) | — | Yes | Yes |
 | panel_title.js | Yes | Yes (images) | — | — | — |
 | playback_buttons.js | — | Yes (images) | — | — | — |
 | control_buttons.js | — | Yes (images) | — | — | — |
-| cover_panel.js | — | — | — | — | Yes (img, imgRounded) |
+| cover_panel.js | Yes | — | — | — | Yes (img, imgRounded) |
 
-### 5.6. Data Initialization Pattern
+### 7.6. Data Initialization Pattern
 
 Scripts check both selection and now-playing on load:
+
 ```javascript
 let initSelection = fb.GetSelection();
 if (initSelection) {
-    reloadAlbumData(initSelection);
+    reloadData(initSelection);
 } else if (fb.IsPlaying) {
-    reloadAlbumData(fb.GetNowPlaying());
+    reloadData(fb.GetNowPlaying());
 }
 ```
 
-### 5.7. ActiveX for External Links
+### 7.7. ActiveX for External Links
 
-`biography.js` is the only panel that uses ActiveX (to open URLs):
+`biography.js` uses ActiveX to open URLs (lazily instantiated only on click):
+
 ```javascript
 const WshShell = new ActiveXObject("WScript.Shell");
 WshShell.Run(btn.url);
 ```
-This is lazily instantiated only on click to save resources.
 
-### 5.8. Async Album Art
+### 7.8. Popup Menu Pattern
 
-`cover_panel.js` uses `utils.GetAlbumArtAsyncV2()` with Promises:
 ```javascript
-utils.GetAlbumArtAsyncV2(window.ID, metadb, art_id)
-    .then(result => { /* result.image, result.color_scheme */ })
-    .catch(err => { /* handle */ });
+const menu = window.CreatePopupMenu();
+menu.AppendMenuItem(MF_STRING, id, "Menu Item");
+const idx = menu.TrackPopupMenu(x, y);
+if (idx > 0) { /* handle selection */ }
 ```
 
-### 5.9. Popup Menu Pattern
+Use `MF_STRING` (from `lib/data.js`) as the default menu item flag. No `.Dispose()` on menus.
 
-Menus are created with `window.CreatePopupMenu()`, populated, shown via `TrackPopupMenu(x, y)`, then the return index is used. No `.Dispose()` on menus. Use `MF_STRING` (from `lib/data.js`) as the default menu item flag.
-
-### 5.10. Playcount Component Dependency
+### 7.9. Playcount Component Dependency
 
 `info+rating.js` checks for optional component:
+
 ```javascript
 const HAS_PLAYCOUNT = utils.CheckComponent("foo_playcount", true);
 ```
 Rating stars are only interactive when this component is present.
 
-## 6. Global Objects Reference
-
-- `fb`: foobar2000 core — playback control, console, handles, metadata, TitleFormat, menu commands, output devices, volume, replaygain mode
-- `plman`: Playlist management — create/find playlists, insert items, playback order, active playlist
-- `utils`: Helpers — file IO (`IsFile`, `ReadTextFile`), system colors, `GetAlbumArtV2`, `GetAlbumArtAsyncV2`, `CheckComponent`
-- `window`: Panel window — properties (`Width`, `Height`, `DPI`, `ID`), repaint (`Repaint()`, `RepaintRect()`), sizing, cursor (`SetCursor()`), `GetColourCUI()`, `GetFontCUI()`, `CreateTooltip()`, `CreatePopupMenu()`, `DefineScript()`, `SetInterval()`, `ClearInterval()`
-- `gdi`: Graphics Device Interface — `Font()`, `Image()`, `CreateImage()`, `GetGraphics()`, `ReleaseGraphics()`
-- `gr`: Graphics context (valid ONLY in `on_paint`) — `FillSolidRect()`, `FillGradRect()`, `FillRoundRect()`, `DrawImage()`, `GdiDrawText()`, `DrawLine()`, `SetSmoothingMode()`, `SetInterpolationMode()`, `SetTextRenderingHint()`
-
-## 7. Interaction Guidelines
+## 8. Interaction Guidelines
 
 - When asked for code, provide the full, ready-to-run snippet or the specific function requested.
 - Prioritize code efficiency (minimizing `window.Repaint()` calls, using `RepaintRect` when possible).

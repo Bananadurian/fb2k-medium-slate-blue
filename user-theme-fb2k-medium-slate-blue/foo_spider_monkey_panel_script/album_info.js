@@ -2,7 +2,7 @@
  * @file album_info.js
  * @author XYSRe
  * @created 2025-12-28
- * @updated 2026-04-27
+ * @updated 2026-04-29
  * @version 2.0.0
  * @description 专辑信息面板: 封面轮播、版本/来源/AQ标识、艺人、风格、日期、语言、简介/曲目切换。
  */
@@ -96,14 +96,12 @@ let isShowingTracklist = false;          // False=介绍, True=曲目
 let scrollY = 0;                    
 let maxScrollY = 0;             
 let textImg = null;                 // 离屏渲染缓冲图 (GdiBitmap)
-let errorText = "请选择或播放歌曲..."; 
-let isCoverFit = PANEL_CFG.isCoverFit;         
+let errorText = "请选择或播放歌曲...";
 let activeElement = null;         // [状态机] 当前激活的 UI 元素
 
 // 布局计算变量 (动态更新)
 let titleH = LINE_H;               
-let titleW = LINE_H;               
-let genresH = LINE_H;              
+let genresH = LINE_H;
 let coverH = 0;
 let editionW = 0;                  // GDI/GDI+ 计算容差缓存
 
@@ -162,23 +160,29 @@ let tooltip = _initTooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
 function reloadAlbumData(metadb) {
     if (!metadb) return;
 
+    // 音质标识独立处理，不缓存进 albumData, 有些专辑是混合音质
+    const newAQBadge = resolveBadgeForTrack(metadb);
+    if (currentAQBadge !== newAQBadge) {
+        currentAQBadge = newAQBadge;
+    }
+
     const albumKey = albumKeyTf.EvalWithMetadb(metadb);
     const safeAlbumKey = albumKey.replace(/[\\\/:*?"<>|]/g, "_");
-    
-    // 缓存检查 (如果 Key 没变，无需重新解析数据)
-    if (currentAlbumKey === safeAlbumKey) return; 
+
+    // 缓存检查 (如果 Key 没变，仅更新布局后返回)
+    if (currentAlbumKey === safeAlbumKey) {
+        if (window.Width > 0) {
+            updateLayoutMetrics();
+            window.Repaint();
+        }
+        return;
+    }
     currentAlbumKey = safeAlbumKey;
     
     scrollY = 0;
     maxScrollY = 0;
     
     albumData = getAlbumCacheEntry(safeAlbumKey, metadb);
-    
-    // 音质标识独立处理，不缓存进 albumData, 有些专辑是混合音质
-    const newAQBadge = resolveBadgeForTrack(metadb);
-    if (currentAQBadge !== newAQBadge) {
-        currentAQBadge = newAQBadge;
-    }
 
     errorText = albumData ? "" : "暂无专辑资料";
 
@@ -214,13 +218,14 @@ function getAlbumCacheEntry(safeAlbumKey, metadb) {
     return newData;
 }
 
-// 音质分级判断逻辑 (委托给共享库 _classifyAudioQuality)
+// 音质分级判断逻辑 (委托给共享库 _resolveBadge)
 function resolveBadgeForTrack(metadb) {
     if (!metadb) return null;
-    const codec = codecTf.EvalWithMetadb(metadb).toUpperCase();
-    const sampleRate = parseInt(sampleRateTf.EvalWithMetadb(metadb));
-    let bitDepth = parseInt(bitDepthTf.EvalWithMetadb(metadb));
-    return _classifyAudioQuality(codec, sampleRate, bitDepth);
+    return _resolveBadge(
+        codecTf.EvalWithMetadb(metadb),
+        sampleRateTf.EvalWithMetadb(metadb),
+        bitDepthTf.EvalWithMetadb(metadb)
+    );
 }
 
 // 更新布局指标 (Height, Width, Positions)
@@ -240,10 +245,8 @@ function updateLayoutMetrics() {
         titleH = measureFull.Height;
         const limitHeight = Math.ceil(measureOne.Height * 2);
         titleH = Math.min(limitHeight, titleH);
-        titleW = measureFull.Width;
     } else {
         titleH = LINE_H * 2;
-        titleW = LINE_H * 2;
     }
 
     // 2. 计算标识 (Edition/Badge) 宽度
@@ -255,6 +258,21 @@ function updateLayoutMetrics() {
         const badgeTextSize = _measureString(currentAQBadge.label, THEME.FONT.BADGE, lineW, ONE_LINE_FLAGS);
         badgeElement.w = badgeTextSize.Width + THEME.CFG.AQ_BADGE.PADDING_X;
         badgeElement.h = badgeTextSize.Height + THEME.CFG.AQ_BADGE.PADDING_Y;
+    }
+
+    // 计算来源图标和AQ徽章坐标 (用于命中测试)
+    if (albumData.edition || currentAQBadge) {
+        let lineY = lineStartY + titleH + LINE_SPACE;
+        let iconX = MARGIN * 2.5;
+        if (albumData.edition) {
+            iconX += editionW + _scale(2);
+        }
+        currentSourceIcon.x = iconX;
+        currentSourceIcon.y = lineY + Math.ceil(((LINE_H - currentSourceIcon.h) / 2));
+        if (currentAQBadge) {
+            badgeElement.x = currentSourceIcon.img ? iconX + THEME.CFG.SOURCE_ICON_SIZE + _scale(2) : iconX;
+            badgeElement.y = lineY + Math.ceil(((LINE_H - badgeElement.h) / 2));
+        }
     }
 
     // 3. 计算风格高度
@@ -286,6 +304,8 @@ function updateLayoutMetrics() {
     // 设置 Tab 按钮位置
     elements.descBtn.y = headerHeight - elements.descBtn.h * 2;
     elements.tracklistBtn.y = elements.descBtn.y;
+
+    manageCycleTimer();
 }
 
 // 计算 Tab 按钮尺寸
@@ -322,17 +342,8 @@ function createTextBuffer() {
 }
 
 
-// 语言代码转换为普通标识
-// function getLanguageName(code) {
-//     console.log(code)
-//     if (!code) return "";
-//     let firstCode = Array.isArray(code) ? code[0] : code.split(/[;,]/)[0];
-//     const cleanCode = firstCode.trim().toLowerCase();
-//     return LANGUAGE_MAP[cleanCode] || code;
-// }
 // 语言代码转换为普通标识（兼容多值）
 function getLanguageName(code) {
-    // console.log(code);
     if (!code) return "";
 
     // 统一处理为数组：数组直接用，字符串按 ; 或 , 分割
@@ -374,19 +385,14 @@ function on_paint(gr) {
     // --- 1. 绘制封面 (仅当 PANEL_CFG.showCover 为 true 时) ---
     if (PANEL_CFG.showCover && carousel.images.length > 0 && carousel.images[carousel.index]) {
         let currentImg = carousel.images[carousel.index];
-        if (isCoverFit) {
+        if (PANEL_CFG.isCoverFit) {
             _drawImageFit(gr, currentImg, 0, 0, window.Width, coverH);
         } else {
             _drawImageCover(gr, currentImg, 0, 0, window.Width, coverH);
         }
-        
-        // 绘制页码 (半透明圆角矩形)
+
         if (carousel.images.length > 1) {
-            let pageText = (carousel.index + 1) + " / " + carousel.images.length;
-            gr.SetSmoothingMode(4); // 开启抗锯齿
-            gr.FillRoundRect(MARGIN, coverH - MARGIN - LINE_H, _scale(50), LINE_H, _scale(6), _scale(6), 0x99000000);
-            gr.SetSmoothingMode(0); 
-            gr.GdiDrawText(pageText, THEME.FONT.TEXT, 0xFFFFFFFF, MARGIN, coverH - MARGIN - LINE_H, _scale(50), LINE_H, DT_CENTER | DT_VCENTER);
+            _drawPageIndicator(gr, carousel.index, carousel.images.length, MARGIN, coverH - MARGIN - LINE_H, _scale(50), LINE_H, THEME.FONT.TEXT);
         }
     }
 
@@ -398,44 +404,28 @@ function on_paint(gr) {
     gr.GdiDrawText(albumData.title, THEME.FONT.TITLE, COL.SELECTED_TEXT, MARGIN, currentY, lineW, titleH, MULTI_LINE_FLAGS);
     
     // 版本 & 来源 & 音质标识行
-    // 判断是否有内容需要绘制，避免空行
     if (albumData.edition || currentSourceIcon.img || currentAQBadge) {
-        currentY += titleH + LINE_SPACE;        
-        
-        // 版本图标
-        if (LINK_ICONS.Edition) {
-            gr.DrawImage(LINK_ICONS.Edition, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Edition.Width, LINK_ICONS.Edition.Height);
-        }
+        currentY += titleH + LINE_SPACE;
 
-        let currentLineX = MARGIN * 2.5;
-        
-        // 版本文字
+        // 版本图标 + 版本文字
         if (albumData.edition) {
-            gr.GdiDrawText(albumData.edition, THEME.FONT.TEXT, COL.SELECTED_TEXT, currentLineX, currentY, editionW, LINE_H, ONE_LINE_FLAGS);
-            currentLineX += editionW + _scale(2);
+            if (LINK_ICONS.Edition) {
+                gr.DrawImage(LINK_ICONS.Edition, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Edition.Width, LINK_ICONS.Edition.Height);
+            }
+            gr.GdiDrawText(albumData.edition, THEME.FONT.TEXT, COL.SELECTED_TEXT, MARGIN * 2.5, currentY, editionW, LINE_H, ONE_LINE_FLAGS);
         }
 
         // 来源图标
         if (currentSourceIcon.img) {
-            currentSourceIcon.x = currentLineX;
-            currentSourceIcon.y = currentY + Math.ceil(((LINE_H - currentSourceIcon.h) / 2));
-            gr.SetInterpolationMode(7); // HighQualityBicubic
+            gr.SetInterpolationMode(7);
             gr.DrawImage(currentSourceIcon.img, currentSourceIcon.x, currentSourceIcon.y, currentSourceIcon.w, currentSourceIcon.h, 0, 0, currentSourceIcon.img.Width, currentSourceIcon.img.Height);
-            currentLineX += THEME.CFG.SOURCE_ICON_SIZE + _scale(2);
         }
 
         // AQ 音质徽章
         if(currentAQBadge){
-            // 更新坐标
-            badgeElement.x = currentLineX;
-            badgeElement.y = currentY + Math.ceil(((LINE_H - badgeElement.h) / 2));
-            gr.SetSmoothingMode(4); 
-            
-            // 背景 & 边框
+            gr.SetSmoothingMode(4);
             gr.FillRoundRect(badgeElement.x, badgeElement.y, badgeElement.w, badgeElement.h, THEME.CFG.AQ_BADGE.RADIUS, THEME.CFG.AQ_BADGE.RADIUS, currentAQBadge.bgColor);
-            
-            gr.SetSmoothingMode(0); 
-            // 文字
+            gr.SetSmoothingMode(0);
             gr.GdiDrawText(currentAQBadge.label, THEME.FONT.BADGE, currentAQBadge.color, badgeElement.x, badgeElement.y, badgeElement.w, badgeElement.h, BADGE_TEXT_ALIGN);
         }
 
@@ -519,8 +509,7 @@ function manageCycleTimer() {
 
 // 来源图标缓存更新 (使用 SourceIconCache)
 function updateSourceIcon(sourceText) {
-    let filename = SOURCE_ICON_MAP[sourceText];
-    if (!filename) filename = DEFAULT_SOURCE_ICON_FILENAME;
+    const filename = _resolveSourceIconFilename(sourceText);
 
     let img = sourceIconCache.get(filename);
     if (!img && filename !== DEFAULT_SOURCE_ICON_FILENAME) {
@@ -621,12 +610,23 @@ function on_playback_new_track(metadb) {
     reloadAlbumData(metadb);
 }
 
+function on_playback_stop(reason) {
+    if (reason !== 2) {
+        reloadAlbumData(fb.GetNowPlaying());
+    }
+}
+
 function on_playlist_items_selection_change() {
-    let selection = fb.GetSelection(); 
+    let selection = fb.GetSelection();
     if (selection) {
         reloadAlbumData(selection);
+    } else if (fb.IsPlaying) {
+        reloadAlbumData(fb.GetNowPlaying());
     } else {
-        if (fb.IsPlaying) reloadAlbumData(fb.GetNowPlaying());
+        currentAlbumKey = null;
+        albumData = null;
+        errorText = "请选择或播放歌曲...";
+        window.Repaint();
     }
 }
 

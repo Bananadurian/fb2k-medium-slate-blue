@@ -2,8 +2,8 @@
  * @file playback_buttons.js
  * @author XYSRe
  * @created 2025-12-14
- * @updated 2026-04-27
- * @version 1.6.0
+ * @updated 2026-04-29
+ * @version 2.0.0
  * @description 播放控制按钮 — 播放/暂停、停止、上下曲、快进快退、播放模式、随机
  */
 
@@ -16,7 +16,7 @@ include("lib/theme.js");
 
 window.DefineScript("Playback Buttons", {
     author: "XYSRe",
-    version: "1.6.0",
+    version: "2.0.0",
     options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 
@@ -75,7 +75,7 @@ const MARGIN = _scale(10);
 
 
 // ============================================================================
-// 4. 业务逻辑
+// 3. 业务逻辑
 // ============================================================================
 
 const buttons = {};
@@ -171,7 +171,7 @@ function showOrderMenu(x, y) {
 }
 
 // ============================================================================
-// 5. 主回调函数
+// 4. 主回调函数
 // ============================================================================
 
 initUi();
@@ -297,15 +297,17 @@ function on_mouse_rbtn_up(x, y) {
 
 function on_mouse_rbtn_down(x, y) {
     // 屏蔽默认右键菜单
-    if (buttons.stop.containsPoint(x, y) || buttons.order.containsPoint(x, y)) {
-        return true; 
+    for (let key in buttons) {
+        if (buttons[key].containsPoint(x, y)) return true;
     }
     return false;
 }
 
 function on_playback_starting() { updatePlayPauseButton(); }
 function on_playback_new_track() { updatePlayPauseButton(); }
-function on_playback_stop() { updatePlayPauseButton(); updateStopState(); }
+function on_playback_stop(reason) {
+    if (reason !== 2) { updatePlayPauseButton(); updateStopState(); }
+}
 function on_playback_pause() { updatePlayPauseButton(); }
 function on_playback_order_changed() { updateOrderState(); }
 

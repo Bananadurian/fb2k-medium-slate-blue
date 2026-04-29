@@ -2,8 +2,8 @@
  * @file control_buttons.js
  * @author XYSRe
  * @created 2025-12-12
- * @updated 2026-04-27
- * @version 1.5.0
+ * @updated 2026-04-29
+ * @version 2.0.0
  * @description 控制按钮 — 输出设备切换、音量控制、搜索、队列、最近播放、最受欢迎、主菜单
  */
 
@@ -16,7 +16,7 @@ include("lib/theme.js");
 
 window.DefineScript("Control Buttons", {
     author: "XYSRe",
-    version: "1.5.0",
+    version: "2.0.0",
     options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 
@@ -97,7 +97,7 @@ class VolumeControl {
 
     containsPoint(x, y) {
         const m = this.drag ? 200 : 0; // 拖拽时扩大热区范围，避免鼠标移出滑块
-        return x > this.x - m && x < this.x + this.w + m && y > this.y - m && y < this.y + this.h + m * 2;
+        return x >= this.x - m && x <= this.x + this.w + m && y >= this.y - m && y <= this.y + this.h + m * 2;
     }
 
     on_mouse_move(x, y) {
@@ -144,7 +144,7 @@ class VolumeControl {
     }
 
     on_mouse_wheel(step) {
-        if (this.containsPoint(this.x, this.y) || this.hover) {
+        if (this.hover) {
             if (step > 0) fb.VolumeUp();
             else fb.VolumeDown();
             return true;
@@ -289,7 +289,7 @@ function updateDeviceState() {
 
     if (buttons.device) {
         buttons.device.updateState(img, imgHover, tip, () => {
-            try { fb.RunMainMenuCommand(cmd); } catch(e) {}
+            try { fb.RunMainMenuCommand(cmd); } catch(e) { console.log("Device switch error: " + e); }
         });
     }
 }
@@ -455,7 +455,10 @@ function on_mouse_leave() {
         currentHoverBtn.deactivate();
         currentHoverBtn = null;
     }
-    volumeBar.on_mouse_move(-1, -1);
+    volumeBar.hover = false;
+    volumeBar.drag = false;
+    volumeBar.color = COL.SELECTED_TEXT;
+    volumeBar.repaint();
     tooltip("");
     _setCursor(CURSOR_ARROW);
 }

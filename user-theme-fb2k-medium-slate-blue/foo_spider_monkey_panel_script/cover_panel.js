@@ -2,8 +2,8 @@
  * @file cover_panel.js
  * @author XYSRe
  * @created 2025-12-16
- * @updated 2026-04-27
- * @version 3.3.0
+ * @updated 2026-04-29
+ * @version 2.0.0
  * @description 封面显示面板: 圆角渲染、颜色提取渐变背景、Async 封面加载。
  */
 
@@ -29,7 +29,7 @@ const PANEL_CFG = {
 };
 
 // ==========================================
-// ## 2. 全局状态 (GLOBAL STATE)
+// 2. 全局状态 (GLOBAL STATE)
 // ==========================================
 
 // 初始化 CUI 全局背景色 (3 = ColourType.background)
@@ -39,11 +39,11 @@ let img = null;           // 缓存原始封面图像
 let imgRounded = null;   // 缓存处理好带有透明圆角的最终图像
 let bgColor1 = themeBgColor; // 背景色 1 
 let bgColor2 = themeBgColor; // 背景色 2 
-let font = null;          
+const font = THEME.FONT.TITLE;
 let panelW = 0, panelH = 0;         
 
 // ==========================================
-// ## 3. 通用工具函数 (UTILITY FUNCTIONS)
+// 3. 通用工具函数 (UTILITY FUNCTIONS)
 // ==========================================
 
 // _rgb 来自 lib/utils.js
@@ -53,33 +53,37 @@ let panelW = 0, panelH = 0;
  */
 function createRoundedImage(img, targetW, targetH, radius) {
     if (!img || targetW <= 0 || targetH <= 0) return null;
-    
+
     let bmp = gdi.CreateImage(targetW, targetH);
     let gr = bmp.GetGraphics();
-    
-    let srcW = img.Width;
-    let srcH = img.Height;
-    
-    let scale = Math.max(targetW / srcW, targetH / srcH);
-    let drawW = Math.round(srcW * scale);
-    let drawH = Math.round(srcH * scale);
-    let drawX = Math.round((targetW - drawW) / 2);
-    let drawY = Math.round((targetH - drawH) / 2);
-    
-    gr.SetInterpolationMode(7); 
-    gr.DrawImage(img, drawX, drawY, drawW, drawH, 0, 0, srcW, srcH);
-    bmp.ReleaseGraphics(gr);
-    
+    try {
+        let srcW = img.Width;
+        let srcH = img.Height;
+
+        let scale = Math.max(targetW / srcW, targetH / srcH);
+        let drawW = Math.round(srcW * scale);
+        let drawH = Math.round(srcH * scale);
+        let drawX = Math.round((targetW - drawW) / 2);
+        let drawY = Math.round((targetH - drawH) / 2);
+
+        gr.SetInterpolationMode(7);
+        gr.DrawImage(img, drawX, drawY, drawW, drawH, 0, 0, srcW, srcH);
+    } finally {
+        bmp.ReleaseGraphics(gr);
+    }
+
     let mask = gdi.CreateImage(targetW, targetH);
     let grMask = mask.GetGraphics();
-    grMask.SetSmoothingMode(2); 
-    
-    // 白色区域透明(裁切)，黑色区域保留(不透明)
-    grMask.FillSolidRect(0, 0, targetW, targetH, _rgb(255, 255, 255));
-    grMask.FillRoundRect(0, 0, targetW, targetH, radius, radius, _rgb(0, 0, 0));
-    mask.ReleaseGraphics(grMask);
-    
+    try {
+        grMask.SetSmoothingMode(2);
+        grMask.FillSolidRect(0, 0, targetW, targetH, _rgb(255, 255, 255));
+        grMask.FillRoundRect(0, 0, targetW, targetH, radius, radius, _rgb(0, 0, 0));
+    } finally {
+        mask.ReleaseGraphics(grMask);
+    }
+
     bmp.ApplyMask(mask);
+    if (mask && typeof mask.Dispose === "function") mask.Dispose();
     return bmp;
 }
 
@@ -92,7 +96,7 @@ function extractCoverColors(img, useGradient, fallbackColor) {
     if (!img) return result;
     
     try {
-        let colorsJson = img.GetColourSchemeJSON(5);
+        let colorsJson = img.GetColourSchemeJSON(2);
         let colors = JSON.parse(colorsJson);
         
         if (colors && colors.length > 0) {
@@ -138,13 +142,14 @@ function getAlbumArtData(metadb, artId, useCoverColor, useGradient, fallbackColo
                 });
             })
             .catch(err => {
+                console.log("Album art load error: " + err);
                 resolve({ image: null, colors: { c1: fallbackColor, c2: fallbackColor } });
             });
     });
 }
 
 // ==========================================
-// ## 4. 表现层与面板业务逻辑 (VIEW LAYER)
+// 4. 表现层与面板业务逻辑 (VIEW LAYER)
 // ==========================================
 
 /**
@@ -171,30 +176,29 @@ function recalculateCoverGeometry() {
  * [业务总控] 加载指定音轨的数据并刷新面板
  */
 function updatePanelData(metadb) {
-    // 传入控制开关和 CUI 全局背景色
     getAlbumArtData(metadb, 0, PANEL_CFG.useCoverColor, PANEL_CFG.useGradient, themeBgColor)
         .then(data => {
+            if (img && typeof img.Dispose === "function") img.Dispose();
+            if (imgRounded && typeof imgRounded.Dispose === "function") imgRounded.Dispose();
+            imgRounded = null;
             img = data.image;
             bgColor1 = data.colors.c1;
             bgColor2 = data.colors.c2;
-            
+
             recalculateCoverGeometry();
             window.Repaint();
         });
 }
 
 // ==========================================
-// ## 5. 系统回调事件 (SYSTEM CALLBACKS)
+// 5. 系统回调事件 (SYSTEM CALLBACKS)
 // ==========================================
 
 function on_size() {
+    if (window.Width <= 0 || window.Height <= 0) return;
     panelW = window.Width;
     panelH = window.Height;
-    
-    if (!font) {
-        font = THEME.FONT.TITLE; 
-    }
-    
+
     recalculateCoverGeometry();
 }
 
@@ -218,8 +222,17 @@ function on_playback_new_track(metadb) {
 }
 
 function on_playback_stop(reason) {
-    if (reason !== 2) { 
+    if (reason !== 2) {
         updatePanelData(null);
+    }
+}
+
+function on_playlist_items_selection_change() {
+    let selection = fb.GetSelection();
+    if (selection) {
+        updatePanelData(selection);
+    } else if (fb.IsPlaying) {
+        updatePanelData(fb.GetNowPlaying());
     }
 }
 
@@ -232,12 +245,13 @@ function on_colours_changed() {
 }
 
 // ==========================================
-// ## 6. 启动初始化 (INITIALIZATION)
+// 6. 启动初始化 (INITIALIZATION)
 // ==========================================
 
 function on_script_unload() {
     if (img && typeof img.Dispose === "function") img.Dispose();
     if (imgRounded && typeof imgRounded.Dispose === "function") imgRounded.Dispose();
+    _measureDispose();
 }
 
 let currentTrack = fb.GetNowPlaying();

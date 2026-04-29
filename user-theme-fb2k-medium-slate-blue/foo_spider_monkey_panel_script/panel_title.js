@@ -2,8 +2,8 @@
  * @file panel_title.js
  * @author XYSRe
  * @created 2025-12-16
- * @updated 2026-04-27
- * @version 1.4.0
+ * @updated 2026-04-29
+ * @version 2.0.0
  * @description 播放列表标题栏: 图标、播放列表名称、新建按钮。
  */
 
@@ -15,7 +15,7 @@ include("lib/theme.js");
 
 window.DefineScript("Panel Title", {
   author: "XYSRe",
-  version: "1.4.0",
+  version: "2.0.0",
   options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 
