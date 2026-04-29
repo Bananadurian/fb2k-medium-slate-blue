@@ -168,6 +168,7 @@ Tooltip object (`window.CreateTooltip(fontName, fontSize)`).
 - `on_paint(gr)` — panel needs repaint. **CRITICAL: Never create `gdi.Font` or `gdi.Image` inside this callback.** Pre-create GDI objects globally or in `on_size()`.
 - `on_size()` — panel resized. Recalculate layout dimensions.
 - `on_colours_changed()` — foobar2000 theme colors changed.
+- `on_font_changed()` — foobar2000 theme fonts changed.
 
 ### 3.2. Mouse & Keyboard
 
@@ -437,7 +438,7 @@ class Button {
 
 | Export | Signature | Description |
 |--------|-----------|-------------|
-| `_initTooltip(gdiFont, fontSize, maxWidth?)` | `(GdiFont, number, number?) → function(string)` | Factory: creates a tooltip once, returns a `tooltip(value)` setter with text dedup. Usage: `let tooltip = _initTooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);` |
+| `_initTooltip(gdiFont, fontSize, maxWidth?)` | `(GdiFont, number, number?) → function(string)` | Factory: creates a tooltip once, returns a `tooltip(value)` setter with text dedup. Usage: `let tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);` |
 | `_drawScrollbar(gr, viewH, contentH, scrollY, maxScrollY, panelW, headerH, color)` | `(GdiGraphics, ...) → void` | Draws a rounded vertical scrollbar at the right edge of the panel |
 | `_manageCarousel(carouselState, coverH, cycleMs?, panelW?)` | `({images,index,timer}, number, number?, number?) → void` | Creates/destroys a SetInterval timer for cover image cycling. Only active when `carouselState.images.length > 1` |
 | `_carouselNext(carouselState, coverH, cycleMs?, panelW?)` | `(...) → void` | Advances carousel to next image and repaints |
@@ -456,22 +457,18 @@ class Button {
 ```javascript
 const THEME = {
     COL: {
-        ITEM_TEXT:      window.GetColourCUI(0),   // Normal text
-        SELECTED_TEXT:  window.GetColourCUI(1),   // Selected text / highlight
-        BG:             window.GetColourCUI(3),   // Global background
-        SELECTED_BG:    window.GetColourCUI(4),   // Selected item background
-        ACTIVE_ITEM:    window.GetColourCUI(6),   // Active item / accent
-        ITEM_DETAIL_BG:  window.GetColourCUI(3, "{4E20CEED-42F6-4743-8EB3-610454457E19}"),  // Item Details panel background
+        FG:             window.GetColourCUI(0),   // Item Foreground
+        SEL_FG:         window.GetColourCUI(1),   // Selected Item Foreground
+        BG:             window.GetColourCUI(3),   // Background
+        SEL_BG:         window.GetColourCUI(4),   // Selected Item Background
+        FRAME:          window.GetColourCUI(6),   // Active Item Frame
         SCROLLBAR:      _rgb(149, 149, 149),      // Hardcoded scrollbar color
     },
     FONT: {
         TITLE:       gdi.Font(..., _scale(18), 1),  // Large heading (album/artist)
-        HEADING:     gdi.Font(..., _scale(12), 1),  // Sub-heading / selected button
-        TEXT:        gdi.Font(..., _scale(12), 0),  // Body text (NG Playlist font)
-        TEXT_SM:     gdi.Font(..., _scale(10), 0),  // Compact body / tooltip source
-        BTN:         gdi.Font(..., _scale(12), 0),  // Button default
-        BADGE:       gdi.Font(..., _scale(8),  1),  // Audio quality badge
-        TITLE_PANEL: window.GetFontCUI(1),           // Panel title bar (CUI Labels)
+        BODY:  gdi.Font(FONT_ITEMS.Name, _scale(12), 0),  // Body / button / compact text
+        BOLD:  gdi.Font(FONT_ITEMS.Name, _scale(12), 1),  // Body bold / selected button
+        LABEL: FONT_LABELS,                                // Label / badge / panel title
     },
     LAYOUT: {
         MARGIN:       _scale(10),
@@ -583,7 +580,7 @@ For scrollable text content, render text once to an offscreen `GdiBitmap`, then 
 
 ```javascript
 // Creating the buffer (using shared function):
-const buffer = _createTextBuffer(text, THEME.FONT.TEXT, COL.ITEM_TEXT, viewW, MULTI_LINE_FLAGS);
+const buffer = _createTextBuffer(text, THEME.FONT.BODY, COL.FG, viewW, MULTI_LINE_FLAGS);
 textImg = buffer.img;
 let fullH = buffer.fullH;
 maxScrollY = Math.max(0, fullH - viewH);

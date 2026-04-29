@@ -109,7 +109,7 @@ const bitDepthTf = fb.TitleFormat("%__bitspersample%");
 // 3. 辅助组件 (Tooltip)
 // ============================================================================
 
-let tooltip = _initTooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
+let tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
 
 
 /**
@@ -312,21 +312,21 @@ function on_size() {
   // 1. 测量各元素的尺寸
   const titleMeasureFull = _measureString(
     contentState.title.text,
-    THEME.FONT.HEADING,
+    THEME.FONT.BOLD,
     maxTextW,
     TEXT_FLAGS,
   );
   contentState.title.w = titleMeasureFull.Width + _scale(1);
   contentState.title.h = Math.min(titleMeasureFull.Height, LINE_H);
   contentState.artist.w =
-    _measureString(contentState.artist.text, THEME.FONT.TEXT_SM, maxTextW, TEXT_FLAGS)
+    _measureString(contentState.artist.text, THEME.FONT.LABEL, maxTextW, TEXT_FLAGS)
       .Width + _scale(1);
   // _scale(1) GDI、GDI+计算偏差 一个像素容差
   contentState.album.w =
-    _measureString(contentState.album.text, THEME.FONT.TEXT_SM, maxTextW, TEXT_FLAGS)
+    _measureString(contentState.album.text, THEME.FONT.LABEL, maxTextW, TEXT_FLAGS)
       .Width + _scale(1);
   contentState.year.w = contentState.year.text
-    ? _measureString(contentState.year.text, THEME.FONT.TEXT_SM, maxTextW, ALBUM_FLAGS)
+    ? _measureString(contentState.year.text, THEME.FONT.LABEL, maxTextW, ALBUM_FLAGS)
         .Width
     : 0;
 
@@ -390,7 +390,7 @@ function on_size() {
   if (currentAQBadge) {
     const badgeTextSize = _measureString(
       currentAQBadge.label,
-      THEME.FONT.BADGE,
+      THEME.FONT.LABEL,
       maxTextW,
       BADGE_TEXT_ALIGN,
     );
@@ -409,14 +409,14 @@ function on_size() {
  * 绘制回调
  */
 function on_paint(gr) {
-  gr.FillSolidRect(0, 0, window.Width, window.Height, COL.ITEM_DETAIL_BG);
+  gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
   gr.SetTextRenderingHint(5); // ClearType
 
   // --- 绘制文本 ---
   gr.GdiDrawText(
     contentState.title.text,
-    THEME.FONT.HEADING,
-    contentState.title.isHover ? COL.ACTIVE_ITEM : COL.SELECTED_TEXT,
+    THEME.FONT.BOLD,
+    contentState.title.isHover ? COL.FRAME : COL.SEL_FG,
     contentState.title.x,
     contentState.title.y,
     contentState.title.w,
@@ -426,8 +426,8 @@ function on_paint(gr) {
 
   gr.GdiDrawText(
     contentState.artist.text,
-    THEME.FONT.TEXT_SM,
-    contentState.artist.isHover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT,
+    THEME.FONT.LABEL,
+    contentState.artist.isHover ? COL.FRAME : COL.FG,
     contentState.artist.x,
     contentState.artist.y,
     contentState.artist.w,
@@ -437,8 +437,8 @@ function on_paint(gr) {
 
   gr.GdiDrawText(
     contentState.album.text,
-    THEME.FONT.TEXT_SM,
-    contentState.album.isHover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT,
+    THEME.FONT.LABEL,
+    contentState.album.isHover ? COL.FRAME : COL.FG,
     contentState.album.x,
     contentState.album.y,
     contentState.album.w,
@@ -449,8 +449,8 @@ function on_paint(gr) {
   if (contentState.year.text) {
     gr.GdiDrawText(
       contentState.year.text,
-      THEME.FONT.TEXT_SM,
-      COL.ITEM_TEXT,
+      THEME.FONT.LABEL,
+      COL.FG,
       contentState.year.x,
       contentState.year.y,
       contentState.year.w,
@@ -466,7 +466,7 @@ function on_paint(gr) {
       ratingArea.y,
       ratingArea.w,
       ratingArea.h,
-      COL.ITEM_DETAIL_BG,
+      COL.BG,
     );
     for (let i = 0; i < 5; i++) {
       stars[i].paint(gr);
@@ -508,7 +508,7 @@ function on_paint(gr) {
     // 文字
     gr.GdiDrawText(
       currentAQBadge.label,
-      THEME.FONT.BADGE,
+      THEME.FONT.LABEL,
       currentAQBadge.color,
       badgeElement.x,
       badgeElement.y,
@@ -688,6 +688,16 @@ function on_playlist_switch() {
 }
 function on_metadb_changed() {
   updateContent();
+}
+
+function on_colours_changed() {
+  _refreshThemeColors();
+  window.Repaint();
+}
+
+function on_font_changed() {
+  _refreshThemeFonts();
+  window.Repaint();
 }
 
 /**

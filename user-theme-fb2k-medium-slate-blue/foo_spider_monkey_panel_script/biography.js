@@ -79,7 +79,7 @@ const LINK_ICONS = {
 const artistTf = fb.TitleFormat("$meta(artist,0)");  
 const albumTf = fb.TitleFormat(" ▸ [%date%]: [%album%] ['('$meta(EDITION)')']"); 
 
-let tooltip = _initTooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
+let tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
 
 // =========================================================================
 // 全局状态变量 (State Management)
@@ -144,7 +144,7 @@ function on_paint(gr) {
     gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
 
     if (!artistData) {
-        _drawEmptyState(gr, errorText, THEME.FONT.TEXT, COL.SELECTED_TEXT, window.Width, window.Height);
+        _drawEmptyState(gr, errorText, THEME.FONT.BODY, COL.SEL_FG, window.Width, window.Height);
         return;
     }
 
@@ -158,7 +158,7 @@ function on_paint(gr) {
         }
 
         if (carousel.images.length > 1) {
-            _drawPageIndicator(gr, carousel.index, carousel.images.length, MARGIN, coverH - MARGIN - LINE_H, _scale(50), LINE_H, THEME.FONT.TEXT);
+            _drawPageIndicator(gr, carousel.index, carousel.images.length, MARGIN, coverH - MARGIN - LINE_H, _scale(50), LINE_H, THEME.FONT.BODY);
         }
     }
 
@@ -167,25 +167,25 @@ function on_paint(gr) {
     // 3. 绘制头部信息 (Header)
     
     // 3.1 艺人标题 (超长截断逻辑)
-    gr.GdiDrawText(artistData.title, THEME.FONT.TITLE, COL.SELECTED_TEXT, MARGIN, currentY, titleW > lineW ? lineW : titleW, titleH, ONE_LINE_FLAGS);
+    gr.GdiDrawText(artistData.title, THEME.FONT.TITLE, COL.SEL_FG, MARGIN, currentY, titleW > lineW ? lineW : titleW, titleH, ONE_LINE_FLAGS);
     // 别名 (如果标题没占满一行，在后面追加显示)
     if (artistData.aliases && titleW < (lineW - MARGIN * 2)) {
-        gr.GdiDrawText(" (" + artistData.aliases + ")", THEME.FONT.TEXT, COL.SELECTED_TEXT, titleW + MARGIN, currentY + _scale(4), lineW - titleW - MARGIN, LINE_H, ONE_LINE_FLAGS);
+        gr.GdiDrawText(" (" + artistData.aliases + ")", THEME.FONT.BODY, COL.SEL_FG, titleW + MARGIN, currentY + _scale(4), lineW - titleW - MARGIN, LINE_H, ONE_LINE_FLAGS);
     }
     currentY += titleH + LINE_SPACE;
     
     // 3.2 风格 (多行)
     if (LINK_ICONS.Genres) gr.DrawImage(LINK_ICONS.Genres, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Genres.Width, LINK_ICONS.Genres.Height);
-    gr.GdiDrawText(artistData.genres || "Unknown Genre", THEME.FONT.TEXT, COL.SELECTED_TEXT, MARGIN * 2.5, currentY, lineW, genresH, MULTI_LINE_FLAGS);
+    gr.GdiDrawText(artistData.genres || "Unknown Genre", THEME.FONT.BODY, COL.SEL_FG, MARGIN * 2.5, currentY, lineW, genresH, MULTI_LINE_FLAGS);
     currentY += genresH + LINE_SPACE;
 
     // 3.3 生日
     if (LINK_ICONS.Born) gr.DrawImage(LINK_ICONS.Born, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Born.Width, LINK_ICONS.Born.Height);
-    gr.GdiDrawText(artistData.born || "-", THEME.FONT.TEXT, COL.SELECTED_TEXT, MARGIN * 2.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
+    gr.GdiDrawText(artistData.born || "-", THEME.FONT.BODY, COL.SEL_FG, MARGIN * 2.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
 
     // 3.4 地区 (与生日同一行，靠右侧布局)
     if (LINK_ICONS.Country) gr.DrawImage(LINK_ICONS.Country, MARGIN * 13, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Country.Width, LINK_ICONS.Country.Height);
-    gr.GdiDrawText(artistData.country || "-", THEME.FONT.TEXT, COL.SELECTED_TEXT, MARGIN * 14.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
+    gr.GdiDrawText(artistData.country || "-", THEME.FONT.BODY, COL.SEL_FG, MARGIN * 14.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
     currentY += LINE_H + LINE_SPACE;
 
     // 3.5 链接图标按钮
@@ -203,15 +203,15 @@ function on_paint(gr) {
     const isProfile = !isShowingDiscography;
     
     // 根据状态确定颜色
-    const pColor = isProfile ? COL.SELECTED_TEXT : (pBtn.isHover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT);
-    const dColor = !isProfile ? COL.SELECTED_TEXT : (dBtn.isHover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT);
+    const pColor = isProfile ? COL.SEL_FG : (pBtn.isHover ? COL.FRAME : COL.FG);
+    const dColor = !isProfile ? COL.SEL_FG : (dBtn.isHover ? COL.FRAME : COL.FG);
 
-    gr.GdiDrawText(pBtn.displayText, isProfile ? THEME.FONT.HEADING : THEME.FONT.BTN, pColor, pBtn.x, pBtn.y, pBtn.w, pBtn.h, BTN_STYLE_FLAGS);
-    gr.GdiDrawText(dBtn.displayText, !isProfile ? THEME.FONT.HEADING : THEME.FONT.BTN, dColor, dBtn.x, dBtn.y, dBtn.w, dBtn.h, BTN_STYLE_FLAGS);
+    gr.GdiDrawText(pBtn.displayText, isProfile ? THEME.FONT.BOLD : THEME.FONT.BODY, pColor, pBtn.x, pBtn.y, pBtn.w, pBtn.h, BTN_STYLE_FLAGS);
+    gr.GdiDrawText(dBtn.displayText, !isProfile ? THEME.FONT.BOLD : THEME.FONT.BODY, dColor, dBtn.x, dBtn.y, dBtn.w, dBtn.h, BTN_STYLE_FLAGS);
 
     // Tab 指示线
     const activeBtn = isProfile ? pBtn : dBtn;
-    _drawTabIndicator(gr, activeBtn, headerHeight, window.Width, MARGIN, COL.SELECTED_BG, COL.ITEM_TEXT);
+    _drawTabIndicator(gr, activeBtn, headerHeight, window.Width, MARGIN, COL.SEL_BG, COL.FG);
 
     // 5. 绘制滚动内容 (使用离屏缓冲直绘，提高性能)
     if (textImg) {
@@ -462,8 +462,8 @@ function updateLayoutMetrics() {
 
     // 2. 计算风格高度 (限制最大2行)
     if (artistData && artistData.genres) {
-        const measureOne = _measureString("M", THEME.FONT.TEXT, lineW, MULTI_LINE_FLAGS);
-        const measureFull = _measureString(artistData.genres, THEME.FONT.TEXT, lineW, MULTI_LINE_FLAGS);
+        const measureOne = _measureString("M", THEME.FONT.BODY, lineW, MULTI_LINE_FLAGS);
+        const measureFull = _measureString(artistData.genres, THEME.FONT.BODY, lineW, MULTI_LINE_FLAGS);
         const limitHeight = Math.ceil(measureOne.Height * 2); 
         
         // [修复] 修正了 genresH 可能为 0 的 Bug
@@ -505,11 +505,11 @@ function updateLayoutMetrics() {
  * 计算 Tab 按钮的尺寸和 X 坐标
  */
 function calcElementsBtnSize() {
-    const pM = _measureString(elements.profileBtn.displayText, THEME.FONT.HEADING, window.Width, BTN_STYLE_FLAGS);
+    const pM = _measureString(elements.profileBtn.displayText, THEME.FONT.BOLD, window.Width, BTN_STYLE_FLAGS);
     elements.profileBtn.w = pM.Width;
     elements.profileBtn.h = pM.Height;
     
-    const dM = _measureString(elements.discographyBtn.displayText, THEME.FONT.HEADING, window.Width, BTN_STYLE_FLAGS);
+    const dM = _measureString(elements.discographyBtn.displayText, THEME.FONT.BOLD, window.Width, BTN_STYLE_FLAGS);
     elements.discographyBtn.w = dM.Width;
     elements.discographyBtn.h = dM.Height;
 
@@ -529,7 +529,7 @@ function createTextBuffer() {
 
     const text = isShowingDiscography ? getDiscoText() : (artistData.artistbiography || "暂无详细简介信息");
 
-    const result = _createTextBuffer(text, THEME.FONT.TEXT, COL.ITEM_TEXT, viewW, MULTI_LINE_FLAGS);
+    const result = _createTextBuffer(text, THEME.FONT.BODY, COL.FG, viewW, MULTI_LINE_FLAGS);
     textImg = result.img;
     const fullH = result.fullH;
 
@@ -694,6 +694,16 @@ function on_playlist_items_selection_change() {
         errorText = "请选择或播放歌曲...";
         window.Repaint();
     }
+}
+
+function on_colours_changed() {
+    _refreshThemeColors();
+    window.Repaint();
+}
+
+function on_font_changed() {
+    _refreshThemeFonts();
+    window.Repaint();
 }
 
 // 脚本卸载/重载时释放资源
