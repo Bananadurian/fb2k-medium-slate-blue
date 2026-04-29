@@ -2,8 +2,8 @@
  * @file biography.js
  * @author XYSRe
  * @created 2025-12-23
- * @updated 2026-04-27
- * @version 1.8.0
+ * @updated 2026-04-29
+ * @version 2.0.0
  * @description 艺人资料面板: 封面轮播、风格/生日/地区、外部链接、简介/作品集切换。
  */
 
@@ -17,7 +17,7 @@ include("lib/theme.js");
 
 window.DefineScript("Biography", {
     author: "XYSRe",
-    version: "1.8.0",
+    version: "2.0.0",
     options: { grab_focus: THEME.CFG.GRAB_FOCUS }
 });
 
@@ -88,7 +88,7 @@ let tooltip = _initTooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
 // 数据状态
 let artistName = null;      // 缓存当前加载的艺人名 (用于比对是否需要重载)
 let artistData = null;       // 解析后的艺人 JSON 数据对象
-const ARTIST_CACHE = new LRUCache(50); // LRU 缓存 (存储最近访问的艺人数据和图片路径)
+const ARTIST_CACHE = new LRUCache(THEME.CFG.CACHE_SIZE); // LRU 缓存 (存储最近访问的艺人数据和图片路径)
 
 // 图片与轮播状态
 const carousel = { images: [], index: 0, timer: null };
@@ -100,7 +100,6 @@ let scrollY = 0;             // 当前垂直滚动条位置
 let maxScrollY = 0;          // 最大可滚动距离
 let textImg = null;          // 文本内容的离屏渲染缓冲图 (GdiBitmap)
 let errorText = "请选择或播放歌曲..."; // 空状态或错误提示文案
-let isCoverFit = PANEL_CFG.isCoverFit;
 
 // 交互状态
 let activeLinkBtns = [];     // 当前生成的外部链接按钮数组
@@ -130,14 +129,12 @@ const elements = {
 
 function on_size() {
     if (window.Width <= 0 || window.Height <= 0) return;
-    
-    // 1. 如果有数据，先创建链接按钮对象 (确定X和W)
-    if (artistData) createLinkButtons();    
-    // 2. 计算Tab按钮尺寸
+
+    // 1. 计算Tab按钮尺寸
     calcElementsBtnSize();
-    // 3. 计算整体布局 (确定Y坐标和高度)
+    // 2. 计算整体布局 (确定Y坐标和高度)
     updateLayoutMetrics();
-    // 4. 生成文本缓冲 (耗时操作)
+    // 3. 生成文本缓冲 (耗时操作)
     createTextBuffer(); 
 }
 
@@ -154,19 +151,14 @@ function on_paint(gr) {
     // 2. 绘制封面区
     if (carousel.images.length > 0 && carousel.images[carousel.index]) {
         let currentImg = carousel.images[carousel.index];
-        if (isCoverFit) {
+        if (PANEL_CFG.isCoverFit) {
             _drawImageFit(gr, currentImg, 0, 0, window.Width, coverH);
         } else {
             _drawImageCover(gr, currentImg, 0, 0, window.Width, coverH);
         }
-        
-        // 绘制页码指示器 (半透明圆角矩形)
+
         if (carousel.images.length > 1) {
-            let pageText = (carousel.index + 1) + " / " + carousel.images.length;
-            gr.SetSmoothingMode(4); // 开启抗锯齿画圆角
-            gr.FillRoundRect(MARGIN, coverH - MARGIN - LINE_H, _scale(50), LINE_H, _scale(6), _scale(6), 0x99000000);
-            gr.SetSmoothingMode(0); 
-            gr.GdiDrawText(pageText, THEME.FONT.TEXT, 0xFFFFFFFF, MARGIN, coverH - MARGIN - LINE_H, _scale(50), LINE_H, BTN_STYLE_FLAGS);
+            _drawPageIndicator(gr, carousel.index, carousel.images.length, MARGIN, coverH - MARGIN - LINE_H, _scale(50), LINE_H, THEME.FONT.TEXT);
         }
     }
 
@@ -264,8 +256,6 @@ function reloadArtistData(metadb) {
     }else{
         errorText = artistData ? "" : "暂无艺人资料: " + safeName;
     }
-    // errorText = !cacheEntry.jsonError ? "" : cacheEntry.jsonError;
-
     loadImagesFromCache(cacheEntry.imgPaths, metadb);
 
     if (window.Width > 0) {
@@ -331,7 +321,7 @@ function getArtistCacheEntry(safeName) {
                 jsonData.genres = jsonData.genres.join(", ");
             }
         } catch (e) {
-            errorText = "JSON Error: " + e;
+            jsonErrorData = "JSON Error: " + e;
             console.log("JSON Error: " + e);
         }
     }
@@ -412,7 +402,6 @@ function getDiscoText() {
     
     // 3. 获取所有相关曲目 handle list 
     const matches = fb.GetQueryItems(fb.GetLibraryItems(), query);
-    // console.log(matches.Count)
     let resultList = [];
 
     if (matches.Count > 0) {
@@ -433,8 +422,6 @@ function getDiscoText() {
         // 将 Set 转回数组
         resultList = Array.from(uniqueSet);
         
-        // (可选) 如果需要按日期降序(新->旧)，在这里反转数组
-        // resultList.reverse(); 
     }
     
     // 7. 写入缓存到 artistData 对象中 (内存缓存)
@@ -510,6 +497,8 @@ function updateLayoutMetrics() {
     // 设置 Tab 按钮坐标
     elements.profileBtn.y = headerHeight - elements.profileBtn.h * 2;
     elements.discographyBtn.y = elements.profileBtn.y;
+
+    manageCycleTimer();
 }
 
 /**
@@ -687,12 +676,23 @@ function on_playback_new_track(metadb) {
     reloadArtistData(metadb);
 }
 
+function on_playback_stop(reason) {
+    if (reason !== 2) {
+        reloadArtistData(fb.GetNowPlaying());
+    }
+}
+
 function on_playlist_items_selection_change() {
-    let selection = fb.GetSelection(); 
+    let selection = fb.GetSelection();
     if (selection) {
         reloadArtistData(selection);
+    } else if (fb.IsPlaying) {
+        reloadArtistData(fb.GetNowPlaying());
     } else {
-        if (fb.IsPlaying) reloadArtistData(fb.GetNowPlaying());
+        artistName = null;
+        artistData = null;
+        errorText = "请选择或播放歌曲...";
+        window.Repaint();
     }
 }
 

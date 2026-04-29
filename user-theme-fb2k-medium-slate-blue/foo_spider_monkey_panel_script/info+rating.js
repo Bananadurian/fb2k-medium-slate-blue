@@ -2,8 +2,8 @@
  * @file info+rating.js
  * @author XYSRe
  * @created 2025-12-16
- * @updated 2026-04-27
- * @version 1.6.0
+ * @updated 2026-04-29
+ * @version 2.0.0
  * @description 歌曲信息+评分面板: 标题/艺人/专辑/年份、星级评分、音质标识、来源图标。
  */
 
@@ -16,7 +16,7 @@ include("lib/theme.js");
 
 window.DefineScript("Info And Rating", {
   author: "XYSRe",
-  version: "1.6.0",
+  version: "2.0.0",
   options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 
@@ -126,13 +126,6 @@ class StarElement {
     this.w = STAR_SIZE;
     this.h = STAR_SIZE;
     this.isHover = false;
-    // Tooltip 动态生成
-  }
-
-  get tooltip() {
-    // return `评分: ${this.value} 星`;
-    // 取消tooltip
-    return "";
   }
 
   // 绘制逻辑
@@ -240,7 +233,7 @@ function updateContent() {
     contentState.year.text = y && y !== "?" ? `©${y}` : "";
 
     // 更新评分
-    currentRating = parseInt(ratingTf.EvalWithMetadb(metadb)) || 0;
+    currentRating = parseInt(ratingTf.EvalWithMetadb(metadb), 10) || 0;
   } else {
     contentState.title.text = "No Track";
     contentState.artist.text = "";
@@ -269,16 +262,17 @@ function updateContent() {
 }
 
 /**
- * 判断音质分级 (委托给共享库 _classifyAudioQuality)
+ * 判断音质分级 (委托给共享库 _resolveBadge)
  * @param {FbMetadbHandle} metadb
  * @returns {AQBadgeStyle|null}
  */
 function resolveBadgeForTrack(metadb) {
   if (!metadb) return null;
-  const codec = codecTf.EvalWithMetadb(metadb).toUpperCase();
-  const sampleRate = parseInt(sampleRateTf.EvalWithMetadb(metadb));
-  let bitDepth = parseInt(bitDepthTf.EvalWithMetadb(metadb));
-  return _classifyAudioQuality(codec, sampleRate, bitDepth);
+  return _resolveBadge(
+    codecTf.EvalWithMetadb(metadb),
+    sampleRateTf.EvalWithMetadb(metadb),
+    bitDepthTf.EvalWithMetadb(metadb)
+  );
 }
 
 /**
@@ -289,8 +283,7 @@ function updateSourceIcon(metadb) {
     .EvalWithMetadb(metadb)
     .trim()
     .toUpperCase();
-  let filename = SOURCE_ICON_MAP[sourceText];
-  if (!filename) filename = DEFAULT_SOURCE_ICON_FILENAME;
+  const filename = _resolveSourceIconFilename(sourceText);
 
   let img = sourceIconCache.get(filename);
   if (!img && filename !== DEFAULT_SOURCE_ICON_FILENAME) {
@@ -301,7 +294,7 @@ function updateSourceIcon(metadb) {
 }
 
 // ============================================================================
-// 6. 主回调函数 (Main Callbacks)
+// 5. 主回调函数 (Main Callbacks)
 // ============================================================================
 
 // 初始加载
@@ -333,7 +326,7 @@ function on_size() {
     _measureString(contentState.album.text, THEME.FONT.TEXT_SM, maxTextW, TEXT_FLAGS)
       .Width + _scale(1);
   contentState.year.w = contentState.year.text
-    ? _measureString(contentState.year.text, THEME.FONT.TEXT_SM, maxTextW, TEXT_FLAGS)
+    ? _measureString(contentState.year.text, THEME.FONT.TEXT_SM, maxTextW, ALBUM_FLAGS)
         .Width
     : 0;
 
@@ -360,8 +353,8 @@ function on_size() {
     (contentState.year.text ? ALBUM_YEAR_GAP + contentState.year.w : 0);
   if (albumYearTotalW > maxTextW) {
     albumYearTotalW = maxTextW;
-    contentState.album.w =
-      maxTextW - (contentState.year.text ? ALBUM_YEAR_GAP + contentState.year.w : 0);
+    contentState.album.w = Math.max(0,
+      maxTextW - (contentState.year.text ? ALBUM_YEAR_GAP + contentState.year.w : 0));
   }
   let albumX = Math.round((window.Width - albumYearTotalW) / 2);
 
@@ -467,17 +460,14 @@ function on_paint(gr) {
   }
 
   // --- 绘制星星 ---
-  // 先清理背景防止残影
-  gr.FillSolidRect(
-    ratingArea.x,
-    ratingArea.y,
-    ratingArea.w,
-    ratingArea.h,
-    COL.ITEM_DETAIL_BG,
-  );
-
   if (HAS_PLAYCOUNT && metadb) {
-    // 让每颗星星自己画自己
+    gr.FillSolidRect(
+      ratingArea.x,
+      ratingArea.y,
+      ratingArea.w,
+      ratingArea.h,
+      COL.ITEM_DETAIL_BG,
+    );
     for (let i = 0; i < 5; i++) {
       stars[i].paint(gr);
     }
@@ -688,7 +678,6 @@ function on_playback_new_track() {
   updateContent();
 }
 function on_playback_stop(reason) {
-  // console.log("==========  on_playback_stop: " + reason);
   if (reason !== 2) updateContent();
 }
 function on_item_focus_change() {
