@@ -2,763 +2,618 @@
  * @file control_buttons.js
  * @author XYSRe
  * @created 2025-12-12
- * @updated 2025-12-18
- * @version 1.0.0
+ * @updated 2026-04-14  
+ * @version 1.3.4 (Fix Crash)
  * @description 一个包含 [声音输出设备按钮 + 声音控制 + 打开搜索 + 打开队列 + 菜单] 的控件
+ *              修复：volumeBar 未定义错误，移除 menu.Dispose 防止报错。
  */
 
 "use strict";
 
-// 未清楚options、features是否生效
 window.DefineScript("Control Buttons", {
-  author: "XYSRe",
-  version: "1.0.0",
-  options: { grab_focus: false },
-  // features: { grab_focus: false }
+    author: "XYSRe",
+    version: "1.3.4",
+    options: { grab_focus: false },
 });
 
-// include 语句的先后顺序是至关重要的，必须严格遵守依赖关系！
+// ============================================================================
+// 1. 工具函数
+// ============================================================================
 
-// Lodash 是一个流行的 JavaScript 工具库，提供了许多高效的函数（如数组操作、对象操作、函数节流/防抖等），用于简化编程。它是高度优化的。
-include(fb.ComponentPath + "samples\\complete\\js\\lodash.min.js");
-// 不使用作者完整的内容，改为下方自行精简移植的
-// include(fb.ComponentPath + "samples\\complete\\js\\helpers.js");
-// 声音控制条，直接把代码复制过来了
-// include(fb.ComponentPath + "samples\\complete\\js\\volume.js");
-// 该面板支持右键自定义背景颜色，基本用不到，直接代码中写死了, 代码中 const panel = new _panel(true); 相关内容取消注释即可恢复
-// include(fb.ComponentPath + "samples\\complete\\js\\panel.js");
-include(
-  fb.ProfilePath +
-    "\\user-theme-fb2k-medium-slate-blue\\foo_spider_monkey_panel_script\\_helpers.js"
-);
+const MF_STRING = 0x00000000;
+const DPI = window.DPI;
+
+function _scale(size) {
+    return Math.round((size * DPI) / 72);
+}
+
+function _RGB(r, g, b) {
+    return 0xff000000 | (r << 16) | (g << 8) | b;
+}
+
+function _load_image(path) {
+    if (utils.IsFile(path)) {
+        return gdi.Image(path);
+    }
+    return null;
+}
+
+// Tooltip
+const CUI_GLOBAL_FONT = window.GetFontCUI(0).Name;    // CUI Item字体名字
+const tooltip = window.CreateTooltip(CUI_GLOBAL_FONT, _scale(13));
+tooltip.SetMaxWidth(1200);
+
+function _tt(value) {
+    if (tooltip.Text !== value) {
+        tooltip.Text = value;
+        tooltip.Activate();
+    }
+}
+
+// 光标缓存
+let lastCursorId = 32512; 
+function _setCursor(id) {
+    if (lastCursorId === id) return;
+    lastCursorId = id;
+    window.SetCursor(id);
+}
+
+// ============================================================================
+// 2. 资源定义
+// ============================================================================
 
 const colors = {
-  // 声音指示背景
-  volume_slider_bg: _RGB(148, 161, 178),
-  // 当前声音指示
-  volume_slider_fg: _RGB(255, 255, 254),
-  volume_slider_fg_hover: _RGB(183, 162, 246),
-  // 背景颜色 使用 全局系统设置背景色
-  //bgColour: window.GetColourCUI(5),
-  bg: _RGB(23, 23, 23),
+    slider_bg: window.GetColourCUI(0),                        // CUI 全局 item 颜色
+    slider_fg: window.GetColourCUI(1),                        // CUI 全局 select item 颜色
+    slider_fg_hover: window.GetColourCUI(6),                  // CUI 全局 Active item 颜色
+    bg:  window.GetColourCUI(3, "{4E20CEED-42F6-4743-8EB3-610454457E19}"),      // CUI Item Details 背景色
 };
 
-// 一个基础panel，用于绘制背景颜色
-// const panel = new _panel(true);
-
-// 读取图片
-// C:\XX\foobar2000-x64_v2.25.3\profile\\user-theme-fb2k-medium-slate-blue\imgs\png\
-const imgs_folder = fb.ProfilePath + "\\user-theme-fb2k-medium-slate-blue\\imgs\\Lucide\\";
+const IMGS_FOLDER = fb.ProfilePath + "\\user-theme-fb2k-medium-slate-blue\\imgs\\Lucide\\";
 const imgs = {
-  recent: gdi.Image(imgs_folder + "history.png"),
-  recent_hover: gdi.Image(imgs_folder + "history_hover.png"),
-  favorite: gdi.Image(imgs_folder + "flame.png"),
-  favorite_hover: gdi.Image(imgs_folder + "flame_hover.png"),
-  replaygain_off: gdi.Image(imgs_folder + "replaygain_off.png"),
-  replaygain_track_on: gdi.Image(imgs_folder + "replaygain_track_on.png"),
-  replaygain_other_on: gdi.Image(imgs_folder + "replaygain_other_on.png"),
-  replaygain_hover: gdi.Image(imgs_folder + "replaygain_hover.png"),
-  vol: gdi.Image(imgs_folder + "volume.png"),
-  vol_hover: gdi.Image(imgs_folder + "volume_hover.png"),
-  mute: gdi.Image(imgs_folder + "volume_mute.png"),
-  mute_hover: gdi.Image(imgs_folder + "volume_mute_hover.png"),
-  asio: gdi.Image(imgs_folder + "asio.png"),
-  asio_hover: gdi.Image(imgs_folder + "asio_hover.png"),
-  wasapi_share: gdi.Image(imgs_folder + "wasapi_share.png"),
-  wasapi_share_hover: gdi.Image(imgs_folder + "wasapi_hover.png"),
-  wasapi: gdi.Image(imgs_folder + "wasapi.png"),
-  wasapi_hover: gdi.Image(imgs_folder + "wasapi_hover.png"),
-  search: gdi.Image(imgs_folder + "search.png"),
-  search_hover: gdi.Image(imgs_folder + "search_hover.png"),
-  queue: gdi.Image(imgs_folder + "queue.png"),
-  queue_hover: gdi.Image(imgs_folder + "queue_hover.png"),
-  menu: gdi.Image(imgs_folder + "menu.png"),
-  menu_hover: gdi.Image(imgs_folder + "menu_hover.png"),
+    recent: _load_image(IMGS_FOLDER + "history.png"),
+    recent_hover: _load_image(IMGS_FOLDER + "history_hover.png"),
+    favorite: _load_image(IMGS_FOLDER + "flame.png"),
+    favorite_hover: _load_image(IMGS_FOLDER + "flame_hover.png"),
+    rg_off: _load_image(IMGS_FOLDER + "replaygain_off.png"),
+    rg_track: _load_image(IMGS_FOLDER + "replaygain_track_on.png"),
+    rg_album: _load_image(IMGS_FOLDER + "replaygain_other_on.png"),
+    rg_hover: _load_image(IMGS_FOLDER + "replaygain_hover.png"),
+    vol: _load_image(IMGS_FOLDER + "volume.png"),
+    vol_hover: _load_image(IMGS_FOLDER + "volume_hover.png"),
+    mute: _load_image(IMGS_FOLDER + "volume_mute.png"),
+    mute_hover: _load_image(IMGS_FOLDER + "volume_mute_hover.png"),
+    asio: _load_image(IMGS_FOLDER + "asio.png"),
+    asio_hover: _load_image(IMGS_FOLDER + "asio_hover.png"),
+    wasapi: _load_image(IMGS_FOLDER + "wasapi.png"), 
+    wasapi_share: _load_image(IMGS_FOLDER + "wasapi_share.png"), 
+    wasapi_hover: _load_image(IMGS_FOLDER + "wasapi_hover.png"),
+    search: _load_image(IMGS_FOLDER + "search.png"),
+    search_hover: _load_image(IMGS_FOLDER + "search_hover.png"),
+    queue: _load_image(IMGS_FOLDER + "queue.png"),
+    queue_hover: _load_image(IMGS_FOLDER + "queue_hover.png"),
+    menu: _load_image(IMGS_FOLDER + "menu.png"),
+    menu_hover: _load_image(IMGS_FOLDER + "menu_hover.png"),
 };
 
-// 指定通用图标缩放后宽度，避免图片过大, 指定默认元素间距
-const icon_w = _scale(15);
-const icon_h = _scale(15);
-const default_margin = _scale(6);
+const ICON_W = _scale(15);
+const ICON_H = _scale(15);
+const DEFAULT_MARGIN = _scale(6);
 
-// 定义元素信息
-// elements = {
-//   device_btn: {
-//     name: "输出设备按钮",
-//     x: 0, 元素渲染位置x坐标
-//     y: 0, 元素渲染位置y坐标
-//     w: icon_w, 元素渲染宽
-//     h: icon_h, 元素渲染高
-//     margin: _scale(4), 元素距离右侧间距;
-//     img: imgs.wasapi_share, 元素显示图片
-//     func: false, 按钮点击触发函数
-//     tiptext: "输出设备", 按钮hover文案
-//     is_btn: true, 控制init_buttons()中是否创建按钮
-//     query: '',  创建指定播放列表查询语法
-//     sort_pattern: "",  排序
-//     target_playlist: "",  目标播放列表
-//     limit: 20,  指定条数
-//   },
-// }
-const elements = {
-  recent_btn: {
-    name: "最近播放",
-    x: 0,
-    y: 0,
-    w: icon_w,
-    h: icon_h,
-    margin: default_margin,
-    img: { normal: imgs.recent, hover: imgs.recent_hover },
-    func: __run_custom_query,
-    tiptext: "最近播放",
-    is_btn: true,
-    query: "%last_played% PRESENT",
-    sort_pattern:
-      "%last_played%|%artist%|%date%|%album%|%discnumber%|%tracknumber%",
-    target_playlist: "🕤️ 最近播放",
-    limit: 50,
-  },
-  favorite_btn: {
-    name: "最爱，播放最多的 最受欢迎",
-    x: 0,
-    y: 0,
-    w: icon_w,
-    h: icon_h,
-    margin: default_margin,
-    img: { normal: imgs.favorite, hover: imgs.favorite_hover },
-    func: __run_custom_query,
-    tiptext: "最受欢迎",
-    is_btn: true,
-    query: "%play_count% PRESENT",
-    sort_pattern:
-      "%play_count%|%artist%|%date%|%album%|%discnumber%|%tracknumber%",
-    target_playlist: "🔥 最受欢迎",
-    limit: 50,
-  },
-  queue_btn: {
-    name: "队列按钮",
-    x: 0,
-    y: 0,
-    w: icon_w,
-    h: icon_h,
-    margin: default_margin,
-    img: { normal: imgs.queue, hover: imgs.queue_hover },
-    func: (x, y, mask) => {
-      fb.RunMainMenuCommand("View/Queue Viewer");
+// ============================================================================
+// 3. UI 组件类
+// ============================================================================
+
+class Button {
+    constructor(config) {
+        this.x = 0; this.y = 0; this.w = 0; this.h = 0;
+        this.img_normal = config.img_normal || null;
+        this.img_hover = config.img_hover || this.img_normal;
+        this.img_current = this.img_normal;
+        this.fn_click = config.func || null;
+        this.fn_rclick = config.func_rclick || null;
+        this.tiptext = config.tiptext || "";
+        this.is_hover = false;
+    }
+
+    updateState(img_normal, img_hover, tiptext, func) {
+        if (this.img_normal === img_normal && this.tiptext === tiptext) return;
+
+        this.img_normal = img_normal;
+        this.img_hover = img_hover || img_normal;
+        this.tiptext = tiptext;
+        
+        this.img_current = this.is_hover ? this.img_hover : this.img_normal;
+        
+        if (func) this.fn_click = func;
+        
+        this.repaint();
+    }
+
+    repaint() {
+        window.RepaintRect(this.x, this.y, this.w, this.h);
+    }
+
+    paint(gr) {
+        if (this.img_current) {
+            gr.DrawImage(this.img_current, this.x, this.y, this.w, this.h, 0, 0, this.img_current.Width, this.img_current.Height);
+        }
+    }
+
+    trace(x, y) {
+        return x >= this.x && x <= this.x + this.w && y >= this.y && y <= this.y + this.h;
+    }
+
+    // 状态机行为：激活
+    activate() {
+        if (this.is_hover) return;
+        this.is_hover = true;
+        this.img_current = this.img_hover;
+        this.repaint();
+    }
+
+    // 状态机行为：休眠
+    deactivate() {
+        if (!this.is_hover) return;
+        this.is_hover = false;
+        this.img_current = this.img_normal;
+        this.repaint();
+    }
+
+    on_mouse_lbtn_up(x, y) {
+        if (this.trace(x, y) && this.fn_click) {
+            this.fn_click(x, y);
+            return true;
+        }
+        return false;
+    }
+    
+    on_mouse_rbtn_down(x, y) {
+        if (this.trace(x, y) && this.fn_rclick) {
+            this.fn_rclick(x, y);
+            return true;
+        }
+        return false;
+    }
+}
+
+class VolumeControl {
+    constructor() {
+        this.x = 0; this.y = 0; this.w = 0; this.h = 0;
+        this.drag = false;
+        this.hover = false;
+        this.color = colors.slider_fg;
+        this.current_tip = "";
+    }
+
+    repaint() {
+        window.RepaintRect(this.x, this.y, this.w, this.h);
+    }
+
+    paint(gr) {
+        if (this.w <= 0 || this.h <= 0) return;
+        const arc = Math.max(1, _scale(1));
+        // 抗锯齿
+        gr.SetSmoothingMode(4); 
+        gr.FillRoundRect(this.x, this.y, this.w, this.h, arc, arc, colors.slider_bg);
+        
+        const posW = this.getPosWidth();
+        // 这里如果值posW太小的话绘制不了arc值得圆角矩形
+        if (posW >= 6) {
+            gr.FillRoundRect(this.x, this.y, posW, this.h, arc, arc, this.color);
+        }
+        // 关闭抗锯齿
+        gr.SetSmoothingMode(0); 
+    }
+
+    trace(x, y) {
+        const m = this.drag ? 200 : 0;
+        return x > this.x - m && x < this.x + this.w + m && y > this.y - m && y < this.y + this.h + m * 2;
+    }
+
+    on_mouse_move(x, y) {
+        this.current_tip = "";
+        const isOver = this.trace(x, y);
+        
+        if (this.drag) {
+            let v = (x - this.x) / this.w;
+            v = Math.max(0, Math.min(1, v));
+            let db = (10 * Math.log(v)) / Math.LN2;
+            if (v <= 0) db = -100;
+            if (db > 0) db = 0;
+            
+            fb.Volume = db;
+            this.current_tip = db.toFixed(2) + " dB";
+            this.repaint();
+            return true;
+        } 
+        
+        if (isOver !== this.hover) {
+            this.hover = isOver;
+            this.color = isOver ? colors.slider_fg_hover : colors.slider_fg;
+            this.repaint();
+        }
+        
+        return isOver;
+    }
+
+    on_mouse_lbtn_down(x, y) {
+        if (this.trace(x, y)) {
+            this.drag = true;
+            this.on_mouse_move(x, y); 
+            return true;
+        }
+        return false;
+    }
+
+    on_mouse_lbtn_up(x, y) {
+        if (this.drag) {
+            this.drag = false;
+            return true;
+        }
+        return false;
+    }
+
+    on_mouse_wheel(step) {
+        if (this.trace(this.x, this.y) || this.hover) {
+            if (step > 0) fb.VolumeUp();
+            else fb.VolumeDown();
+            return true;
+        }
+    }
+
+    getPosWidth() {
+        if (this.w <= 0) return 0;
+        if (fb.Volume <= -100) return 0;
+        const w = Math.ceil(this.w * Math.pow(2, fb.Volume / 10));
+        return Math.max(0, Math.min(this.w, w));
+    }
+}
+
+// ============================================================================
+// 4. 业务逻辑
+// ============================================================================
+
+// [修复] 全局变量定义
+const buttons = {};
+const volumeBar = new VolumeControl(); // 修复这里漏掉的实例化
+let currentHoverBtn = null; 
+
+const TF = {
+    recent: {
+        query: "%last_played% PRESENT",
+        sort: fb.TitleFormat("%last_played%|%artist%|%date%|%album%|%discnumber%|%tracknumber%")
     },
-    tiptext: "队列",
-    is_btn: true,
-  },
-  search_btn: {
-    name: "搜索按钮",
-    x: 0,
-    y: 0,
-    w: icon_w,
-    h: icon_h,
-    margin: default_margin,
-    img: { normal: imgs.search, hover: imgs.search_hover },
-    func: (x, y, mask) => {
-      fb.RunMainMenuCommand("View/Show now playing in playlist");
-      fb.RunMainMenuCommand("Edit/Search");
-    },
-    tiptext: "播放列表搜索",
-    is_btn: true,
-  },
-  replaygain_btn: {
-    name: "音轨增益",
-    x: 0,
-    y: 0,
-    w: icon_w,
-    h: icon_h,
-    margin: default_margin,
-    img: { normal: imgs.replaygain_off, hover: imgs.replaygain_hover },
-    func: (x, y) => {
-      fb.ReplaygainMode = fb.ReplaygainMode === 0 ? 1 : 0;
-    },
-    tiptext: "应用音轨增益",
-    is_btn: true,
-  },
-  device_btn: {
-    name: "切换ASIO",
-    x: 0,
-    y: 0,
-    w: icon_w,
-    h: icon_h,
-    margin: default_margin,
-    img: { normal: imgs.wasapi_share, hover: imgs.wasapi_share_hover },
-    func: null,
-    tiptext: "切换ASIO输出",
-    is_btn: true,
-  },
-  volume_btn: {
-    name: "声音按钮",
-    x: 0,
-    y: 0,
-    w: icon_w,
-    h: icon_h,
-    margin: _scale(2),
-    img: { normal: imgs.vol, hover: imgs.vol_hover },
-    func: (x, y, mask) => {
-      fb.VolumeMute();
-    },
-    tiptext: "静音",
-    is_btn: true,
-  },
-  volume: {
-    name: "声音显示条",
-    x: 0,
-    y: 0,
-    w: _scale(60),
-    h: _scale(3),
-    margin: default_margin,
-    is_btn: false,
-  },
-  menu_btn: {
-    name: "菜单按钮",
-    x: 0,
-    y: 0,
-    w: icon_w,
-    h: icon_h,
-    margin: default_margin,
-    img: { normal: imgs.menu, hover: imgs.menu_hover },
-    func: _menu,
-    tiptext: "菜单",
-    is_btn: true,
-  },
+    favorite: {
+        query: "%play_count% PRESENT",
+        sort: fb.TitleFormat("%play_count%|%artist%|%date%|%album%|%discnumber%|%tracknumber%")
+    }
 };
 
-// 播放增益模式，对应 fb.ReplaygainMode 的值
-const replaygain_mode_configs = [
-  {
-    name: "None",
-    value: 0,
-    img: { normal: imgs.replaygain_off, hover: imgs.replaygain_hover },
-    tiptext: "应用音轨增益",
-  },
-  {
-    name: "Track",
-    value: 1,
-    img: { normal: imgs.replaygain_track_on, hover: imgs.replaygain_hover },
-    tiptext: "取消音轨增益",
-  },
-  {
-    name: "Album",
-    value: 2,
-    img: { normal: imgs.replaygain_other_on, hover: imgs.replaygain_hover },
-    tiptext: "取消专辑增益",
-  },
-  {
-    name: "Track/Album by Playback Order",
-    value: 3,
-    img: { normal: imgs.replaygain_other_on, hover: imgs.replaygain_hover },
-    tiptext: "取消播放顺序增益",
-  },
+function run_custom_query(type) {
+    const config = (type === "recent") 
+        ? { tf: TF.recent, plName: "🕤️ 最近播放" }
+        : { tf: TF.favorite, plName: "🔥 最受欢迎" };
+    
+    const handleList = fb.GetQueryItems(fb.GetLibraryItems(), config.tf.query);
+    handleList.OrderByFormat(config.tf.sort, -1);
+    
+    if (handleList.Count > 50) {
+        // 只拿前50
+        handleList.RemoveRange(50, handleList.Count - 50);
+    }
+
+    const plIndex = plman.FindOrCreatePlaylist(config.plName, false);
+    plman.ClearPlaylist(plIndex);
+    plman.InsertPlaylistItems(plIndex, 0, handleList, false);
+    plman.ActivePlaylist = plIndex;
+}
+
+function show_main_menu(x, y) {
+    let menu = window.CreatePopupMenu();
+    const add = (name, id) => {
+        let sub = window.CreatePopupMenu();
+        let mm = fb.CreateMainMenuManager();
+        mm.Init(name);
+        mm.BuildMenu(sub, id, -1);
+        sub.AppendTo(menu, MF_STRING, name);
+        return mm;
+    };
+
+    let mm_file = add("File", 1000);
+    let mm_edit = add("Edit", 2000);
+    let mm_view = add("View", 3000);
+    let mm_playback = add("Playback", 4000);
+    let mm_library = add("Library", 5000);
+    let mm_help = add("Help", 6000);
+
+    let idx = menu.TrackPopupMenu(x, y);
+    
+    if (idx >= 1000 && idx < 2000) mm_file.ExecuteByID(idx - 1000);
+    else if (idx < 3000) mm_edit.ExecuteByID(idx - 2000);
+    else if (idx < 4000) mm_view.ExecuteByID(idx - 3000);
+    else if (idx < 5000) mm_playback.ExecuteByID(idx - 4000);
+    else if (idx < 6000) mm_library.ExecuteByID(idx - 5000);
+    else if (idx < 7000) mm_help.ExecuteByID(idx - 6000);
+    
+    // [修复] 移除 menu.Dispose()
+}
+
+function show_devices_menu(x, y) {
+    const menu = window.CreatePopupMenu();
+    const devices = JSON.parse(fb.GetOutputDevices());
+    let active_idx = -1;
+
+    devices.forEach((dev, i) => {
+        menu.AppendMenuItem(MF_STRING, i + 1, dev.name);
+        if (dev.active) active_idx = i;
+    });
+
+    if (active_idx !== -1) {
+        menu.CheckMenuRadioItem(1, devices.length, active_idx + 1);
+    }
+
+    const idx = menu.TrackPopupMenu(x, y);
+    if (idx > 0 && (idx - 1) !== active_idx) {
+        fb.RunMainMenuCommand(`Playback/Device/${devices[idx - 1].name}`);
+    }
+    // [修复] 移除 menu.Dispose()
+}
+
+const rg_configs = [
+    { img: imgs.rg_off, text: "开启音轨增益 (当前:无)" },    
+    { img: imgs.rg_track, text: "关闭音轨增益 (当前:音轨)" }, 
+    { img: imgs.rg_album, text: "关闭专辑增益 (当前:专辑)" }, 
+    { img: imgs.rg_album, text: "关闭增益 (当前:智能)" }      
 ];
 
-// 定义几个常用的输出设备信息
-// 后续设备名字变了之后，修改name即可
-// name来源：Perfenence -> Playback -> Output -> Devices
-// 2. 使用配置对象集中管理不同模式下的图片和下一命令
-// 关键：我们定义的是“当前设备”下的配置，以及“点击后要切换到的目标命令”。
-const deviceConfigs = {
-  "ASIO : aune USB Audio Device": {
-    img: { normal: imgs.asio, hover: imgs.asio_hover },
-    // 目标：切换到 WASAPI Share
-    command: "Playback/Device/WASAPI (shared) : Default Sound Device",
-    tiptext: "切换WASAPI Share输出",
-  },
-  "Default : Primary Sound Driver [exclusive]": {
-    img: { normal: imgs.wasapi, hover: imgs.wasapi_hover },
-    // 目标：切换到 WASAPI Share
-    command: "Playback/Device/WASAPI (shared) : Default Sound Device",
-    tiptext: "切换WASAPI Share输出",
-  },
-  // 默认配置，用于 WASAPI Share 或其他未匹配的设备
-  default: {
-    img: { normal: imgs.wasapi_share, hover: imgs.wasapi_share_hover },
-    // 目标：切换到 ASIO
-    command: "Playback/Device/ASIO : aune USB Audio Device",
-    tiptext: "切换ASIO输出",
-  },
-};
-
-// 初始化声音控制条
-const volume = new _volume(0, 0, 0, 0);
-volume.c1 = colors.volume_slider_bg;
-volume.c2 = colors.volume_slider_fg;
-volume.h = elements.volume.h;
-volume.w = elements.volume.w;
-
-// _buttons 定义看samples\\complete\\js\\helpers.js
-const buttons = new _buttons();
-
-// 这里只重新生成按钮会改变的按钮, 避免所有按钮都重新 new _button
-// --- 1. 独立函数：更新 ReplayGain 按钮 ---
-function update_replaygain_btn() {
-  // 获取当前增益状态, 非 0~3 异常的时候直接拿 0
-  const current_replaygain_mode =
-    replaygain_mode_configs[fb.ReplaygainMode] || replaygain_mode_configs[0]; // 确保 fallback 到配置对象
-
-  // 创建或更新按钮
-  buttons.buttons.replaygain_btn = new _button(
-    elements.replaygain_btn.x,
-    elements.replaygain_btn.y,
-    elements.replaygain_btn.w,
-    elements.replaygain_btn.h,
-    current_replaygain_mode.img,
-    elements.replaygain_btn.func,
-    current_replaygain_mode.tiptext
-  );
+// replaygain = rg
+function update_rg_state() {
+    const mode = fb.ReplaygainMode; 
+    const cfg = rg_configs[mode] || rg_configs[0];
+    if (buttons.replaygain) buttons.replaygain.updateState(cfg.img, imgs.rg_hover, cfg.text);
 }
 
-// --- 2. 独立函数：更新输出设备按钮 ---
-function update_device_btn() {
-  // 1. 获取当前设备名称
-  const device_output_name = __get_output_device_name();
+function update_device_state() {
+    const deviceArr = JSON.parse(fb.GetOutputDevices());
+    const current = deviceArr.find(d => d.active)?.name || "";
+    
+    let img = imgs.wasapi_share;
+    let img_hover = imgs.wasapi_hover;
+    let tip = "切换设备";
+    let cmd = "";
 
-  // 2. 根据设备名称查找配置，如果没有找到则使用 default 配置
-  const currentConfig =
-    deviceConfigs[device_output_name] || deviceConfigs.default;
-
-  // 3. 创建或更新按钮
-  buttons.buttons.device_btn = new _button(
-    elements.device_btn.x,
-    elements.device_btn.y,
-    elements.device_btn.w,
-    elements.device_btn.h,
-    currentConfig.img,
-    // 注意：func 需要捕获 currentConfig 变量
-    (x, y) => {
-      fb.RunMainMenuCommand(currentConfig.command);
-    },
-    currentConfig.tiptext
-  );
-}
-
-// --- 3. 独立函数：更新音量/静音按钮 ---
-function update_volume_btn() {
-  const isMuted = fb.Volume === -100;
-
-  // 决定图片和提示文本
-  const volumeState = isMuted
-    ? {
-        images: { normal: imgs.mute, hover: imgs.mute_hover },
-        tiptext: "取消静音",
-      }
-    : {
-        images: { normal: imgs.vol, hover: imgs.vol_hover },
-        tiptext: "静音",
-      };
-
-  // 创建或更新按钮
-  buttons.buttons.volume_btn = new _button(
-    elements.volume_btn.x,
-    elements.volume_btn.y,
-    elements.volume_btn.w,
-    elements.volume_btn.h,
-    volumeState.images,
-    elements.volume_btn.func,
-    volumeState.tiptext
-  );
-}
-
-// 根据元素定义信息初始化按钮
-function init_buttons() {
-  for (const [key, element] of Object.entries(elements)) {
-    if (element.is_btn) {
-      // function _button(x, y, w, h, img_src, fn, tiptext)
-      buttons.buttons[key] = new _button(
-        element.x,
-        element.y,
-        element.w,
-        element.h,
-        element.img,
-        element.func,
-        element.tiptext
-      );
+    if (current.includes("ASIO")) {
+        img = imgs.asio;
+        img_hover = imgs.asio_hover;
+        tip = "当前: ASIO (点击切换 WASAPI shared)";
+        cmd = "Playback/Device/WASAPI (shared) : Default Sound Device"; 
+    } else if(current.includes("exclusive")) {
+        img = imgs.wasapi;
+        img_hover = imgs.wasapi_hover;
+        tip = "当前: WASAPI (点击切换 WASAPI shared)";
+        cmd = "Playback/Device/WASAPI (shared) : Default Sound Device"; 
+    } else {
+        img = imgs.wasapi_share; 
+        img_hover = imgs.wasapi_hover;
+        tip = "点击切换 ASIO";
+        cmd = "Playback/Device/ASIO : aune USB Audio Device"; 
     }
-  }
-  update_replaygain_btn();
-  update_device_btn();
-  update_volume_btn();
+
+    if (buttons.device) {
+        buttons.device.updateState(img, img_hover, tip, () => {
+            try { fb.RunMainMenuCommand(cmd); } catch(e) {}
+        });
+    }
 }
 
-init_buttons();
-
-// 尺寸变化时候更新按钮位置信息
-function update_buttons_position() {
-  for (const [key, button] of Object.entries(buttons.buttons)) {
-    // function _button(x, y, w, h, img_src, fn, tiptext)
-    // console.log("key:" + key);
-    // console.log("element:" + button.x);
-    button.x = elements[key].x;
-    button.y = elements[key].y;
-  }
+function update_volume_state() {
+    const isMuted = (fb.Volume === -100);
+    const img = isMuted ? imgs.mute : imgs.vol;
+    const hover = isMuted ? imgs.mute_hover : imgs.vol_hover;
+    const text = isMuted ? "取消静音" : "静音";
+    
+    if (buttons.volume_btn) buttons.volume_btn.updateState(img, hover, text);
 }
+
+// ============================================================================
+// 5. 初始化与布局
+// ============================================================================
+
+function init_ui() {
+    buttons.recent = new Button({ 
+        img_normal: imgs.recent, img_hover: imgs.recent_hover, 
+        func: () => run_custom_query("recent"), tiptext: "最近播放" 
+    });
+    buttons.favorite = new Button({ 
+        img_normal: imgs.favorite, img_hover: imgs.favorite_hover, 
+        func: () => run_custom_query("favorite"), tiptext: "最受欢迎" 
+    });
+    buttons.queue = new Button({ 
+        img_normal: imgs.queue, img_hover: imgs.queue_hover, 
+        func: () => fb.RunMainMenuCommand("View/Queue Viewer"), tiptext: "队列" 
+    });
+    buttons.search = new Button({ 
+        img_normal: imgs.search, img_hover: imgs.search_hover, 
+        func: () => {
+            fb.RunMainMenuCommand("View/Show now playing in playlist");
+            fb.RunMainMenuCommand("Edit/Search");
+        }, tiptext: "搜索" 
+    });
+    buttons.replaygain = new Button({
+        img_normal: imgs.rg_off, img_hover: imgs.rg_hover,
+        func: () => { fb.ReplaygainMode = (fb.ReplaygainMode === 0 ? 1 : 0); }
+    });
+    buttons.device = new Button({
+        img_normal: imgs.wasapi_share, img_hover: imgs.wasapi_hover,
+        func: null, 
+        func_rclick: (x, y) => show_devices_menu(x, y)
+    });
+    buttons.volume_btn = new Button({
+        img_normal: imgs.vol, img_hover: imgs.vol_hover,
+        func: () => fb.VolumeMute()
+    });
+    buttons.menu = new Button({
+        img_normal: imgs.menu, img_hover: imgs.menu_hover,
+        func: (x, y) => show_main_menu(x, y), tiptext: "主菜单"
+    });
+
+    update_rg_state();
+    update_device_state();
+    update_volume_state();
+}
+
+init_ui();
 
 function on_size() {
-  // panel.size();
-  // console.log("on_size() 重新计算");
+    if (window.Width <= 0 || window.Height <= 0) return;
 
-  // console.log("Panel window width:" + ww);
-  // 计算所有元素总宽度，元素 w + margin
-  let total_width = 0;
-  for (const element of Object.values(elements)) {
-    // console.log("total_width t1:" + total_width);
-    total_width += element.w + element.margin;
-    // console.log("total_width t2:" + total_width);
-  }
-  // console.log("Elements total width:" + total_width);
-  // 元素布局 x 起点 ，这里使用靠右布局，居中布局: (ww - total_width)/2
-  let startX = window.Width - total_width;
-  // 元素布局 y 中心
-  let centerY = Math.round(window.Height / 2);
+    const layout = [
+        { key: 'menu', w: ICON_W, m: DEFAULT_MARGIN },
+        { key: 'volume', w: _scale(60), m: DEFAULT_MARGIN },
+        { key: 'volume_btn', w: ICON_W, m: _scale(2) },
+        { key: 'device', w: ICON_W, m: DEFAULT_MARGIN },
+        { key: 'replaygain', w: ICON_W, m: DEFAULT_MARGIN },
+        { key: 'search', w: ICON_W, m: DEFAULT_MARGIN },
+        { key: 'queue', w: ICON_W, m: DEFAULT_MARGIN },
+        { key: 'favorite', w: ICON_W, m: DEFAULT_MARGIN },
+        { key: 'recent', w: ICON_W, m: DEFAULT_MARGIN },
+    ];
 
-  // 计算每个元素的x、y
-  for (const element of Object.values(elements)) {
-    element.x = startX;
-    element.y = Math.round(centerY - element.h / 2);
-    // 更新元素布局起点, 原起点 + 当前元素w + 当前元素margin
-    startX += element.w + element.margin;
-    // console.log(element);
-  }
-  // 更新声音进度条x y属性
-  volume.x = elements.volume.x;
-  volume.y = elements.volume.y;
-  // 更新按钮位置信息
-  update_buttons_position();
-  // update_buttons();
+    let currentX = window.Width;
+    const centerY = Math.floor(window.Height / 2);
+
+    layout.forEach(item => {
+        currentX -= (item.w + item.m);
+        const y = Math.floor(centerY - ICON_H / 2);
+
+        if (item.key === 'volume') {
+            volumeBar.x = currentX;
+            volumeBar.y = Math.floor(centerY - _scale(3) / 2);
+            volumeBar.w = item.w;
+            volumeBar.h = _scale(3);
+        } else {
+            const btn = buttons[item.key];
+            if (btn) {
+                btn.x = currentX;
+                btn.y = y;
+                btn.w = item.w;
+                btn.h = ICON_H;
+            }
+        }
+    });
 }
 
 function on_paint(gr) {
-  // console.log("-------\non_paint() 重新绘制");
-  // 绘制最底层panel，用于定义颜色
-  // panel.paint(gr);
-  gr.FillSolidRect(0, 0, window.Width, window.Height, colors.bg);
-
-  // 绘制按钮
-  buttons.paint(gr);
-  // 绘制声音进度条
-  gr.FillRoundRect(
-    volume.x,
-    volume.y,
-    volume.w,
-    volume.h,
-    _scale(1),
-    _scale(1),
-    volume.c1
-  );
-  // 由于是圆角矩形，volume.pos() 的值太小的时候会绘制图形失败，所以volume.pos()太小的时候绘制
-  if (volume.pos() >= 6) {
-    gr.FillRoundRect(
-      volume.x,
-      volume.y,
-      volume.pos(),
-      volume.h,
-      _scale(1),
-      _scale(1),
-      volume.c2
-    );
-  }
-  // console.log("----------");
+    gr.FillSolidRect(0, 0, window.Width, window.Height, colors.bg);
+    for (let key in buttons) {
+        buttons[key].paint(gr);
+    }
+    volumeBar.paint(gr);
 }
 
-function on_mouse_lbtn_down(x, y) {
-  volume.lbtn_down(x, y);
-}
-
-function on_mouse_lbtn_up(x, y) {
-  volume.lbtn_up(x, y);
-  buttons.lbtn_up(x, y);
-
-  if (buttons.buttons.replaygain_btn.trace(x, y)) {
-    update_replaygain_btn();
-  } else if (buttons.buttons.device_btn.trace(x, y)) {
-    update_device_btn();
-  } else if (buttons.buttons.volume_btn.trace(x, y)) {
-    update_volume_btn();
-  }
-  window.Repaint();
-}
-
-function on_mouse_rbtn_down(x, y) {
-  // 不能用 on_mouse_rbtn_up() 这个函数会触发默认的 右键菜单，原因未知
-  // 输出设备区域弹出设备选择菜单
-  if (buttons.buttons.device_btn.trace(x, y)) {
-    __devices_menu(x, y);
-  }
-}
-
-// function on_mouse_rbtn_up(x, y) {
-//   // 弹出panel的颜色定制菜单
-//   // panel.rbtn_up(x, y);
-// }
+// ============================================================================
+// 6. 全局回调 (Event Handlers)
+// ============================================================================
 
 function on_mouse_move(x, y) {
-  volume.move(x, y);
-  buttons.move(x, y);
-  // 声音指示条hover颜色
-  if (volume.trace(x, y)) {
-    volume.c2 = colors.volume_slider_fg_hover;
-    window.RepaintRect(volume.x, volume.y, volume.w, volume.h);
-  } else {
-    volume.c2 = colors.volume_slider_fg;
-    window.RepaintRect(volume.x, volume.y, volume.w, volume.h);
-  }
+    // 1. 优先处理音量条
+    const isVolumeActive = volumeBar.on_mouse_move(x, y);
+    
+    if (isVolumeActive) {
+        if (currentHoverBtn) {
+            currentHoverBtn.deactivate();
+            currentHoverBtn = null;
+        }
+        
+        if (volumeBar.drag) {
+            _tt(volumeBar.current_tip);
+            _setCursor(32649); // Hand
+        } else {
+            _tt(""); 
+            _setCursor(32512); // Arrow
+        }
+        return;
+    }
+
+    // 2. 检测按钮 (状态机逻辑)
+    let newHoverBtn = null;
+    for (let key in buttons) {
+        if (buttons[key].trace(x, y)) {
+            newHoverBtn = buttons[key];
+            break; 
+        }
+    }
+
+    if (newHoverBtn !== currentHoverBtn) {
+        if (currentHoverBtn) {
+            currentHoverBtn.deactivate();
+        }
+
+        if (newHoverBtn) {
+            newHoverBtn.activate();
+            _tt(newHoverBtn.tiptext);
+            _setCursor(32649); // Hand
+        } else {
+            _tt("");
+            _setCursor(32512); // Arrow
+        }
+
+        currentHoverBtn = newHoverBtn;
+    }
 }
 
 function on_mouse_leave() {
-  buttons.leave();
+    if (currentHoverBtn) {
+        currentHoverBtn.deactivate();
+        currentHoverBtn = null;
+    }
+    volumeBar.on_mouse_move(-1, -1);
+    _tt("");
+    _setCursor(32512);
 }
 
-function on_mouse_wheel(s) {
-  volume.wheel(s);
+function on_mouse_lbtn_down(x, y) {
+    volumeBar.on_mouse_lbtn_down(x, y);
+}
+
+function on_mouse_lbtn_up(x, y) {
+    if (volumeBar.on_mouse_lbtn_up(x, y)) return;
+    if (currentHoverBtn) {
+        currentHoverBtn.on_mouse_lbtn_up(x, y);
+    }
+}
+
+function on_mouse_rbtn_down(x, y) {
+    // 这里屏蔽默认的右键菜单
+    if (currentHoverBtn) {
+        return currentHoverBtn.on_mouse_rbtn_down(x, y);
+    }
+    return true; 
+}
+
+function on_mouse_wheel(step) {
+    volumeBar.on_mouse_wheel(step);
 }
 
 function on_volume_change(val) {
-  volume.volume_change();
-  // console.log("当前音量: "+val);  // 当前音量 -100 ~ 0, console.log(fb.Volume) 也可以输出
-  update_volume_btn();
-  window.RepaintRect(
-    buttons.buttons.volume_btn.x,
-    buttons.buttons.volume_btn.y,
-    buttons.buttons.volume_btn.w,
-    buttons.buttons.volume_btn.h
-  );
+    update_volume_state(); 
+    volumeBar.repaint();
 }
 
-// function on_colours_changed() {
-//   panel.colours_changed();
-//   window.Repaint();
-// }
-
-// 播放设备切换的时候修改显示 独占状态 文本
 function on_output_device_changed() {
-  update_device_btn();
-  window.RepaintRect(
-    buttons.buttons.device_btn.x,
-    buttons.buttons.device_btn.y,
-    buttons.buttons.device_btn.w,
-    buttons.buttons.device_btn.h
-  );
+    update_device_state();
 }
 
-function on_replaygain_mode_changed(new_mode) {
-  update_replaygain_btn();
-  window.RepaintRect(
-    buttons.buttons.replaygain_btn.x,
-    buttons.buttons.replaygain_btn.y,
-    buttons.buttons.replaygain_btn.w,
-    buttons.buttons.replaygain_btn.h
-  );
+function on_replaygain_mode_changed() {
+    update_rg_state();
 }
 
-// 获取当前选择的播放设备名字
-function __get_output_device_name() {
-  let device_output_name = "Not Found";
-  const deviceArr = JSON.parse(fb.GetOutputDevices());
-  for (let i = 0; i < deviceArr.length; i++) {
-    if (deviceArr[i].active) {
-      device_output_name = deviceArr[i].name;
-      break;
+function on_script_unload() {
+    for (let key in imgs) {
+        const img = imgs[key];
+        if (img && typeof img.Dispose === 'function') {
+            img.Dispose();
+        }
     }
-  }
-  // console.log("device output now: " + device_output_name);
-  return device_output_name;
-}
-
-/**
- * 显示音频输出设备的右键菜单，并处理设备切换。
- * 已知问题：on_mouse_rbtn_up() 切换设备之后会弹出默认的 panel右键菜单，原因未知, 应该使用 on_mouse_rbtn_down() 触发
- *
- * @param {number} x - 菜单显示位置的 x 坐标。
- * @param {number} y - 菜单显示位置的 y 坐标。
- */
-function __devices_menu(x, y) {
-  const menu = window.CreatePopupMenu();
-
-  // 1. 获取并处理设备列表
-  // fb.GetOutputDevices() 返回 JSON 字符串，解析为数组。
-  // 数组元素格式：[{name: '...', active: true/false}, ...] https://theqwertiest.github.io/foo_spider_monkey_panel/assets/generated_files/docs/html/fb.html#.GetOutputDevices
-  const devices = JSON.parse(fb.GetOutputDevices());
-
-  // 使用 map 结合解构赋值来遍历数组，填充菜单项，并查找活动设备的索引
-  let active_id = -1;
-  let menu_id = 1; // 菜单项的 ID 从 1 开始
-
-  // 映射设备数据到菜单创建和 ID 标记
-  devices.map((device, index) => {
-    // 解构赋值获取 name 和 active 属性
-    const { name, active } = device;
-
-    // 添加菜单项。使用 menu_id 作为命令 ID。
-    menu.AppendMenuItem(MF_STRING, menu_id, name);
-
-    // 如果设备处于活动状态，记录其在 devices 数组中的索引
-    if (active) {
-      active_id = index;
-    }
-
-    menu_id++;
-  });
-
-  // 2. 标记当前活动设备
-  // 菜单项的 ID 是 1 到 devices.length。
-  if (active_id > -1) {
-    // active_id 是数组索引 (0-based)，菜单 ID 是 menu_id - 1 (1-based)。
-    // 标记的菜单项 ID = active_id + 1
-    // 范围检查：从 ID 1 到 ID devices.length (即 menu_id - 1)
-    menu.CheckMenuRadioItem(1, menu_id - 1, active_id + 1);
-  }
-
-  // 3. 追踪菜单并获取用户选择
-  const idx = menu.TrackPopupMenu(x, y);
-
-  // 4. 处理选择结果, idx - 1 !== active_id 和当前选择一样不处理
-  if (idx > 0 && idx - 1 !== active_id) {
-    // idx 是菜单项的 ID (1-based)，需要转换回 devices 数组的索引 (0-based)
-    const deviceIndex = idx - 1;
-
-    // 使用模板字符串构建命令，比字符串拼接更清晰
-    fb.RunMainMenuCommand(`Playback/Device/${devices[deviceIndex].name}`);
-  }
-  // // SMP中没有该方法，js panel中有 https://theqwertiest.github.io/foo_spider_monkey_panel/docs/faq/jsp_to_smp_migration_guide/#remove-toarray-and-dispose-methods
-  // menu.Dispose();
-}
-
-/**
- * 核心功能：执行查询并移动结果
- */
-function __run_custom_query(x, y) {
-  let selectedElement = null;
-
-  // 仅判断哪个按钮被点击
-  if (buttons.buttons.recent_btn.trace(x, y)) {
-    selectedElement = elements.recent_btn;
-  } else if (buttons.buttons.favorite_btn.trace(x, y)) {
-    selectedElement = elements.favorite_btn;
-  }
-
-  // 如果点击了有效按钮，则提取数据，否则保持默认 初始化一个默认查询, 最近一个星期发行的
-  const {
-    query = "%date% DURING LAST 1 WEEKS",
-    sort_pattern = "%date%",
-    target_playlist = "✨ Library View",
-    limit = 1,
-  } = selectedElement || {};
-
-  // 1. 在媒体库中执行查询
-  const handleList = fb.GetQueryItems(fb.GetLibraryItems(), query);
-  // handleList.Count > 0  // 可以判断是否存在查询结果，这里不做处理, 不存在结果直接空
-  // 1. 获取全库句柄
-  // let handleList = fb.GetLibraryItems();
-
-  // 2. 执行排序 (使用 TitleFormat 模式)
-  // 第二个参数: 1 为升序, -1 为降序
-  handleList.OrderByFormat(fb.TitleFormat(sort_pattern), -1);
-  // 2. 如果结果超过了限制数量，删除多余的部分
-  if (handleList.Count > limit) {
-    // 参数：起始索引，删除数量
-    handleList.RemoveRange(limit, handleList.Count - limit);
-  }
-
-  // 3. 查找或创建播放列表
-  //  FindOrCreatePlaylist(name, unlocked) 找到播放列表返回对应索引，找不到创建一个列表返回其索引，unlocked 是否忽略上锁列表
-  const plIndex = plman.FindOrCreatePlaylist(target_playlist, false);
-  // 3. 操作播放列表
-  plman.ClearPlaylist(plIndex); // 清空原列表 (可选)
-  //  InsertPlaylistItems(playlistIndex, base, handle_list, selectopt)  selectopt：bool 是否选中列表内容
-  plman.InsertPlaylistItems(plIndex, 0, handleList, false); // 插入查询结果
-  plman.ActivePlaylist = plIndex; // 跳转到该列表
-}
-
-// 下方内容来自作者的 samples\\complete\\js\\volume.js
-function _volume(x, y, w, h) {
-  this.volume_change = () => {
-    window.RepaintRect(this.x, this.y, this.w, this.h);
-  };
-
-  this.trace = (x, y) => {
-    const m = this.drag ? 200 : 0;
-    return (
-      x > this.x - m &&
-      x < this.x + this.w + m * 2 &&
-      y > this.y - m &&
-      y < this.y + this.h + m * 2
-    );
-  };
-
-  this.wheel = (s) => {
-    if (this.trace(this.mx, this.my)) {
-      if (s == 1) {
-        fb.VolumeUp();
-      } else {
-        fb.VolumeDown();
-      }
-      _tt("");
-      return true;
-    } else {
-      return false;
-    }
-  };
-
-  this.move = (x, y) => {
-    this.mx = x;
-    this.my = y;
-    if (this.trace(x, y)) {
-      x -= this.x;
-      const pos = x < 0 ? 0 : x > this.w ? 1 : x / this.w;
-      this.drag_vol = Math.max(-100, (10 * Math.log(pos)) / Math.LN2);
-      _tt(this.drag_vol.toFixed(2) + " dB");
-      if (this.drag) {
-        fb.Volume = this.drag_vol;
-      }
-      this.hover = true;
-      return true;
-    } else {
-      if (this.hover) {
-        _tt("");
-      }
-      this.hover = false;
-      this.drag = false;
-      return false;
-    }
-  };
-
-  this.lbtn_down = (x, y) => {
-    if (this.trace(x, y)) {
-      this.drag = true;
-      return true;
-    } else {
-      return false;
-    }
-  };
-
-  this.lbtn_up = (x, y) => {
-    if (this.trace(x, y)) {
-      if (this.drag) {
-        this.drag = false;
-        fb.Volume = this.drag_vol;
-      }
-      return true;
-    } else {
-      return false;
-    }
-  };
-
-  this.pos = (type) => {
-    return Math.ceil(
-      (type == "h" ? this.h : this.w) * Math.pow(2, fb.Volume / 10)
-    );
-  };
-
-  this.x = x;
-  this.y = y;
-  this.w = w;
-  this.h = h;
-  this.mx = 0;
-  this.my = 0;
-  this.hover = false;
-  this.drag = false;
-  this.drag_vol = 0;
 }

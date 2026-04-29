@@ -1,539 +1,415 @@
 /**
- * @file playback_buttons.js
+ * @file playback_buttons_v2.js
  * @author XYSRe
  * @created 2025-12-14
- * @updated 2025-12-16
- * @version 1.0.0
- * @description 播放控制按钮, 播放模式(Order)写死了几个模式！
+ * @updated 2026-04-14
+ * @version 1.4.1 (Native Tooltip)
+ * @description 修复：完全还原原版 Tooltip 逻辑（移除 Deactivate），修正碰撞检测间隙。
+ *              播放控制按钮, 播放模式(Order)写死了几个模式！
  */
 
 "use strict";
 
 window.DefineScript("Playback Buttons", {
-  author: "XYSRe",
-  version: "v1.0.0",
-  options: { grab_focus: false },
+    author: "XYSRe",
+    version: "1.4.1",
+    options: { grab_focus: false },
 });
 
-// Lodash 是一个流行的 JavaScript 工具库，提供了许多高效的函数（如数组操作、对象操作、函数节流/防抖等），用于简化编程。它是高度优化的。
-include(fb.ComponentPath + "samples\\complete\\js\\lodash.min.js");
-// 不使用作者完整的内容，改为下方自行精简移植的
-// include(fb.ComponentPath + "samples\\complete\\js\\helpers.js");
-// 该面板支持右键自定义背景颜色，基本用不到，直接代码中写死了, 代码中 const panel = new _panel(true); 相关内容取消注释即可恢复
-// include(fb.ComponentPath + "samples\\complete\\js\\panel.js");
-include(
-  fb.ProfilePath +
-    "\\user-theme-fb2k-medium-slate-blue\\foo_spider_monkey_panel_script\\_helpers.js"
-);
+// ============================================================================
+// 1. 工具函数
+// ============================================================================
+
+const MF_STRING = 0x00000000;
+const DPI = window.DPI;
+
+function _scale(size) {
+    return Math.round((size * DPI) / 72);
+}
+
+function _RGB(r, g, b) {
+    return 0xff000000 | (r << 16) | (g << 8) | b;
+}
+
+function _load_image(path) {
+    if (utils.IsFile(path)) return gdi.Image(path);
+    return null;
+}
+
+const CUI_GLOBAL_FONT = window.GetFontCUI(0).Name;    // CUI Item字体名字
+const tooltip = window.CreateTooltip(CUI_GLOBAL_FONT, _scale(13));
+tooltip.SetMaxWidth(1200);
+
+function _tt(value) {
+    // 直接读取 COM 对象属性，确保状态绝对同步
+    if (tooltip.Text != value) {
+        tooltip.Text = value;
+        tooltip.Activate();
+    }
+}
+
+// 光标缓存
+let lastCursorId = 32512; 
+function _setCursor(id) {
+    if (lastCursorId === id) return;
+    lastCursorId = id;
+    window.SetCursor(id);
+}
+
+// ============================================================================
+// 2. 资源定义
+// ============================================================================
 
 const colors = {
-  // 背景颜色 使用 全局系统设置背景色
-  //bgColour: window.GetColourCUI(5),
-  bg: _RGB(23, 23, 23),
+    bg:  window.GetColourCUI(3, "{4E20CEED-42F6-4743-8EB3-610454457E19}"),      // CUI Item Details 背景色
 };
 
-// const panel = new _panel(true);
-
-// 读取图片
-// C:\XX\foobar2000-x64_v2.25.3\profile\\user-theme-fb2k-medium-slate-blue\imgs\png\
-const imgs_folder = fb.ProfilePath + "\\user-theme-fb2k-medium-slate-blue\\imgs\\Lucide\\";
+const IMGS_FOLDER = fb.ProfilePath + "\\user-theme-fb2k-medium-slate-blue\\imgs\\Lucide\\";
 const imgs = {
-  stop: gdi.Image(imgs_folder + "stop.png"),
-  stop_after: gdi.Image(imgs_folder + "stop_after.png"),
-  stop_hover: gdi.Image(imgs_folder + "stop_hover.png"),
-  pause: gdi.Image(imgs_folder + "pause.png"),
-  pause_hover: gdi.Image(imgs_folder + "pause_hover.png"),
-  play: gdi.Image(imgs_folder + "play.png"),
-  play_hover: gdi.Image(imgs_folder + "play_hover.png"),
-  previous: gdi.Image(imgs_folder + "previous.png"),
-  previous_hover: gdi.Image(imgs_folder + "previous_hover.png"),
-  next: gdi.Image(imgs_folder + "next.png"),
-  next_hover: gdi.Image(imgs_folder + "next_hover.png"),
-  order_repeat_playlist: gdi.Image(imgs_folder + "order_repeat_playlist.png"),
-  order_repeat_playlist_hover: gdi.Image(
-    imgs_folder + "order_repeat_playlist_hover.png"
-  ),
-  order_repeat_track: gdi.Image(imgs_folder + "order_repeat_track.png"),
-  order_repeat_track_hover: gdi.Image(
-    imgs_folder + "order_repeat_track_hover.png"
-  ),
-  order_shuffle_tracks: gdi.Image(imgs_folder + "order_shuffle_tracks.png"),
-  order_shuffle_tracks_hover: gdi.Image(
-    imgs_folder + "order_shuffle_tracks_hover.png"
-  ),
-  order_other: gdi.Image(imgs_folder + "order_other.png"),
-  order_other_hover: gdi.Image(imgs_folder + "order_other_hover.png"),
+    stop: _load_image(IMGS_FOLDER + "stop.png"),
+    stop_after: _load_image(IMGS_FOLDER + "stop_after.png"),
+    stop_hover: _load_image(IMGS_FOLDER + "stop_hover.png"),
+    
+    pause: _load_image(IMGS_FOLDER + "pause.png"),
+    pause_hover: _load_image(IMGS_FOLDER + "pause_hover.png"),
+    
+    play: _load_image(IMGS_FOLDER + "play.png"),
+    play_hover: _load_image(IMGS_FOLDER + "play_hover.png"),
+    
+    previous: _load_image(IMGS_FOLDER + "previous.png"),
+    previous_hover: _load_image(IMGS_FOLDER + "previous_hover.png"),
+    
+    next: _load_image(IMGS_FOLDER + "next.png"),
+    next_hover: _load_image(IMGS_FOLDER + "next_hover.png"),
+    
+    order_default: _load_image(IMGS_FOLDER + "order_other.png"),
+    order_default_hover: _load_image(IMGS_FOLDER + "order_other_hover.png"),
+    order_repeat: _load_image(IMGS_FOLDER + "order_repeat_playlist.png"),
+    order_repeat_hover: _load_image(IMGS_FOLDER + "order_repeat_playlist_hover.png"),
+    order_track: _load_image(IMGS_FOLDER + "order_repeat_track.png"),
+    order_track_hover: _load_image(IMGS_FOLDER + "order_repeat_track_hover.png"),
+    order_shuffle: _load_image(IMGS_FOLDER + "order_shuffle_tracks.png"),
+    order_shuffle_hover: _load_image(IMGS_FOLDER + "order_shuffle_tracks_hover.png"),
+
+    replay: _load_image(IMGS_FOLDER + "rotate-ccw.png"),
+    replay_hover: _load_image(IMGS_FOLDER + "rotate-ccw_hover.png"),
+    rewind: _load_image(IMGS_FOLDER + "rewind.png"),
+    rewind_hover: _load_image(IMGS_FOLDER + "rewind_hover.png"),
+    forward: _load_image(IMGS_FOLDER + "fast-forward.png"),
+    forward_hover: _load_image(IMGS_FOLDER + "fast-forward_hover.png"),
+    random: _load_image(IMGS_FOLDER + "dices.png"),
+    random_hover: _load_image(IMGS_FOLDER + "dices_hover.png"),            
 };
 
-// 指定通用图标缩放后宽度，避免图片过大, 指定默认元素间距
-const icon_w = _scale(18);
-const icon_h = _scale(18);
-const default_margin = _scale(10);
+const ICON_W = _scale(18);
+const ICON_H = _scale(18);
+const MARGIN = _scale(10);
 
-// 定义元素信息
-// elements = {
-//   device_btn: {
-//     name: 元素名字,
-//     x: 0, 元素渲染位置x坐标
-//     y: 0, 元素渲染位置y坐标
-//     w: icon_w, 元素渲染宽
-//     h: icon_h, 元素渲染高
-//     margin: _scale(4), 元素距离右侧间距;
-//     img: { normal: imgs.stop, hover: imgs.stop_hover }, 元素显示图片, 一个是普通显示，一个是houver显示
-//     func: false, 按钮点击触发函数
-//     tiptext: "输出设备", 按钮hover文案
-//   },
-// }
-const elements = {
-  stop_btn: {
-    name: "停止模式",
-    x: 0,
-    y: 0,
-    w: icon_w,
-    h: icon_h,
-    margin: default_margin,
-    img: { normal: imgs.stop, hover: imgs.stop_hover },
-    func: null,
-    tiptext: "Stop",
-  },
-  previous_btn: {
-    name: "上一曲",
-    x: 0,
-    y: 0,
-    w: icon_w,
-    h: icon_h,
-    margin: default_margin,
-    img: { normal: imgs.previous, hover: imgs.previous_hover },
-    func: (x, y) => {
-      fb.Prev();
-    },
-    tiptext: "previous",
-  },
-  play_pause_btn: {
-    name: "播放暂停",
-    x: 0,
-    y: 0,
-    w: icon_w * 1.5,
-    h: icon_h * 1.5,
-    margin: default_margin,
-    img: { normal: imgs.play, hover: imgs.play_hover },
-    func: (x, y) => {
-      fb.PlayOrPause();
-    },
-    tiptext: "Play",
-  },
-  next_btn: {
-    name: "下一曲",
-    x: 0,
-    y: 0,
-    w: icon_w,
-    h: icon_h,
-    margin: default_margin,
-    img: { normal: imgs.next, hover: imgs.next_hover },
-    func: (x, y) => {
-      fb.Next();
-    },
-    tiptext: "next",
-  },
-  order_btn: {
-    name: "播放模式",
-    x: 0,
-    y: 0,
-    w: icon_w,
-    h: icon_h,
-    margin: default_margin,
-    img: {
-      normal: imgs.order_repeat_playlist,
-      hover: imgs.order_repeat_playlist_hover,
-    },
-    func: __playback_order_change,
-    tiptext: "开启单曲循环",
-  },
+// ============================================================================
+// 3. 组件类
+// ============================================================================
+
+class Button {
+    constructor(config) {
+        this.x = 0; this.y = 0; this.w = 0; this.h = 0;
+        this.img_normal = config.img_normal || null;
+        this.img_hover = config.img_hover || this.img_normal;
+        this.img_current = this.img_normal;
+        this.fn_click = config.func || null;
+        this.tiptext = config.tiptext || "";
+        this.is_hover = false;
+    }
+
+    updateState(img_normal, img_hover, tiptext, func) {
+        if (this.img_normal === img_normal && this.tiptext === tiptext) return;
+
+        this.img_normal = img_normal;
+        this.img_hover = img_hover || img_normal;
+        this.tiptext = tiptext;
+        
+        this.img_current = this.is_hover ? this.img_hover : this.img_normal;
+        if (func) this.fn_click = func;
+        
+        this.repaint();
+    }
+
+    repaint() {
+        window.RepaintRect(this.x, this.y, this.w, this.h);
+    }
+
+    paint(gr) {
+        if (this.img_current) {
+            gr.DrawImage(this.img_current, this.x, this.y, this.w, this.h, 0, 0, this.img_current.Width, this.img_current.Height);
+        }
+    }
+
+    // [关键修复] 使用 >= 和 <=，消除 1px 间隙导致的闪烁
+    trace(x, y) {
+        return x >= this.x && x <= this.x + this.w && y >= this.y && y <= this.y + this.h;
+    }
+
+    activate() {
+        if (this.is_hover) return;
+        this.is_hover = true;
+        this.img_current = this.img_hover;
+        this.repaint();
+    }
+
+    deactivate() {
+        if (!this.is_hover) return;
+        this.is_hover = false;
+        this.img_current = this.img_normal;
+        this.repaint();
+    }
+
+    on_mouse_lbtn_up(x, y) {
+        if (this.trace(x, y) && this.fn_click) {
+            this.fn_click(x, y);
+            return true;
+        }
+        return false;
+    }
+}
+
+// ============================================================================
+// 4. 业务逻辑
+// ============================================================================
+
+const buttons = {};
+let currentHoverBtn = null; 
+
+const ORDER_CONFIG = {
+    0: { img: imgs.order_default, hover: imgs.order_default_hover, tip: "顺序播放" },
+    1: { img: imgs.order_repeat,  hover: imgs.order_repeat_hover,  tip: "列表循环" },
+    2: { img: imgs.order_track,   hover: imgs.order_track_hover,   tip: "单曲循环" },
+    3: { img: imgs.order_default, hover: imgs.order_default_hover, tip: "随机播放 (Random)" },
+    4: { img: imgs.order_shuffle, hover: imgs.order_shuffle_hover, tip: "随机乱序 (Shuffle)" },
+    default: { img: imgs.order_default, hover: imgs.order_default_hover, tip: "其他模式" }
 };
 
-// --- 3. 播放模式按钮 (Order Button) ---
-// 使用 Map 集中管理 plman.PlaybackOrder 与按钮配置的映射关系，提高可维护性。
-// PlaybackOrder 的含义：
-// 1: 列表循环 (默认/其他)
-// 2: 单曲循环
-// 4: 随机播放
-const orderConfigMap = new Map([
-  [
-    1,
-    {
-      img: {
-        normal: imgs.order_repeat_playlist,
-        hover: imgs.order_repeat_playlist_hover,
-      },
-      tiptext: "开启单曲循环",
-    },
-  ],
-  [
-    2,
-    {
-      img: {
-        normal: imgs.order_repeat_track,
-        hover: imgs.order_repeat_track_hover,
-      },
-      tiptext: "开启随机播放",
-    },
-  ],
-  [
-    4,
-    {
-      img: {
-        normal: imgs.order_shuffle_tracks,
-        hover: imgs.order_shuffle_tracks_hover,
-      },
-      tiptext: "开启列表循环",
-    },
-  ],
-  // 默认模式 (如果 PlaybackOrder 不是 1 或 2  4，则使用这个配置)
-  [
-    0,
-    {
-      img: {
-        normal: imgs.order_other,
-        hover: imgs.order_other_hover,
-      },
-      tiptext: "开启列表循环",
-    },
-  ],
-]);
+function init_ui() {
+    buttons.stop = new Button({ img_normal: imgs.stop, img_hover: imgs.stop_hover, func: () => fb.Stop(), tiptext: "Stop" });
+    buttons.prev = new Button({ img_normal: imgs.previous, img_hover: imgs.previous_hover, func: () => fb.Prev(), tiptext: "上一曲" });
+    buttons.play = new Button({ img_normal: imgs.play, img_hover: imgs.play_hover, func: () => fb.PlayOrPause(), tiptext: "播放" });
+    buttons.next = new Button({ img_normal: imgs.next, img_hover: imgs.next_hover, func: () => fb.Next(), tiptext: "下一曲" });
+    buttons.order = new Button({ img_normal: imgs.order_default, img_hover: imgs.order_default_hover, func: () => toggle_playback_order(), tiptext: "播放模式" });
 
-// _buttons 定义看samples\\complete\\js\\helpers.js
-const buttons = new _buttons();
-
-// --- 1. 停止按钮 (Stop Button) 更新函数 ---
-function update_stop_btn() {
-  const stopButtonState = fb.StopAfterCurrent
-    ? {
-        // ... Stop After 状态配置 ...
-        img: { normal: imgs.stop_after, hover: imgs.stop_hover },
-        func: (x, y) => {
-          fb.StopAfterCurrent = !fb.StopAfterCurrent;
-          fb.Stop();
-        },
-        tiptext: "Stop",
-      }
-    : {
-        // ... Stop 状态配置 ...
-        img: { normal: imgs.stop, hover: imgs.stop_hover },
-        func: (x, y) => {
-          fb.StopAfterCurrent = !fb.StopAfterCurrent;
-        },
-        tiptext: "Stop After",
-      };
-
-  buttons.buttons.stop_btn = new _button(
-    elements.stop_btn.x,
-    elements.stop_btn.y,
-    elements.stop_btn.w,
-    elements.stop_btn.h,
-    stopButtonState.img,
-    stopButtonState.func,
-    stopButtonState.tiptext
-  );
+    buttons.replay = new Button({ img_normal: imgs.replay, img_hover: imgs.replay_hover, func: () => fb.Play(), tiptext: "重放" });
+    buttons.rewind = new Button({ img_normal: imgs.rewind, img_hover: imgs.rewind_hover, func: () => fb.RunMainMenuCommand("Playback/Seek/Back by 5 seconds"), tiptext: "Seek -5s" });
+    buttons.forward = new Button({ img_normal: imgs.forward, img_hover: imgs.forward_hover, func: () => fb.RunMainMenuCommand("Playback/Seek/Ahead by 5 seconds"), tiptext: "Seek +5s" });
+    buttons.random = new Button({ img_normal: imgs.random, img_hover: imgs.random_hover, func: () => fb.Random(), tiptext: "Random" });            
+    update_all_states();
 }
 
-// --- 2. 播放/暂停按钮 (Play/Pause Button) 更新函数 ---
-function update_play_pause_btn() {
-  const isReadyToPlay = !fb.IsPlaying || fb.IsPaused;
-  const playPauseButtonState = isReadyToPlay
-    ? {
-        // ... Play 状态配置 ...
-        img: { normal: imgs.play, hover: imgs.play_hover },
-        tiptext: "Play",
-      }
-    : {
-        // ... Pause 状态配置 ...
-        img: { normal: imgs.pause, hover: imgs.pause_hover },
-        tiptext: "Pause",
-      };
-
-  buttons.buttons.play_pause_btn = new _button(
-    elements.play_pause_btn.x,
-    elements.play_pause_btn.y,
-    elements.play_pause_btn.w,
-    elements.play_pause_btn.h,
-    playPauseButtonState.img,
-    elements.play_pause_btn.func,
-    playPauseButtonState.tiptext
-  );
+function update_play_state() {
+    if (fb.IsPlaying && !fb.IsPaused) {
+        buttons.play.updateState(imgs.pause, imgs.pause_hover, "暂停");
+    } else {
+        buttons.play.updateState(imgs.play, imgs.play_hover, "播放");
+    }
 }
 
-// --- 3. 播放顺序 (Order Button) 更新函数 ---
-// 假设 orderConfigMap 在全局/模块作用域定义
-function update_order_btn() {
-  const orderState =
-    orderConfigMap.get(plman.PlaybackOrder) || orderConfigMap.get(0);
-
-  buttons.buttons.order_btn = new _button(
-    elements.order_btn.x,
-    elements.order_btn.y,
-    elements.order_btn.w,
-    elements.order_btn.h,
-    orderState.img,
-    elements.order_btn.func,
-    orderState.tiptext
-  );
+function update_stop_state() {
+    if (fb.StopAfterCurrent) {
+        buttons.stop.updateState(imgs.stop_after, imgs.stop_hover, "立即停止 (右键: 取消稍后停止)", () => fb.Stop());
+    } else {
+        buttons.stop.updateState(imgs.stop, imgs.stop_hover, "停止播放 (右键: 稍后停止)", () => fb.Stop());
+    }
 }
 
-// 根据元素定义信息初始化按钮
-function init_buttons() {
-  for (const [key, element] of Object.entries(elements)) {
-    // function _button(x, y, w, h, img_src, fn, tiptext)
-    buttons.buttons[key] = new _button(
-      element.x,
-      element.y,
-      element.w,
-      element.h,
-      element.img,
-      element.func,
-      element.tiptext
-    );
-  }
-  update_stop_btn();
-  update_play_pause_btn();
-  update_order_btn();
+function update_order_state() {
+    const orderId = plman.PlaybackOrder;
+    const cfg = ORDER_CONFIG[orderId] || ORDER_CONFIG.default;
+    buttons.order.updateState(cfg.img, cfg.hover, cfg.tip);
 }
 
-init_buttons();
-
-// 尺寸变化时候更新按钮位置信息
-function update_buttons_position() {
-  for (const [key, button] of Object.entries(buttons.buttons)) {
-    // function _button(x, y, w, h, img_src, fn, tiptext)
-    // console.log("key:" + key);
-    // console.log("element:" + button.x);
-    button.x = elements[key].x;
-    button.y = elements[key].y;
-  }
+function update_all_states() {
+    update_play_state();
+    update_stop_state();
+    update_order_state();
 }
+
+function toggle_playback_order() {
+    const cycle = [0, 1, 2, 4];
+    const current = plman.PlaybackOrder;
+    let nextIndex = cycle.indexOf(current) + 1;
+    if (nextIndex >= cycle.length || nextIndex === 0) {
+        nextIndex = 0;
+        if (cycle.indexOf(current) === -1) nextIndex = 1; 
+    }
+    plman.PlaybackOrder = cycle[nextIndex];
+}
+
+function show_order_menu(x, y) {
+    const menu = window.CreatePopupMenu();
+    const modes = [
+        { id: 0, text: "顺序播放 (Default)" },
+        { id: 1, text: "列表循环 (Repeat Playlist)" },
+        { id: 2, text: "单曲循环 (Repeat Track)" },
+        { id: 3, text: "随机播放 (Random)" },
+        { id: 4, text: "随机乱序 (Shuffle Tracks)" },
+        { id: 5, text: "专辑乱序 (Shuffle Albums)" },
+        { id: 6, text: "目录乱序 (Shuffle Folders)" },
+    ];
+
+    modes.forEach((m, i) => {
+        menu.AppendMenuItem(MF_STRING, i + 1, m.text);
+    });
+
+    const currentIdx = modes.findIndex(m => m.id === plman.PlaybackOrder);
+    if (currentIdx !== -1) {
+        menu.CheckMenuRadioItem(1, modes.length, currentIdx + 1);
+    }
+
+    const idx = menu.TrackPopupMenu(x, y);
+    if (idx > 0) {
+        plman.PlaybackOrder = modes[idx - 1].id;
+    }
+}
+
+// ============================================================================
+// 5. 主回调函数
+// ============================================================================
+
+init_ui();
 
 function on_size() {
-  // panel.size();
-  console.log("on_size() 重新计算");
+    if (window.Width <= 0 || window.Height <= 0) return;
 
-  // console.log("Panel window width:" + ww);
-  // 计算所有元素总宽度，元素 w + margin
-  let total_width = 0;
-  for (const element of Object.values(elements)) {
-    // console.log("total_width t1:" + total_width);
-    total_width += element.w + element.margin;
-    // console.log("total_width t2:" + total_width);
-  }
-  // console.log("Elements total width:" + total_width);
-  // 元素布局 x 起点 ，靠右布局 ww - total_width，居中布局: (ww - total_width)/2
-  let startX = Math.round((window.Width - total_width) / 2);
-  // 元素布局 y 中心
-  let centerY = Math.round(window.Height / 2);
+    const totalW = (ICON_W * 5) + (ICON_W * 1.5 * 3) + (MARGIN * 8); 
+    let currentX = Math.round((window.Width - totalW) / 2);
+    const centerY = Math.round(window.Height / 2);
+    const midY = Math.round(centerY - ICON_H / 2);
+    const largeY = Math.round(centerY - (ICON_H * 1.5) / 2);
 
-  // 计算每个元素的x、y
-  for (const element of Object.values(elements)) {
-    // console.log(element);
-    element.x = startX;
-    element.y = Math.round(centerY - element.h / 2);
-    // 更新元素布局起点, 原起点 + 当前元素w + 当前元素margin
-    startX += element.w + element.margin;
-  }
+    buttons.replay.x = currentX; buttons.replay.y = midY;
+    buttons.replay.w = ICON_W;   buttons.replay.h = ICON_H;
+    currentX += ICON_W + MARGIN;    
 
-  // 更新按钮位置信息
-  update_buttons_position();
+    buttons.stop.x = currentX; buttons.stop.y = midY;
+    buttons.stop.w = ICON_W;   buttons.stop.h = ICON_H;
+    currentX += ICON_W + MARGIN;
+
+    buttons.rewind.x = currentX; buttons.rewind.y = midY;
+    buttons.rewind.w = ICON_W;   buttons.rewind.h = ICON_H;
+    currentX += ICON_W + MARGIN;        
+
+    buttons.prev.x = currentX; buttons.prev.y = largeY;
+    buttons.prev.w = ICON_W * 1.5;   buttons.prev.h = ICON_H * 1.5;
+    currentX += (ICON_W * 1.5) + MARGIN;
+
+    buttons.play.x = currentX; buttons.play.y = largeY;
+    buttons.play.w = ICON_W * 1.5; buttons.play.h = ICON_H * 1.5;
+    currentX += (ICON_W * 1.5) + MARGIN;
+
+    buttons.next.x = currentX; buttons.next.y = largeY;
+    buttons.next.w = ICON_W * 1.5;   buttons.next.h = ICON_H * 1.5;
+    currentX += (ICON_W * 1.5) + MARGIN;
+
+    buttons.forward.x = currentX; buttons.forward.y = midY;
+    buttons.forward.w = ICON_W;   buttons.forward.h = ICON_H;
+    currentX += ICON_W + MARGIN;        
+
+    buttons.order.x = currentX; buttons.order.y = midY;
+    buttons.order.w = ICON_W;   buttons.order.h = ICON_H;
+    currentX += ICON_W + MARGIN; 
+
+    buttons.random.x = currentX; buttons.random.y = midY;
+    buttons.random.w = ICON_W;   buttons.random.h = ICON_H;
 }
 
 function on_paint(gr) {
-  // console.log("-------\non_paint() 重新绘制");
-  // 绘制最底层panel，用于定义颜色
-  // panel.paint(gr);
-  // FillSolidRect(x, y, w, h, colour)
-  gr.FillSolidRect(0, 0, window.Width, window.Height, colors.bg);
-
-  // 绘制按钮
-  buttons.paint(gr);
-  // console.log("----------");
+    gr.FillSolidRect(0, 0, window.Width, window.Height, colors.bg);
+    for (let key in buttons) {
+        buttons[key].paint(gr);
+    }
 }
 
-function on_playback_stop() {
-  update_play_pause_btn();
-  update_stop_btn();
-  window.RepaintRect(
-    buttons.buttons.play_pause_btn.x,
-    buttons.buttons.play_pause_btn.y,
-    buttons.buttons.play_pause_btn.w,
-    buttons.buttons.play_pause_btn.h
-  );
-  window.RepaintRect(
-    buttons.buttons.stop_btn.x,
-    buttons.buttons.stop_btn.y,
-    buttons.buttons.stop_btn.w,
-    buttons.buttons.stop_btn.h
-  );
-}
-
-function on_playback_pause() {
-  update_play_pause_btn();
-  window.RepaintRect(
-    buttons.buttons.play_pause_btn.x,
-    buttons.buttons.play_pause_btn.y,
-    buttons.buttons.play_pause_btn.w,
-    buttons.buttons.play_pause_btn.h
-  );
-}
-
-function on_playback_starting() {
-  update_play_pause_btn();
-  window.RepaintRect(
-    buttons.buttons.play_pause_btn.x,
-    buttons.buttons.play_pause_btn.y,
-    buttons.buttons.play_pause_btn.w,
-    buttons.buttons.play_pause_btn.h
-  );
-}
-
+// [核心] 状态机 + 原版 TT
 function on_mouse_move(x, y) {
-  buttons.move(x, y);
+    let newHoverBtn = null;
+
+    // 查找当前悬停按钮
+    for (let key in buttons) {
+        if (buttons[key].trace(x, y)) {
+            newHoverBtn = buttons[key];
+            break; 
+        }
+    }
+
+    if (newHoverBtn !== currentHoverBtn) {
+        // 离开旧按钮
+        if (currentHoverBtn) {
+            currentHoverBtn.deactivate();
+        }
+
+        // 进入新按钮
+        if (newHoverBtn) {
+            newHoverBtn.activate();
+            _tt(newHoverBtn.tiptext);
+            _setCursor(32649); // Hand
+        } else {
+            _tt(""); // 清除
+            _setCursor(32512); // Arrow
+        }
+
+        currentHoverBtn = newHoverBtn;
+    }
 }
 
 function on_mouse_leave() {
-  buttons.leave();
+    if (currentHoverBtn) {
+        currentHoverBtn.deactivate();
+        currentHoverBtn = null;
+    }
+    _tt("");
+    _setCursor(32512);
 }
 
-function on_mouse_lbtn_up(x, y, mask) {
-  buttons.lbtn_up(x, y, mask);
-  if (buttons.buttons.stop_btn.trace(x, y)) {
-    update_stop_btn();
-  } else if (buttons.buttons.play_pause_btn.trace(x, y)) {
-    update_play_pause_btn();
-  } else if (buttons.buttons.order_btn.trace(x, y)) {
-    update_order_btn();
-  }
-  window.Repaint();
+function on_mouse_lbtn_up(x, y) {
+    if (currentHoverBtn) {
+        currentHoverBtn.on_mouse_lbtn_up(x, y);
+    }
+}
+
+function on_mouse_lbtn_dblclk(x, y) {
+    if (!currentHoverBtn) {
+        fb.RunMainMenuCommand("View/Show now playing in playlist");
+    }
+}
+
+function on_mouse_rbtn_up(x, y) {
+    if (buttons.stop.trace(x, y)) {
+        fb.StopAfterCurrent = !fb.StopAfterCurrent;
+        update_stop_state(); 
+        return true;
+    }
+    if (buttons.order.trace(x, y)) {
+        show_order_menu(x, y);
+        return true;
+    }
+    return false;
 }
 
 function on_mouse_rbtn_down(x, y) {
-  if (buttons.buttons.order_btn.trace(x, y)) {
-    __playback_order_menu(x, y);
-  }
-}
-
-// @2025-12-17：鼠标左键双击显示当前播放歌曲所在列表位置。
-function on_mouse_lbtn_dblclk(x, y) {
-  // 排除按钮位置位置
-  for (const button of Object.values(buttons.buttons)) {
-    if (button.trace(x, y)) {
-      return true;
+    // 屏蔽默认右键菜单
+    if (buttons.stop.trace(x, y) || buttons.order.trace(x, y)) {
+        return true; 
     }
-  }
-
-  fb.RunMainMenuCommand("View/Show now playing in playlist");
+    return false;
 }
 
-// function on_mouse_rbtn_up(x, y) {
-//   // panel.rbtn_up(x, y);
-// }
+function on_playback_starting() { update_play_state(); }
+function on_playback_new_track() { update_play_state(); }
+function on_playback_stop() { update_play_state(); update_stop_state(); }
+function on_playback_pause() { update_play_state(); }
+function on_playback_order_changed() { update_order_state(); }
 
-// function on_colours_changed() {
-//   panel.colours_changed();
-//   window.Repaint();
-// }
-
-function on_playback_order_changed(new_order_index) {
-  update_order_btn();
-  window.RepaintRect(
-    buttons.buttons.order_btn.x,
-    buttons.buttons.order_btn.y,
-    buttons.buttons.order_btn.w,
-    buttons.buttons.order_btn.h
-  );
-}
-
-function __playback_order_change(x, y) {
-  /*
-      0 - Default
-      1 - Repeat (Playlist)
-      2 - Repeat (Track)
-      3 - Random
-      4 - Shuffle (tracks)
-      5 - Shuffle (albums)
-      6 - Shuffle (folders)
-  */
-  // 定义需要循环切换的播放模式顺序
-  const orderCycle = [1, 2, 4];
-
-  // 1. 查找当前模式在循环数组中的索引
-  let currentIndex = orderCycle.indexOf(plman.PlaybackOrder);
-
-  // 2. 如果当前模式不在循环数组中（即currentIndex为-1，或者当前模式是0, 3, 5, 6等）
-  // 则将起始模式设置为循环数组的第一个元素，即 1。
-  if (currentIndex === -1) {
-    plman.PlaybackOrder = orderCycle[0];
-    // console.log(`PlaybackOrder reset to default cycle start: ${orderCycle[0]}`);
-    return;
-  }
-
-  // 3. 计算下一个模式的索引：(当前索引 + 1) % 数组长度
-  const nextIndex = (currentIndex + 1) % orderCycle.length;
-
-  // 4. 设置新的播放模式
-  plman.PlaybackOrder = orderCycle[nextIndex];
-  // console.log(
-  //   `PlaybackOrder changed from ${orderCycle[currentIndex]} to ${plman.PlaybackOrder}`
-  // );
-}
-
-// 播放模式配置：数组索引 (0-based) 对应 plman.PlaybackOrder 的值
-const PLAYBACK_MODES = [
-  { text: "顺序播放", orderValue: 0 },
-  { text: "列表循环", orderValue: 1 },
-  { text: "单曲循环", orderValue: 2 },
-  { text: "随机播放(Ramdom)", orderValue: 3 },
-  { text: "随机播放(Shuffle)", orderValue: 4 },
-  { text: "专辑随机播放(Shuffle)", orderValue: 5 },
-  { text: "文件夹随机播放(Shuffle)", orderValue: 6 },
-];
-
-/**
- * 显示播放顺序选择的右键菜单，并处理模式切换。
- *
- * @param {number} x - 菜单显示位置的 x 坐标。
- * @param {number} y - 菜单显示位置的 y 坐标。
- * @returns {boolean} - 始终返回 true (与原函数保持一致)。
- */
-function __playback_order_menu(x, y) {
-  const playback_order_menu = window.CreatePopupMenu();
-
-  // 菜单项的 ID 从 1 开始，与 plman.PlaybackOrder + 1 对应
-  let menu_id = 1;
-
-  // 1. 创建菜单项
-  PLAYBACK_MODES.forEach((mode) => {
-    // MF_STRING 是常量，表示普通菜单项
-    playback_order_menu.AppendMenuItem(MF_STRING, menu_id, mode.text);
-    menu_id++;
-  });
-
-  // 菜单项的总数，用于 CheckMenuRadioItem 的范围
-  const menu_count = PLAYBACK_MODES.length;
-
-  // 2. 标记当前选中的设备
-  // plman.PlaybackOrder 是 0-based，菜单 ID 是 1-based (plman.PlaybackOrder + 1)
-  if (plman.PlaybackOrder >= 0 && plman.PlaybackOrder < menu_count) {
-    // 范围检查：从 ID 1 到 ID menu_count
-    const checked_id = plman.PlaybackOrder + 1;
-    playback_order_menu.CheckMenuRadioItem(1, menu_count, checked_id);
-  }
-
-  // 3. 追踪菜单并获取用户选择
-  const idx = playback_order_menu.TrackPopupMenu(x, y);
-
-  // 4. 处理选择结果
-  if (idx > 0 && idx <= menu_count && idx - 1 !== plman.PlaybackOrder) {
-    // idx 是菜单 ID (1-based)
-    // plman.PlaybackOrder 是 0-based，因此设置为 idx - 1
-    plman.PlaybackOrder = idx - 1;
-
-    // console.log("Selected Playback Order:", plman.PlaybackOrder);
-  }
-  return true;
+function on_script_unload() {
+    for (let key in imgs) {
+        const img = imgs[key];
+        if (img && typeof img.Dispose === 'function') {
+            img.Dispose();
+        }
+    }
 }

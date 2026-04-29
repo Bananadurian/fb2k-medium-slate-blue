@@ -25,57 +25,54 @@ window.DefineScript("Playback Buttons", {
 // ============================================================================
 
 const COL = THEME.COL;
-let _tt = _init_tooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
+let tooltip = _initTooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
 
 // ============================================================================
 // 2. 资源定义
 // ============================================================================
 
-const imgs = {
-    stop: _load_image(IMGS_LUCIDE_DIR + "stop.png"),
-    stop_after: _load_image(IMGS_LUCIDE_DIR + "stop_after.png"),
-    stop_hover: _load_image(IMGS_LUCIDE_DIR + "stop_hover.png"),
+const images = {
+    stop: _loadImage(IMGS_LUCIDE_DIR + "stop.png"),
+    stop_after: _loadImage(IMGS_LUCIDE_DIR + "stop_after.png"),
+    stop_hover: _loadImage(IMGS_LUCIDE_DIR + "stop_hover.png"),
 
-    pause: _load_image(IMGS_LUCIDE_DIR + "pause.png"),
-    pause_hover: _load_image(IMGS_LUCIDE_DIR + "pause_hover.png"),
+    pause: _loadImage(IMGS_LUCIDE_DIR + "pause.png"),
+    pause_hover: _loadImage(IMGS_LUCIDE_DIR + "pause_hover.png"),
 
-    play: _load_image(IMGS_LUCIDE_DIR + "play.png"),
-    play_hover: _load_image(IMGS_LUCIDE_DIR + "play_hover.png"),
+    play: _loadImage(IMGS_LUCIDE_DIR + "play.png"),
+    play_hover: _loadImage(IMGS_LUCIDE_DIR + "play_hover.png"),
 
-    previous: _load_image(IMGS_LUCIDE_DIR + "previous.png"),
-    previous_hover: _load_image(IMGS_LUCIDE_DIR + "previous_hover.png"),
+    previous: _loadImage(IMGS_LUCIDE_DIR + "previous.png"),
+    previous_hover: _loadImage(IMGS_LUCIDE_DIR + "previous_hover.png"),
 
-    next: _load_image(IMGS_LUCIDE_DIR + "next.png"),
-    next_hover: _load_image(IMGS_LUCIDE_DIR + "next_hover.png"),
+    next: _loadImage(IMGS_LUCIDE_DIR + "next.png"),
+    next_hover: _loadImage(IMGS_LUCIDE_DIR + "next_hover.png"),
 
-    order_default: _load_image(IMGS_LUCIDE_DIR + "order_other.png"),
-    order_default_hover: _load_image(IMGS_LUCIDE_DIR + "order_other_hover.png"),
-    order_repeat: _load_image(IMGS_LUCIDE_DIR + "order_repeat_playlist.png"),
-    order_repeat_hover: _load_image(IMGS_LUCIDE_DIR + "order_repeat_playlist_hover.png"),
-    order_track: _load_image(IMGS_LUCIDE_DIR + "order_repeat_track.png"),
-    order_track_hover: _load_image(IMGS_LUCIDE_DIR + "order_repeat_track_hover.png"),
-    order_shuffle: _load_image(IMGS_LUCIDE_DIR + "order_shuffle_tracks.png"),
-    order_shuffle_hover: _load_image(IMGS_LUCIDE_DIR + "order_shuffle_tracks_hover.png"),
+    order_default: _loadImage(IMGS_LUCIDE_DIR + "order_other.png"),
+    order_default_hover: _loadImage(IMGS_LUCIDE_DIR + "order_other_hover.png"),
+    order_repeat: _loadImage(IMGS_LUCIDE_DIR + "order_repeat_playlist.png"),
+    order_repeat_hover: _loadImage(IMGS_LUCIDE_DIR + "order_repeat_playlist_hover.png"),
+    order_track: _loadImage(IMGS_LUCIDE_DIR + "order_repeat_track.png"),
+    order_track_hover: _loadImage(IMGS_LUCIDE_DIR + "order_repeat_track_hover.png"),
+    order_shuffle: _loadImage(IMGS_LUCIDE_DIR + "order_shuffle_tracks.png"),
+    order_shuffle_hover: _loadImage(IMGS_LUCIDE_DIR + "order_shuffle_tracks_hover.png"),
 
-    replay: _load_image(IMGS_LUCIDE_DIR + "rotate-ccw.png"),
-    replay_hover: _load_image(IMGS_LUCIDE_DIR + "rotate-ccw_hover.png"),
-    rewind: _load_image(IMGS_LUCIDE_DIR + "rewind.png"),
-    rewind_hover: _load_image(IMGS_LUCIDE_DIR + "rewind_hover.png"),
-    forward: _load_image(IMGS_LUCIDE_DIR + "fast-forward.png"),
-    forward_hover: _load_image(IMGS_LUCIDE_DIR + "fast-forward_hover.png"),
-    random: _load_image(IMGS_LUCIDE_DIR + "dices.png"),
-    random_hover: _load_image(IMGS_LUCIDE_DIR + "dices_hover.png"),
+    replay: _loadImage(IMGS_LUCIDE_DIR + "rotate-ccw.png"),
+    replay_hover: _loadImage(IMGS_LUCIDE_DIR + "rotate-ccw_hover.png"),
+    rewind: _loadImage(IMGS_LUCIDE_DIR + "rewind.png"),
+    rewind_hover: _loadImage(IMGS_LUCIDE_DIR + "rewind_hover.png"),
+    forward: _loadImage(IMGS_LUCIDE_DIR + "fast-forward.png"),
+    forward_hover: _loadImage(IMGS_LUCIDE_DIR + "fast-forward_hover.png"),
+    random: _loadImage(IMGS_LUCIDE_DIR + "dices.png"),
+    random_hover: _loadImage(IMGS_LUCIDE_DIR + "dices_hover.png"),
 };
 
 const ICON_W = _scale(18);
 const ICON_H = _scale(18);
 const MARGIN = _scale(10);
 
-// ============================================================================
-// 3. 组件类
-// ============================================================================
 
-// Button 类来自 lib/interaction.js
+
 
 // ============================================================================
 // 4. 业务逻辑
@@ -85,58 +82,58 @@ const buttons = {};
 let currentHoverBtn = null; 
 
 const ORDER_CONFIG = {
-    0: { img: imgs.order_default, hover: imgs.order_default_hover, tip: "顺序播放" },
-    1: { img: imgs.order_repeat,  hover: imgs.order_repeat_hover,  tip: "列表循环" },
-    2: { img: imgs.order_track,   hover: imgs.order_track_hover,   tip: "单曲循环" },
-    3: { img: imgs.order_default, hover: imgs.order_default_hover, tip: "随机播放 (Random)" },
-    4: { img: imgs.order_shuffle, hover: imgs.order_shuffle_hover, tip: "随机乱序 (Shuffle)" },
-    default: { img: imgs.order_default, hover: imgs.order_default_hover, tip: "其他模式" }
+    0: { img: images.order_default, hover: images.order_default_hover, tip: "顺序播放" },
+    1: { img: images.order_repeat,  hover: images.order_repeat_hover,  tip: "列表循环" },
+    2: { img: images.order_track,   hover: images.order_track_hover,   tip: "单曲循环" },
+    3: { img: images.order_default, hover: images.order_default_hover, tip: "随机播放 (Random)" },
+    4: { img: images.order_shuffle, hover: images.order_shuffle_hover, tip: "随机乱序 (Shuffle)" },
+    default: { img: images.order_default, hover: images.order_default_hover, tip: "其他模式" }
 };
 
-function init_ui() {
-    buttons.stop = new Button({ img_normal: imgs.stop, img_hover: imgs.stop_hover, func: () => fb.Stop(), tiptext: "Stop" });
-    buttons.prev = new Button({ img_normal: imgs.previous, img_hover: imgs.previous_hover, func: () => fb.Prev(), tiptext: "上一曲" });
-    buttons.play = new Button({ img_normal: imgs.play, img_hover: imgs.play_hover, func: () => fb.PlayOrPause(), tiptext: "播放" });
-    buttons.next = new Button({ img_normal: imgs.next, img_hover: imgs.next_hover, func: () => fb.Next(), tiptext: "下一曲" });
-    buttons.order = new Button({ img_normal: imgs.order_default, img_hover: imgs.order_default_hover, func: () => toggle_playback_order(), tiptext: "播放模式" });
+function initUi() {
+    buttons.stop = new Button({ imgNormal: images.stop, imgHover: images.stop_hover, func: () => fb.Stop(), tipText: "Stop" });
+    buttons.prev = new Button({ imgNormal: images.previous, imgHover: images.previous_hover, func: () => fb.Prev(), tipText: "上一曲" });
+    buttons.play = new Button({ imgNormal: images.play, imgHover: images.play_hover, func: () => fb.PlayOrPause(), tipText: "播放" });
+    buttons.next = new Button({ imgNormal: images.next, imgHover: images.next_hover, func: () => fb.Next(), tipText: "下一曲" });
+    buttons.order = new Button({ imgNormal: images.order_default, imgHover: images.order_default_hover, func: () => togglePlaybackOrder(), tipText: "播放模式" });
 
-    buttons.replay = new Button({ img_normal: imgs.replay, img_hover: imgs.replay_hover, func: () => fb.Play(), tiptext: "重放" });
-    buttons.rewind = new Button({ img_normal: imgs.rewind, img_hover: imgs.rewind_hover, func: () => fb.RunMainMenuCommand("Playback/Seek/Back by 5 seconds"), tiptext: "Seek -5s" });
-    buttons.forward = new Button({ img_normal: imgs.forward, img_hover: imgs.forward_hover, func: () => fb.RunMainMenuCommand("Playback/Seek/Ahead by 5 seconds"), tiptext: "Seek +5s" });
-    buttons.random = new Button({ img_normal: imgs.random, img_hover: imgs.random_hover, func: () => fb.Random(), tiptext: "Random" });            
-    update_all_states();
+    buttons.replay = new Button({ imgNormal: images.replay, imgHover: images.replay_hover, func: () => fb.Play(), tipText: "重放" });
+    buttons.rewind = new Button({ imgNormal: images.rewind, imgHover: images.rewind_hover, func: () => fb.RunMainMenuCommand("Playback/Seek/Back by 5 seconds"), tipText: "Seek -5s" });
+    buttons.forward = new Button({ imgNormal: images.forward, imgHover: images.forward_hover, func: () => fb.RunMainMenuCommand("Playback/Seek/Ahead by 5 seconds"), tipText: "Seek +5s" });
+    buttons.random = new Button({ imgNormal: images.random, imgHover: images.random_hover, func: () => fb.Random(), tipText: "Random" });            
+    updateAllStates();
 }
 
-function update_play_state() {
+function updatePlayPauseButton() {
     if (fb.IsPlaying && !fb.IsPaused) {
-        buttons.play.updateState(imgs.pause, imgs.pause_hover, "暂停");
+        buttons.play.updateState(images.pause, images.pause_hover, "暂停");
     } else {
-        buttons.play.updateState(imgs.play, imgs.play_hover, "播放");
+        buttons.play.updateState(images.play, images.play_hover, "播放");
     }
 }
 
-function update_stop_state() {
+function updateStopState() {
     if (fb.StopAfterCurrent) {
-        buttons.stop.updateState(imgs.stop_after, imgs.stop_hover, "立即停止 (右键: 取消稍后停止)", () => fb.Stop());
+        buttons.stop.updateState(images.stop_after, images.stop_hover, "立即停止 (右键: 取消稍后停止)", () => fb.Stop());
     } else {
-        buttons.stop.updateState(imgs.stop, imgs.stop_hover, "停止播放 (右键: 稍后停止)", () => fb.Stop());
+        buttons.stop.updateState(images.stop, images.stop_hover, "停止播放 (右键: 稍后停止)", () => fb.Stop());
     }
 }
 
-function update_order_state() {
+function updateOrderState() {
     const orderId = plman.PlaybackOrder;
     const cfg = ORDER_CONFIG[orderId] || ORDER_CONFIG.default;
     buttons.order.updateState(cfg.img, cfg.hover, cfg.tip);
 }
 
-function update_all_states() {
-    update_play_state();
-    update_stop_state();
-    update_order_state();
+function updateAllStates() {
+    updatePlayPauseButton();
+    updateStopState();
+    updateOrderState();
 }
 
-function toggle_playback_order() {
-    const cycle = [0, 1, 2, 4];
+function togglePlaybackOrder() {
+    const cycle = [0, 1, 2, 4]; // 跳过模式 3 (随机播放), 仅循环 Default/Repeat/Shuffle
     const current = plman.PlaybackOrder;
     let nextIndex = cycle.indexOf(current) + 1;
     if (nextIndex >= cycle.length || nextIndex === 0) {
@@ -146,7 +143,7 @@ function toggle_playback_order() {
     plman.PlaybackOrder = cycle[nextIndex];
 }
 
-function show_order_menu(x, y) {
+function showOrderMenu(x, y) {
     const menu = window.CreatePopupMenu();
     const modes = [
         { id: 0, text: "顺序播放 (Default)" },
@@ -177,12 +174,13 @@ function show_order_menu(x, y) {
 // 5. 主回调函数
 // ============================================================================
 
-init_ui();
+initUi();
 
 function on_size() {
     if (window.Width <= 0 || window.Height <= 0) return;
 
-    const totalW = (ICON_W * 6) + (ICON_W * 1.5 * 3) + (MARGIN * 8); 
+    // 6 个小按钮 + 3 个大按钮 (1.5x) + 8 个间距
+    const totalW = (ICON_W * 6) + (ICON_W * 1.5 * 3) + (MARGIN * 8);
     let currentX = Math.round((window.Width - totalW) / 2);
     const centerY = Math.round(window.Height / 2);
     const midY = Math.round(centerY - ICON_H / 2);
@@ -225,7 +223,7 @@ function on_size() {
 }
 
 function on_paint(gr) {
-    gr.FillSolidRect(0, 0, window.Width, window.Height, COL.ITEMDETAIL_BG);
+    gr.FillSolidRect(0, 0, window.Width, window.Height, COL.ITEM_DETAIL_BG);
     for (let key in buttons) {
         buttons[key].paint(gr);
     }
@@ -237,7 +235,7 @@ function on_mouse_move(x, y) {
 
     // 查找当前悬停按钮
     for (let key in buttons) {
-        if (buttons[key].trace(x, y)) {
+        if (buttons[key].containsPoint(x, y)) {
             newHoverBtn = buttons[key];
             break; 
         }
@@ -252,10 +250,10 @@ function on_mouse_move(x, y) {
         // 进入新按钮
         if (newHoverBtn) {
             newHoverBtn.activate();
-            _tt(newHoverBtn.tiptext);
+            tooltip(newHoverBtn.tipText);
             _setCursor(CURSOR_HAND);
         } else {
-            _tt("");
+            tooltip("");
             _setCursor(CURSOR_ARROW);
         }
 
@@ -268,13 +266,13 @@ function on_mouse_leave() {
         currentHoverBtn.deactivate();
         currentHoverBtn = null;
     }
-    _tt("");
+    tooltip("");
     _setCursor(CURSOR_ARROW);
 }
 
 function on_mouse_lbtn_up(x, y) {
     if (currentHoverBtn) {
-        currentHoverBtn.on_mouse_lbtn_up(x, y);
+        currentHoverBtn.onLbtnUp(x, y);
     }
 }
 
@@ -285,13 +283,13 @@ function on_mouse_lbtn_dblclk(x, y) {
 }
 
 function on_mouse_rbtn_up(x, y) {
-    if (buttons.stop.trace(x, y)) {
+    if (buttons.stop.containsPoint(x, y)) {
         fb.StopAfterCurrent = !fb.StopAfterCurrent;
-        update_stop_state(); 
+        updateStopState(); 
         return true;
     }
-    if (buttons.order.trace(x, y)) {
-        show_order_menu(x, y);
+    if (buttons.order.containsPoint(x, y)) {
+        showOrderMenu(x, y);
         return true;
     }
     return false;
@@ -299,18 +297,18 @@ function on_mouse_rbtn_up(x, y) {
 
 function on_mouse_rbtn_down(x, y) {
     // 屏蔽默认右键菜单
-    if (buttons.stop.trace(x, y) || buttons.order.trace(x, y)) {
+    if (buttons.stop.containsPoint(x, y) || buttons.order.containsPoint(x, y)) {
         return true; 
     }
     return false;
 }
 
-function on_playback_starting() { update_play_state(); }
-function on_playback_new_track() { update_play_state(); }
-function on_playback_stop() { update_play_state(); update_stop_state(); }
-function on_playback_pause() { update_play_state(); }
-function on_playback_order_changed() { update_order_state(); }
+function on_playback_starting() { updatePlayPauseButton(); }
+function on_playback_new_track() { updatePlayPauseButton(); }
+function on_playback_stop() { updatePlayPauseButton(); updateStopState(); }
+function on_playback_pause() { updatePlayPauseButton(); }
+function on_playback_order_changed() { updateOrderState(); }
 
 function on_script_unload() {
-    _dispose_image_dict(imgs);
+    _disposeImageDict(images);
 }
