@@ -25,7 +25,7 @@ window.DefineScript("Playback Buttons", {
 // ============================================================================
 
 const COL = THEME.COL;
-let tooltip = _initTooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
+let tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
 
 // ============================================================================
 // 2. 资源定义
@@ -223,7 +223,7 @@ function on_size() {
 }
 
 function on_paint(gr) {
-    gr.FillSolidRect(0, 0, window.Width, window.Height, COL.ITEM_DETAIL_BG);
+    gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
     for (let key in buttons) {
         buttons[key].paint(gr);
     }
@@ -310,6 +310,16 @@ function on_playback_stop(reason) {
 }
 function on_playback_pause() { updatePlayPauseButton(); }
 function on_playback_order_changed() { updateOrderState(); }
+
+function on_colours_changed() {
+    _refreshThemeColors();
+    window.Repaint();
+}
+
+function on_font_changed() {
+    _refreshThemeFonts();
+    window.Repaint();
+}
 
 function on_script_unload() {
     _disposeImageDict(images);

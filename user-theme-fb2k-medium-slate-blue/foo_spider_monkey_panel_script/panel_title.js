@@ -24,8 +24,7 @@ window.DefineScript("Panel Title", {
 // ============================================================================
 
 const COL = THEME.COL;
-let tooltip = _initTooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
-const font = THEME.FONT.TITLE_PANEL;
+let tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
 
 // 播放列表模式图标: list-music + chevron + plus
 // 资料库模式图标: list-music + chevron + folder-search (替换 plus/plus_hover)
@@ -86,7 +85,7 @@ function on_paint(gr) {
     0,
     layout.sliderW,
     window.Height,
-    COL.ITEM_DETAIL_BG,
+    COL.BG,
   );
 
   if (!layout.isMetricsReady) return;
@@ -109,8 +108,8 @@ function on_paint(gr) {
 
   gr.GdiDrawText(
     displayText,
-    font,
-    COL.SELECTED_TEXT,
+    THEME.FONT.LABEL,
+    COL.SEL_FG,
     layout.startX + layout.textH + _scale(5),
     layout.contentY,
     layout.textW,
@@ -150,11 +149,20 @@ function on_paint(gr) {
 
 function on_playlists_changed() {
   updateText();
-  // 文本变了，尺寸和布局都会变，重新计算布局
   if (window.Width > 0) {
     updateLayoutMetrics();
     window.Repaint();
   }
+}
+
+function on_colours_changed() {
+  _refreshThemeColors();
+  window.Repaint();
+}
+
+function on_font_changed() {
+  _refreshThemeFonts();
+  window.Repaint();
 }
 
 // 资源清理
@@ -247,8 +255,8 @@ function updateLayoutMetrics() {
 
   // 3. 测量文字
   // 注意：CalcTextHeight 第一个参数无所谓，主要是测字体高度
-  layout.textH = _measure.gr.CalcTextHeight("Test", font);
-  layout.textW = _measure.gr.CalcTextWidth(displayText, font);
+  layout.textH = _measure.gr.CalcTextHeight("Test", THEME.FONT.LABEL);
+  layout.textW = _measure.gr.CalcTextWidth(displayText, THEME.FONT.LABEL);
 
   // 4. 计算垂直位置
   layout.contentY = window.Height - layout.textH - _scale(4);

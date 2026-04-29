@@ -236,12 +236,15 @@ function on_playlist_items_selection_change() {
     }
 }
 
-// 动态响应 CUI 颜色设置变化
 function on_colours_changed() {
+    _refreshThemeColors();
     themeBgColor = THEME.COL.BG;
-    
-    // 强制刷新当前界面的数据 (使得背景色变更立刻生效)
-    updatePanelData(fb.GetNowPlaying());
+    window.Repaint();
+}
+
+function on_font_changed() {
+    _refreshThemeFonts();
+    window.Repaint();
 }
 
 // ==========================================

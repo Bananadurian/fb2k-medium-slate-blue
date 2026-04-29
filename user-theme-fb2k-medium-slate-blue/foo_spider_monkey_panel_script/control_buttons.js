@@ -25,7 +25,7 @@ window.DefineScript("Control Buttons", {
 // ============================================================================
 
 const COL = THEME.COL;
-let tooltip = _initTooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
+let tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
 
 // ============================================================================
 // 2. 资源定义
@@ -71,7 +71,7 @@ class VolumeControl {
         this.x = 0; this.y = 0; this.w = 0; this.h = 0;
         this.drag = false;
         this.hover = false;
-        this.color = COL.SELECTED_TEXT;
+        this.color = COL.SEL_FG;
         this.currentTip = "";
     }
 
@@ -84,7 +84,7 @@ class VolumeControl {
         const arc = Math.max(1, _scale(1));
         // 抗锯齿
         gr.SetSmoothingMode(4); 
-        gr.FillRoundRect(this.x, this.y, this.w, this.h, arc, arc, COL.ITEM_TEXT);
+        gr.FillRoundRect(this.x, this.y, this.w, this.h, arc, arc, COL.FG);
         
         const posW = this.getPosWidth();
         // 这里如果值posW太小的话绘制不了arc值得圆角矩形
@@ -119,7 +119,7 @@ class VolumeControl {
         
         if (isOver !== this.hover) {
             this.hover = isOver;
-            this.color = isOver ? COL.ACTIVE_ITEM : COL.SELECTED_TEXT;
+            this.color = isOver ? COL.FRAME : COL.SEL_FG;
             this.repaint();
         }
         
@@ -392,7 +392,7 @@ function on_size() {
 }
 
 function on_paint(gr) {
-    gr.FillSolidRect(0, 0, window.Width, window.Height, COL.ITEM_DETAIL_BG);
+    gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
     for (let key in buttons) {
         buttons[key].paint(gr);
     }
@@ -457,7 +457,7 @@ function on_mouse_leave() {
     }
     volumeBar.hover = false;
     volumeBar.drag = false;
-    volumeBar.color = COL.SELECTED_TEXT;
+    volumeBar.color = COL.SEL_FG;
     volumeBar.repaint();
     tooltip("");
     _setCursor(CURSOR_ARROW);
@@ -497,6 +497,16 @@ function on_output_device_changed() {
 
 function on_replaygain_mode_changed() {
     updateRgState();
+}
+
+function on_colours_changed() {
+    _refreshThemeColors();
+    window.Repaint();
+}
+
+function on_font_changed() {
+    _refreshThemeFonts();
+    window.Repaint();
 }
 
 function on_script_unload() {
