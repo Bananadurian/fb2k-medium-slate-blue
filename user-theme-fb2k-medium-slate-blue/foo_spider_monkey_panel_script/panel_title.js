@@ -24,16 +24,16 @@ window.DefineScript("Panel Title", {
 // ============================================================================
 
 const COL = THEME.COL;
-let _tt = _init_tooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
-const g_font = THEME.FONT.TITLE_PANEL;
+let tooltip = _initTooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
+const font = THEME.FONT.TITLE_PANEL;
 
 // 播放列表模式图标: list-music + chevron + plus
 // 资料库模式图标: list-music + chevron + folder-search (替换 plus/plus_hover)
-const g_imgs = {
-  icon: _load_image(IMGS_LUCIDE_DIR + "list-music.png"),
-  chevron: _load_image(IMGS_LUCIDE_DIR + "chevron-down.png"),
-  button: _load_image(IMGS_LUCIDE_DIR + "plus.png"),
-  button_hover: _load_image(IMGS_LUCIDE_DIR + "plus_hover.png"),
+const images = {
+  icon: _loadImage(IMGS_LUCIDE_DIR + "list-music.png"),
+  chevron: _loadImage(IMGS_LUCIDE_DIR + "chevron-down.png"),
+  button: _loadImage(IMGS_LUCIDE_DIR + "plus.png"),
+  button_hover: _loadImage(IMGS_LUCIDE_DIR + "plus_hover.png"),
 };
 
 // ============================================================================
@@ -41,12 +41,12 @@ const g_imgs = {
 // ============================================================================
 
 const layout = {
-  slider_w: 0,
-  start_x: 0,
-  text_w: 0,
-  text_h: 0,
-  content_y: 0,
-  is_metrics_ready: false,
+  sliderW: 0,
+  startX: 0,
+  textW: 0,
+  textH: 0,
+  contentY: 0,
+  isMetricsReady: false,
 };
 
 const button = {
@@ -54,85 +54,85 @@ const button = {
   y: 0,
   w: 0,
   h: 0,
-  img: g_imgs.button,
-  img_hover: g_imgs.button_hover,
+  img: images.button,
+  imgHover: images.button_hover,
   tooltip: "新增播放列表",
-  is_hover: false,
+  isHover: false,
   func: () => fb.RunMainMenuCommand("Library/Search"),
 };
 
-let display_text = "";
-let g_activeElement = null; // [状态机] 当前激活的 UI 元素
+let displayText = "";
+let activeElement = null; // [状态机] 当前激活的 UI 元素
 
 // ============================================================================
 // 3. 核心回调 (Callbacks)
 // ============================================================================
 
 // 初始化
-update_text();
+updateText();
 
 function on_size() {
   if (window.Width <= 0 || window.Height <= 0) return;
 
   // 统一调用布局更新
-  update_layout_metrics();
+  updateLayoutMetrics();
 }
 
 function on_paint(gr) {
   gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
 
   gr.FillSolidRect(
-    window.Width - layout.slider_w + _scale(0.8),
+    window.Width - layout.sliderW + _scale(0.8),
     0,
-    layout.slider_w,
+    layout.sliderW,
     window.Height,
-    COL.ITEMDETAIL_BG,
+    COL.ITEM_DETAIL_BG,
   );
 
-  if (!layout.is_metrics_ready) return;
+  if (!layout.isMetricsReady) return;
 
   gr.SetTextRenderingHint(5);
 
-  if (g_imgs.icon) {
+  if (images.icon) {
     gr.DrawImage(
-      g_imgs.icon,
-      layout.start_x,
-      layout.content_y,
-      layout.text_h,
-      layout.text_h,
+      images.icon,
+      layout.startX,
+      layout.contentY,
+      layout.textH,
+      layout.textH,
       0,
       0,
-      g_imgs.icon.Width,
-      g_imgs.icon.Height,
+      images.icon.Width,
+      images.icon.Height,
     );
   }
 
   gr.GdiDrawText(
-    display_text,
-    g_font,
+    displayText,
+    font,
     COL.SELECTED_TEXT,
-    layout.start_x + layout.text_h + _scale(5),
-    layout.content_y,
-    layout.text_w,
-    layout.text_h,
+    layout.startX + layout.textH + _scale(5),
+    layout.contentY,
+    layout.textW,
+    layout.textH,
     0,
   );
 
-  if (g_imgs.chevron) {
+  if (images.chevron) {
     gr.DrawImage(
-      g_imgs.chevron,
-      layout.start_x + layout.text_h + layout.text_w + _scale(6),
-      layout.content_y,
-      layout.text_h,
-      layout.text_h,
+      images.chevron,
+      layout.startX + layout.textH + layout.textW + _scale(6),
+      layout.contentY,
+      layout.textH,
+      layout.textH,
       0,
       0,
-      g_imgs.chevron.Width,
-      g_imgs.chevron.Height,
+      images.chevron.Width,
+      images.chevron.Height,
     );
   }
 
-  const current_btn_img = button.is_hover ? button.img_hover : button.img;
+  const current_btn_img = button.isHover ? button.imgHover : button.img;
   if (current_btn_img) {
     gr.DrawImage(
       current_btn_img,
@@ -149,18 +149,18 @@ function on_paint(gr) {
 }
 
 function on_playlists_changed() {
-  update_text();
+  updateText();
   // 文本变了，尺寸和布局都会变，重新计算布局
   if (window.Width > 0) {
-    update_layout_metrics();
+    updateLayoutMetrics();
     window.Repaint();
   }
 }
 
 // 资源清理
 function on_script_unload() {
-  _measure_dispose();
-  _dispose_image_dict(g_imgs);
+  _measureDispose();
+  _disposeImageDict(images);
 }
 
 // ============================================================================
@@ -172,56 +172,55 @@ function on_mouse_move(x, y) {
   let target = null;
 
   // 1. 检测 Tab 按钮
-  if (_element_trace(x, y, button)) {
+  if (_hitTest(x, y, button)) {
     target = button;
   }
 
-  // 3. 状态切换
-  if (g_activeElement === target) return; // 没变，退出
+  // 2. 状态切换
+  if (activeElement === target) return; // 没变，退出
 
   // 旧元素复位
-  if (g_activeElement) {
-    g_activeElement.is_hover = false;
+  if (activeElement) {
+    activeElement.isHover = false;
     window.RepaintRect(
-      g_activeElement.x,
-      g_activeElement.y,
-      g_activeElement.w,
-      g_activeElement.h,
+      activeElement.x,
+      activeElement.y,
+      activeElement.w,
+      activeElement.h,
     );
   }
 
   // 新元素激活
   if (target) {
-    target.is_hover = true;
+    target.isHover = true;
     window.RepaintRect(target.x, target.y, target.w, target.h);
-    // _tt(target.name || target.tooltip || "");
-    _tt(target.tooltip || "");
+    tooltip(target.tooltip || "");
     _setCursor(CURSOR_HAND); // Hand
   } else {
-    _tt("");
+    tooltip("");
     _setCursor(CURSOR_ARROW); // Arrow
   }
 
-  g_activeElement = target;
+  activeElement = target;
 }
 
 function on_mouse_leave() {
-  if (g_activeElement) {
-    g_activeElement.is_hover = false;
+  if (activeElement) {
+    activeElement.isHover = false;
     window.RepaintRect(
-      g_activeElement.x,
-      g_activeElement.y,
-      g_activeElement.w,
-      g_activeElement.h,
+      activeElement.x,
+      activeElement.y,
+      activeElement.w,
+      activeElement.h,
     );
-    g_activeElement = null;
+    activeElement = null;
   }
-  _tt("");
+  tooltip("");
   _setCursor(CURSOR_ARROW);
 }
 
 function on_mouse_lbtn_up(x, y) {
-  if (_element_trace(x, y, button)) {
+  if (_hitTest(x, y, button)) {
     button.func();
   }
 }
@@ -230,12 +229,12 @@ function on_mouse_lbtn_up(x, y) {
 // 5. 辅助函数
 // ============================================================================
 
-function update_text() {
-  display_text = `播放列表 (${plman.PlaylistCount})`;
+function updateText() {
+  displayText = `播放列表 (${plman.PlaylistCount})`;
 }
 
 // 统一布局计算函数
-function update_layout_metrics() {
+function updateLayoutMetrics() {
   // 1. 初始化测量工具 (单例，_measure 来自 lib/utils.js)
   if (!_measure.img) {
     _measure.img = gdi.CreateImage(1, 1);
@@ -243,24 +242,23 @@ function update_layout_metrics() {
   }
 
   // 2. 更新固定参数
-  layout.slider_w = _scale(14);
-  layout.start_x = _scale(8);
+  layout.sliderW = _scale(14);
+  layout.startX = _scale(8);
 
   // 3. 测量文字
   // 注意：CalcTextHeight 第一个参数无所谓，主要是测字体高度
-  layout.text_h = _measure.gr.CalcTextHeight("Test", g_font);
-  layout.text_w = _measure.gr.CalcTextWidth(display_text, g_font);
+  layout.textH = _measure.gr.CalcTextHeight("Test", font);
+  layout.textW = _measure.gr.CalcTextWidth(displayText, font);
 
   // 4. 计算垂直位置
-  layout.content_y = window.Height - layout.text_h - _scale(4);
+  layout.contentY = window.Height - layout.textH - _scale(4);
 
   // 5. 更新按钮位置
-  button.w = layout.text_h;
-  button.h = layout.text_h;
-  button.x = window.Width - layout.slider_w - button.w - _scale(4);
-  button.y = layout.content_y;
+  button.w = layout.textH;
+  button.h = layout.textH;
+  button.x = window.Width - layout.sliderW - button.w - _scale(4);
+  button.y = layout.contentY;
 
-  layout.is_metrics_ready = true;
+  layout.isMetricsReady = true;
 }
 
-// _element_trace 来自 lib/utils.js

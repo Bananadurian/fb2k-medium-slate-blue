@@ -15,82 +15,78 @@ include("lib/interaction.js");
 include("lib/theme.js");
 
 
-window.DefineScript("BIOGRAPHY", {
+window.DefineScript("Biography", {
     author: "XYSRe",
     version: "1.8.0",
     options: { grab_focus: THEME.CFG.GRAB_FOCUS }
 });
 
 // =========================================================================
-// 2. 全局常量配置 (Configuration)
+// 全局常量配置 (Configuration)
 // =========================================================================
 
 // 面板配置开关
 const PANEL_CFG = {
     dataPath:    "D:\\11_MusicLib\\_Extras\\",  // 数据根目录
     coverScale:  3 / 4,                          // 封面宽高比
-    coverFit:    true,                            // true=适配, false=裁剪
+    isCoverFit:  true,                            // true=适配, false=裁剪
 };
 const JSON_DIR = PANEL_CFG.dataPath + "ArtistBiography\\";
 const ARTIST_COVER_DIR = PANEL_CFG.dataPath + "ArtistCover\\";
-// IMGS_LINKS_DIR / THEME.LAYOUT 来自 lib/theme.js
 const SCROLL_STEP = THEME.LAYOUT.SCROLL_STEP;
 const ICON_SIZE = THEME.LAYOUT.ICON_SIZE;
 const MARGIN = THEME.LAYOUT.MARGIN;
 const LINE_H = THEME.LAYOUT.LINE_H;
 const LINE_SPACE = THEME.LAYOUT.LINE_SPACE;
 const IMG_CYCLE_MS = THEME.LAYOUT.IMG_CYCLE_MS;
-const COVER_IDENTIFER = "_Cover_";    // 封面文件名特征匹配符
+const COVER_IDENTIFIER = "_Cover_";    // 封面文件名特征匹配符
 
-// DT_ 标志位和组合样式 (MULTI_LINE_FLAGS, ONE_LINE_FLAGS, BTN_STYLE_FLAGS) 来自 lib/data.js
 
 // =========================================================================
-// 3. 视觉样式与资源 (Theme & Resources)
+// 视觉样式与资源 (Theme & Resources)
 // =========================================================================
 
-// THEME.COL / THEME.FONT 来自 lib/theme.js
 const COL = THEME.COL;
 
-// 字体来自 lib/theme.js (THEME.FONT.TITLE / .TEXT / .BTN / .HEADING)
 
 // [图标资源]
 const LINK_ICONS = {
-    "genres_mark":       _load_image(IMGS_LINKS_DIR + "circle-small.png"),
-    "country_mark":      _load_image(IMGS_LINKS_DIR + "locate.png"),
-    "born_mark":         _load_image(IMGS_LINKS_DIR + "calendar.png"),
-    "links_mark":        _load_image(IMGS_LINKS_DIR + "milestone.png"),
-    "default":      _load_image(IMGS_LINKS_DIR + "default.png"),
-    "official":     _load_image(IMGS_LINKS_DIR + "house.png"),
-    "soundcloud":   _load_image(IMGS_LINKS_DIR + "soundcloud.png"),
-    "bandcamp":     _load_image(IMGS_LINKS_DIR + "bandcamp.png"),
-    "instagram":    _load_image(IMGS_LINKS_DIR + "Instagram.png"),
-    "x":            _load_image(IMGS_LINKS_DIR + "X.png"),
-    "tiktok":       _load_image(IMGS_LINKS_DIR + "TikTok.png"),
-    "youtube":      _load_image(IMGS_LINKS_DIR + "YouTube.png"),
-    "discogs":      _load_image(IMGS_LINKS_DIR + "Discogs.png"),
-    "allmusic":     _load_image(IMGS_LINKS_DIR + "ALLMUSIC.png"),
-    "musicbrainz":  _load_image(IMGS_LINKS_DIR + "Musicbrainz.png"),
-    "rateyourmusic":_load_image(IMGS_LINKS_DIR + "rateyourmusic.png"),
-    "aoty":         _load_image(IMGS_LINKS_DIR + "aoty.png"),
-    "pitchfork":    _load_image(IMGS_LINKS_DIR + "pitchfork.png"),
-    "metacritic":   _load_image(IMGS_LINKS_DIR + "metacritic.png"),
-    "fandom":       _load_image(IMGS_LINKS_DIR + "fandom.png"),
-    "wikipedia":    _load_image(IMGS_LINKS_DIR + "wikipedia.png")  
+    "Genres":       _loadImage(IMGS_LINKS_DIR + "circle-small.png"),
+    "Country":      _loadImage(IMGS_LINKS_DIR + "locate.png"),
+    "Born":         _loadImage(IMGS_LINKS_DIR + "calendar.png"),
+    "Links":        _loadImage(IMGS_LINKS_DIR + "milestone.png"),
+    "default":      _loadImage(IMGS_LINKS_DIR + "default.png"),
+    "official":     _loadImage(IMGS_LINKS_DIR + "house.png"),
+    "soundcloud":   _loadImage(IMGS_LINKS_DIR + "soundcloud.png"),
+    "bandcamp":     _loadImage(IMGS_LINKS_DIR + "bandcamp.png"),
+    "instagram":    _loadImage(IMGS_LINKS_DIR + "Instagram.png"),
+    "x":            _loadImage(IMGS_LINKS_DIR + "X.png"),
+    "tiktok":       _loadImage(IMGS_LINKS_DIR + "TikTok.png"),
+    "youtube":      _loadImage(IMGS_LINKS_DIR + "YouTube.png"),
+    "discogs":      _loadImage(IMGS_LINKS_DIR + "Discogs.png"),
+    "allmusic":     _loadImage(IMGS_LINKS_DIR + "ALLMUSIC.png"),
+    "musicbrainz":  _loadImage(IMGS_LINKS_DIR + "Musicbrainz.png"),
+    "rateyourmusic":_loadImage(IMGS_LINKS_DIR + "rateyourmusic.png"),
+    "aoty":         _loadImage(IMGS_LINKS_DIR + "aoty.png"),
+    "pitchfork":    _loadImage(IMGS_LINKS_DIR + "pitchfork.png"),
+    "metacritic":   _loadImage(IMGS_LINKS_DIR + "metacritic.png"),
+    "fandom":       _loadImage(IMGS_LINKS_DIR + "fandom.png"),
+    "wikipedia":    _loadImage(IMGS_LINKS_DIR + "wikipedia.png")  
 };
 
 // [UI组件] TitleFormat 与 Tooltip
 // $meta(artist,0) 用于避免多值艺人字段导致的文件路径匹配失败
-const tf_artist = fb.TitleFormat("$meta(artist,0)");  
-const tf_album = fb.TitleFormat(" ▸ [%date%]: [%album%] ['('$meta(EDITION)')']"); 
+const artistTf = fb.TitleFormat("$meta(artist,0)");  
+const albumTf = fb.TitleFormat(" ▸ [%date%]: [%album%] ['('$meta(EDITION)')']"); 
 
-let _tt = _init_tooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
+let tooltip = _initTooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
 
 // =========================================================================
-// 4. 全局状态变量 (State Management)
+// 全局状态变量 (State Management)
 // =========================================================================
 
 // 数据状态
-let artist_name = null;      // 缓存当前加载的艺人名 (用于比对是否需要重载)
+let artistName = null;      // 缓存当前加载的艺人名 (用于比对是否需要重载)
 let artistData = null;       // 解析后的艺人 JSON 数据对象
 const ARTIST_CACHE = new LRUCache(50); // LRU 缓存 (存储最近访问的艺人数据和图片路径)
 
@@ -99,51 +95,50 @@ const carousel = { images: [], index: 0, timer: null };
 // IMG_CYCLE_MS 来自上方别名 (THEME.LAYOUT.IMG_CYCLE_MS)
 
 // UI 视图状态
-let showDiscography = false; // Tab状态：False=简介(Profile), True=作品集(Discography)
+let isShowingDiscography = false; // Tab状态：False=简介(Profile), True=作品集(Discography)
 let scrollY = 0;             // 当前垂直滚动条位置
 let maxScrollY = 0;          // 最大可滚动距离
 let textImg = null;          // 文本内容的离屏渲染缓冲图 (GdiBitmap)
 let errorText = "请选择或播放歌曲..."; // 空状态或错误提示文案
-let isCoverFit = PANEL_CFG.coverFit;
+let isCoverFit = PANEL_CFG.isCoverFit;
 
 // 交互状态
 let activeLinkBtns = [];     // 当前生成的外部链接按钮数组
-let g_activeElement = null;  // [状态机] 当前鼠标悬停/激活的 UI 元素
+let activeElement = null;  // [状态机] 当前鼠标悬停/激活的 UI 元素
 
 // 布局动态计算变量 (初始化为 LINE_H 防止除零或计算异常)
-let title_h = LINE_H;        
-let title_w = 0;     
-let cover_h = 0;              
-let genres_h = LINE_H;        
-let line_w = 0;               
-let line_start_y = 0;
-let header_height = 0;        
-let view_w = 0;               
-let view_h = 0;               
+let titleH = LINE_H;        
+let titleW = 0;     
+let coverH = 0;              
+let genresH = LINE_H;        
+let lineW = 0;               
+let lineStartY = 0;
+let headerHeight = 0;        
+let viewW = 0;               
+let viewH = 0;               
 
 // 固定 UI 元素定义
 const elements = {
-    profileBtn:     { displayText: "Profile", x: 0, y: 0, w: 0, h: 0, is_hover: false, tooltip: "艺人简介" },
-    discographyBtn: { displayText: "Discography", x: 0, y: 0, w: 0, h: 0, is_hover: false, tooltip: "本地专辑" }
+    profileBtn:     { displayText: "Profile", x: 0, y: 0, w: 0, h: 0, isHover: false, tooltip: "艺人简介" },
+    discographyBtn: { displayText: "Discography", x: 0, y: 0, w: 0, h: 0, isHover: false, tooltip: "本地专辑" }
 };
 
-// [性能优化] 文本测量工具 _measure_string / _measure_dispose 来自 lib/utils.js
 
 // =========================================================================
-// 5. 核心渲染循环 (Core Render Loop)
+// 核心渲染循环 (Core Render Loop)
 // =========================================================================
 
 function on_size() {
     if (window.Width <= 0 || window.Height <= 0) return;
     
     // 1. 如果有数据，先创建链接按钮对象 (确定X和W)
-    if (artistData) create_link_buttons();    
+    if (artistData) createLinkButtons();    
     // 2. 计算Tab按钮尺寸
-    calc_elements_btn_size();
+    calcElementsBtnSize();
     // 3. 计算整体布局 (确定Y坐标和高度)
-    update_layout_metrics();
+    updateLayoutMetrics();
     // 4. 生成文本缓冲 (耗时操作)
-    create_text_buffer(); 
+    createTextBuffer(); 
 }
 
 function on_paint(gr) {
@@ -152,7 +147,7 @@ function on_paint(gr) {
     gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
 
     if (!artistData) {
-        _draw_empty_state(gr, errorText, THEME.FONT.TEXT, COL.SELECTED_TEXT, window.Width, window.Height);
+        _drawEmptyState(gr, errorText, THEME.FONT.TEXT, COL.SELECTED_TEXT, window.Width, window.Height);
         return;
     }
 
@@ -160,49 +155,49 @@ function on_paint(gr) {
     if (carousel.images.length > 0 && carousel.images[carousel.index]) {
         let currentImg = carousel.images[carousel.index];
         if (isCoverFit) {
-            _drawImageFit(gr, currentImg, 0, 0, window.Width, cover_h);
+            _drawImageFit(gr, currentImg, 0, 0, window.Width, coverH);
         } else {
-            _drawImageCover(gr, currentImg, 0, 0, window.Width, cover_h);
+            _drawImageCover(gr, currentImg, 0, 0, window.Width, coverH);
         }
         
         // 绘制页码指示器 (半透明圆角矩形)
         if (carousel.images.length > 1) {
             let pageText = (carousel.index + 1) + " / " + carousel.images.length;
             gr.SetSmoothingMode(4); // 开启抗锯齿画圆角
-            gr.FillRoundRect(MARGIN, cover_h - MARGIN - LINE_H, _scale(50), LINE_H, _scale(6), _scale(6), 0x99000000);
+            gr.FillRoundRect(MARGIN, coverH - MARGIN - LINE_H, _scale(50), LINE_H, _scale(6), _scale(6), 0x99000000);
             gr.SetSmoothingMode(0); 
-            gr.GdiDrawText(pageText, THEME.FONT.TEXT, 0xFFFFFFFF, MARGIN, cover_h - MARGIN - LINE_H, _scale(50), LINE_H, BTN_STYLE_FLAGS);
+            gr.GdiDrawText(pageText, THEME.FONT.TEXT, 0xFFFFFFFF, MARGIN, coverH - MARGIN - LINE_H, _scale(50), LINE_H, BTN_STYLE_FLAGS);
         }
     }
 
-    let currentY = line_start_y; 
+    let currentY = lineStartY; 
     
     // 3. 绘制头部信息 (Header)
     
     // 3.1 艺人标题 (超长截断逻辑)
-    gr.GdiDrawText(artistData.title, THEME.FONT.TITLE, COL.SELECTED_TEXT, MARGIN, currentY, title_w > line_w ? line_w : title_w, title_h, ONE_LINE_FLAGS);
+    gr.GdiDrawText(artistData.title, THEME.FONT.TITLE, COL.SELECTED_TEXT, MARGIN, currentY, titleW > lineW ? lineW : titleW, titleH, ONE_LINE_FLAGS);
     // 别名 (如果标题没占满一行，在后面追加显示)
-    if (artistData.aliases && title_w < (line_w - MARGIN * 2)) {
-        gr.GdiDrawText(" (" + artistData.aliases + ")", THEME.FONT.TEXT, COL.SELECTED_TEXT, title_w + MARGIN, currentY + _scale(4), line_w - title_w - MARGIN, LINE_H, ONE_LINE_FLAGS);
+    if (artistData.aliases && titleW < (lineW - MARGIN * 2)) {
+        gr.GdiDrawText(" (" + artistData.aliases + ")", THEME.FONT.TEXT, COL.SELECTED_TEXT, titleW + MARGIN, currentY + _scale(4), lineW - titleW - MARGIN, LINE_H, ONE_LINE_FLAGS);
     }
-    currentY += title_h + LINE_SPACE;
+    currentY += titleH + LINE_SPACE;
     
     // 3.2 风格 (多行)
-    if (LINK_ICONS.genres_mark) gr.DrawImage(LINK_ICONS.genres_mark, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.genres_mark.Width, LINK_ICONS.genres_mark.Height);
-    gr.GdiDrawText(artistData.genres || "Unknown Genre", THEME.FONT.TEXT, COL.SELECTED_TEXT, MARGIN * 2.5, currentY, line_w, genres_h, MULTI_LINE_FLAGS);
-    currentY += genres_h + LINE_SPACE;
+    if (LINK_ICONS.Genres) gr.DrawImage(LINK_ICONS.Genres, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Genres.Width, LINK_ICONS.Genres.Height);
+    gr.GdiDrawText(artistData.genres || "Unknown Genre", THEME.FONT.TEXT, COL.SELECTED_TEXT, MARGIN * 2.5, currentY, lineW, genresH, MULTI_LINE_FLAGS);
+    currentY += genresH + LINE_SPACE;
 
     // 3.3 生日
-    if (LINK_ICONS.born_mark) gr.DrawImage(LINK_ICONS.born_mark, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.born_mark.Width, LINK_ICONS.born_mark.Height);
-    gr.GdiDrawText(artistData.born || "-", THEME.FONT.TEXT, COL.SELECTED_TEXT, MARGIN * 2.5, currentY, line_w, LINE_H, ONE_LINE_FLAGS);
+    if (LINK_ICONS.Born) gr.DrawImage(LINK_ICONS.Born, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Born.Width, LINK_ICONS.Born.Height);
+    gr.GdiDrawText(artistData.born || "-", THEME.FONT.TEXT, COL.SELECTED_TEXT, MARGIN * 2.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
 
     // 3.4 地区 (与生日同一行，靠右侧布局)
-    if (LINK_ICONS.country_mark) gr.DrawImage(LINK_ICONS.country_mark, MARGIN * 13, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.country_mark.Width, LINK_ICONS.country_mark.Height);
-    gr.GdiDrawText(artistData.country || "-", THEME.FONT.TEXT, COL.SELECTED_TEXT, MARGIN * 14.5, currentY, line_w, LINE_H, ONE_LINE_FLAGS);
+    if (LINK_ICONS.Country) gr.DrawImage(LINK_ICONS.Country, MARGIN * 13, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Country.Width, LINK_ICONS.Country.Height);
+    gr.GdiDrawText(artistData.country || "-", THEME.FONT.TEXT, COL.SELECTED_TEXT, MARGIN * 14.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
     currentY += LINE_H + LINE_SPACE;
 
     // 3.5 链接图标按钮
-    if (LINK_ICONS.links_mark) gr.DrawImage(LINK_ICONS.links_mark, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.links_mark.Width, LINK_ICONS.links_mark.Height);
+    if (LINK_ICONS.Links) gr.DrawImage(LINK_ICONS.Links, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Links.Width, LINK_ICONS.Links.Height);
     
     activeLinkBtns.forEach(btn => {
         if (!btn.img) return;
@@ -213,56 +208,56 @@ function on_paint(gr) {
     // 4. 绘制 Tab 切换按钮
     const pBtn = elements.profileBtn;
     const dBtn = elements.discographyBtn;
-    const isProfile = !showDiscography;
+    const isProfile = !isShowingDiscography;
     
     // 根据状态确定颜色
-    const pColor = isProfile ? COL.SELECTED_TEXT : (pBtn.is_hover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT);
-    const dColor = !isProfile ? COL.SELECTED_TEXT : (dBtn.is_hover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT);
+    const pColor = isProfile ? COL.SELECTED_TEXT : (pBtn.isHover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT);
+    const dColor = !isProfile ? COL.SELECTED_TEXT : (dBtn.isHover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT);
 
     gr.GdiDrawText(pBtn.displayText, isProfile ? THEME.FONT.HEADING : THEME.FONT.BTN, pColor, pBtn.x, pBtn.y, pBtn.w, pBtn.h, BTN_STYLE_FLAGS);
     gr.GdiDrawText(dBtn.displayText, !isProfile ? THEME.FONT.HEADING : THEME.FONT.BTN, dColor, dBtn.x, dBtn.y, dBtn.w, dBtn.h, BTN_STYLE_FLAGS);
 
     // Tab 指示线
     const activeBtn = isProfile ? pBtn : dBtn;
-    _draw_tab_indicator(gr, activeBtn, header_height, window.Width, MARGIN, COL.SELECTED_BG, COL.ITEM_TEXT);
+    _drawTabIndicator(gr, activeBtn, headerHeight, window.Width, MARGIN, COL.SELECTED_BG, COL.ITEM_TEXT);
 
     // 5. 绘制滚动内容 (使用离屏缓冲直绘，提高性能)
     if (textImg) {
-        const sourceH = Math.min(view_h, textImg.Height - scrollY);
+        const sourceH = Math.min(viewH, textImg.Height - scrollY);
         if (sourceH > 0) {
-            gr.DrawImage(textImg, MARGIN, header_height, view_w, sourceH, 0, scrollY, view_w, sourceH);
+            gr.DrawImage(textImg, MARGIN, headerHeight, viewW, sourceH, 0, scrollY, viewW, sourceH);
         }
         // 绘制滚动条
         if (maxScrollY > 0) {
-            _draw_scrollbar(gr, view_h, textImg.Height, scrollY, maxScrollY, window.Width, header_height, COL.SCROLLBAR);
+            _drawScrollbar(gr, viewH, textImg.Height, scrollY, maxScrollY, window.Width, headerHeight, COL.SCROLLBAR);
         }
     }
 }
 
 // =========================================================================
-// 6. 数据处理与缓存 (Data Processing & Cache)
+// 数据处理与缓存 (Data Processing & Cache)
 // =========================================================================
 
 /**
  * [核心] 数据加载入口：重载艺人数据
  * @param {FbMetadbHandle} metadb - 音频文件句柄
  */
-function reload_artist_data(metadb) {
+function reloadArtistData(metadb) {
     if (!metadb) return;
 
-    const artist = tf_artist.EvalWithMetadb(metadb);
+    const artist = artistTf.EvalWithMetadb(metadb);
     // 文件名安全处理：替换非法字符
     const safeName = artist.replace(/[\\\/:*?"<>|]/g, "_");
     
-    if (artist_name === safeName) return; // 相同艺人无需重载
-    artist_name = safeName;
+    if (artistName === safeName) return; // 相同艺人无需重载
+    artistName = safeName;
     
     // 重置滚动状态
     scrollY = 0;
     maxScrollY = 0;
     
     // 获取或创建缓存
-    const cacheEntry = get_artist_cache_entry(safeName);
+    const cacheEntry = getArtistCacheEntry(safeName);
     artistData = cacheEntry.json;
     if (cacheEntry.jsonError){
         errorText = cacheEntry.jsonError;
@@ -271,12 +266,12 @@ function reload_artist_data(metadb) {
     }
     // errorText = !cacheEntry.jsonError ? "" : cacheEntry.jsonError;
 
-    load_images_from_cache(cacheEntry.imgPaths, metadb);
+    loadImagesFromCache(cacheEntry.imgPaths, metadb);
 
     if (window.Width > 0) {
-        create_link_buttons();
-        update_layout_metrics();
-        create_text_buffer();
+        createLinkButtons();
+        updateLayoutMetrics();
+        createTextBuffer();
         window.Repaint();
     }
 }
@@ -285,7 +280,7 @@ function reload_artist_data(metadb) {
  * 扫描艺人封面图片文件
  * @returns {Array<string>} 图片路径数组
  */
-function scan_image_paths(safeName) {
+function scanImagePaths(safeName) {
     let paths = [];
     let index = 1;
     const maxCheck = 10; // 最大尝试扫描数量
@@ -293,7 +288,7 @@ function scan_image_paths(safeName) {
 
     while (index <= maxCheck) {
         let numStr = (index < 10 ? "0" : "") + index;
-        let basePath = ARTIST_COVER_DIR + safeName + COVER_IDENTIFER + numStr;
+        let basePath = ARTIST_COVER_DIR + safeName + COVER_IDENTIFIER + numStr;
         let foundCurrentIndex = false;
 
         for (let i = 0; i < exts.length; i++) {
@@ -316,7 +311,7 @@ function scan_image_paths(safeName) {
 /**
  * 获取缓存的艺人数据，如果不存在则读取文件
  */
-function get_artist_cache_entry(safeName) {
+function getArtistCacheEntry(safeName) {
     // 命中缓存：直接返回 (LRUCache.get 自动刷新到最新位置)
     const cached = ARTIST_CACHE.get(safeName);
     if (cached !== undefined) return cached;
@@ -342,7 +337,7 @@ function get_artist_cache_entry(safeName) {
     }
 
     // 扫描封面路径
-    const paths = scan_image_paths(safeName);
+    const paths = scanImagePaths(safeName);
     const entry = { json: jsonData, imgPaths: paths, jsonError: jsonErrorData};
 
     ARTIST_CACHE.set(safeName, entry);
@@ -354,7 +349,7 @@ function get_artist_cache_entry(safeName) {
  * @param {Array<String>} paths - 图片路径数组
  * @param {FbMetadbHandle} metadb - 音频句柄 (用于Fallback)
  */
-function load_images_from_cache(paths, metadb) {
+function loadImagesFromCache(paths, metadb) {
     // 释放旧资源
     if (carousel.images && carousel.images.length > 0) {
         carousel.images.forEach(img => {
@@ -385,21 +380,21 @@ function load_images_from_cache(paths, metadb) {
     }
 
     // 3. 启动轮播逻辑
-    manage_cycle_timer();
+    manageCycleTimer();
 }
 
 /**
  * 管理图片轮播定时器
  */
-function manage_cycle_timer() {
-    _manage_carousel(carousel, cover_h, IMG_CYCLE_MS);
+function manageCycleTimer() {
+    _manageCarousel(carousel, coverH, IMG_CYCLE_MS);
 }
 
 /**
  * 获取艺人作品集 (自动从音乐库读取并缓存)
  * 格式: YYYY-MM-DD - 专辑名
  */
-function get_disco_text() {
+function getDiscoText() {
     // 1. 检查缓存：如果已经有数据（且是数组），直接返回 joined 字符串
     // 注意：这里我们改变了数据结构，从原来的 Object 变成了 Array<String>
     if (artistData.discography && Array.isArray(artistData.discography)) {
@@ -423,12 +418,12 @@ function get_disco_text() {
     if (matches.Count > 0) {
         // 4. 排序：按日期降序 (最新的在前面)，也就是 0-9 还是 9-0 取决于你的需求
         // 排序依据: %date% %album%  1 为升序, -1 为降序
-        matches.OrderByFormat(tf_album, -1);
+        matches.OrderByFormat(albumTf, -1);
 
         // 5. 格式化提取
         // 使用 TitleFormat 直接生成需要的字符串格式
         // 格式示例: [2023-01-01] - 专辑名
-        const rawStrings = tf_album.EvalWithMetadbs(matches); // 返回原生字符串数组
+        const rawStrings = albumTf.EvalWithMetadbs(matches); // 返回原生字符串数组
 
         // 6. 去重 (核心步骤)
         // 因为查询返回的是所有歌曲，一张专辑有10首歌就会出现10次
@@ -443,7 +438,7 @@ function get_disco_text() {
     }
     
     // 7. 写入缓存到 artistData 对象中 (内存缓存)
-    // 这样下次调用 get_disco_text 就不会再次查询硬盘了
+    // 这样下次调用 getDiscoText 就不会再次查询硬盘了
     artistData.discography = resultList;
 
     // 8. 返回结果
@@ -453,48 +448,47 @@ function get_disco_text() {
 
 
 // =========================================================================
-// 7. 布局与几何计算 (Layout & Geometry)
+// 布局与几何计算 (Layout & Geometry)
 // =========================================================================
 
-// _measure_string 来自 lib/utils.js
 
 /**
  * 布局核心算法
  * 负责计算所有元素的坐标和尺寸，实现逻辑与渲染分离
  */
-function update_layout_metrics() {
-    cover_h = Math.floor(window.Width * PANEL_CFG.coverScale);
-    line_w = window.Width - MARGIN * 4;
-    line_start_y = cover_h + MARGIN;
+function updateLayoutMetrics() {
+    coverH = Math.floor(window.Width * PANEL_CFG.coverScale);
+    lineW = window.Width - MARGIN * 4;
+    lineStartY = coverH + MARGIN;
 
     // 1. 计算标题高度
     if (artistData && artistData.title) {
         // 分别计算单行和完整高度，限制标题最多显示一行的高度(配合 truncate 样式)
-        const measureOne = _measure_string("M", THEME.FONT.TITLE, line_w, ONE_LINE_FLAGS);
-        const measureFull = _measure_string(artistData.title, THEME.FONT.TITLE, line_w, ONE_LINE_FLAGS);
-        title_h = Math.min(measureFull.Height, measureOne.Height); 
-        title_w = measureFull.Width;
+        const measureOne = _measureString("M", THEME.FONT.TITLE, lineW, ONE_LINE_FLAGS);
+        const measureFull = _measureString(artistData.title, THEME.FONT.TITLE, lineW, ONE_LINE_FLAGS);
+        titleH = Math.min(measureFull.Height, measureOne.Height); 
+        titleW = measureFull.Width;
     } else {
-        title_h = LINE_H * 2;
-        title_w = LINE_H * 2;
+        titleH = LINE_H * 2;
+        titleW = LINE_H * 2;
     }
 
     // 2. 计算风格高度 (限制最大2行)
     if (artistData && artistData.genres) {
-        const measureOne = _measure_string("M", THEME.FONT.TEXT, line_w, MULTI_LINE_FLAGS);
-        const measureFull = _measure_string(artistData.genres, THEME.FONT.TEXT, line_w, MULTI_LINE_FLAGS);
+        const measureOne = _measureString("M", THEME.FONT.TEXT, lineW, MULTI_LINE_FLAGS);
+        const measureFull = _measureString(artistData.genres, THEME.FONT.TEXT, lineW, MULTI_LINE_FLAGS);
         const limitHeight = Math.ceil(measureOne.Height * 2); 
         
-        // [修复] 修正了 genres_h 可能为 0 的 Bug
-        genres_h = Math.min(limitHeight, measureFull.Height);
+        // [修复] 修正了 genresH 可能为 0 的 Bug
+        genresH = Math.min(limitHeight, measureFull.Height);
     } else {
-        genres_h = LINE_H;
+        genresH = LINE_H;
     }
 
     // 3. 模拟垂直堆叠，计算头部总高度
-    let stackY = line_start_y;
-    stackY += title_h + LINE_SPACE;     // 名字
-    stackY += genres_h + LINE_SPACE;    // 风格
+    let stackY = lineStartY;
+    stackY += titleH + LINE_SPACE;     // 名字
+    stackY += genresH + LINE_SPACE;    // 风格
     stackY += LINE_H + LINE_SPACE;      // 生日/地区
     
     // 4. 计算链接按钮的 Y 坐标
@@ -508,25 +502,25 @@ function update_layout_metrics() {
     
     stackY += LINE_H * 2.5; // 预留给 Tab 按钮和分割线的空间
     
-    header_height = stackY; 
+    headerHeight = stackY; 
 
-    view_w = Math.max(1, window.Width - MARGIN * 2);
-    view_h = Math.max(1, window.Height - header_height - MARGIN);
+    viewW = Math.max(1, window.Width - MARGIN * 2);
+    viewH = Math.max(1, window.Height - headerHeight - MARGIN);
 
     // 设置 Tab 按钮坐标
-    elements.profileBtn.y = header_height - elements.profileBtn.h * 2;
+    elements.profileBtn.y = headerHeight - elements.profileBtn.h * 2;
     elements.discographyBtn.y = elements.profileBtn.y;
 }
 
 /**
  * 计算 Tab 按钮的尺寸和 X 坐标
  */
-function calc_elements_btn_size() {
-    const pM = _measure_string(elements.profileBtn.displayText, THEME.FONT.HEADING, window.Width, BTN_STYLE_FLAGS);
+function calcElementsBtnSize() {
+    const pM = _measureString(elements.profileBtn.displayText, THEME.FONT.HEADING, window.Width, BTN_STYLE_FLAGS);
     elements.profileBtn.w = pM.Width;
     elements.profileBtn.h = pM.Height;
     
-    const dM = _measure_string(elements.discographyBtn.displayText, THEME.FONT.HEADING, window.Width, BTN_STYLE_FLAGS);
+    const dM = _measureString(elements.discographyBtn.displayText, THEME.FONT.HEADING, window.Width, BTN_STYLE_FLAGS);
     elements.discographyBtn.w = dM.Width;
     elements.discographyBtn.h = dM.Height;
 
@@ -538,26 +532,26 @@ function calc_elements_btn_size() {
  * 创建离屏文本缓冲 (Text Buffer)
  * 将耗时的文本排版渲染到一张图片上，滚动时直接绘制图片
  */
-function create_text_buffer() {
+function createTextBuffer() {
     if (textImg && typeof textImg.Dispose === "function") textImg.Dispose();
     textImg = null;
 
-    if (!artistData || view_w <= 0 || view_h <= 0) return;
+    if (!artistData || viewW <= 0 || viewH <= 0) return;
 
-    const text = showDiscography ? get_disco_text() : (artistData.artistbiography || "暂无详细简介信息");
+    const text = isShowingDiscography ? getDiscoText() : (artistData.artistbiography || "暂无详细简介信息");
 
-    const result = _create_text_buffer(text, THEME.FONT.TEXT, COL.ITEM_TEXT, view_w, MULTI_LINE_FLAGS);
+    const result = _createTextBuffer(text, THEME.FONT.TEXT, COL.ITEM_TEXT, viewW, MULTI_LINE_FLAGS);
     textImg = result.img;
     const fullH = result.fullH;
 
-    maxScrollY = Math.max(0, fullH - view_h);
+    maxScrollY = Math.max(0, fullH - viewH);
     if (scrollY > maxScrollY) scrollY = maxScrollY;
 }
 
 /**
  * 初始化链接按钮对象
  */
-function create_link_buttons() {
+function createLinkButtons() {
     activeLinkBtns = []; 
     if (!artistData || !artistData.links) return;
 
@@ -567,17 +561,17 @@ function create_link_buttons() {
     
     for (let key in artistData.links) {
         let url = artistData.links[key];
-        // TODO key 转成小写
+        // key 统一转为小写匹配
         if (url && url.length > 0) {
             activeLinkBtns.push({
                 name: key,
                 url: url,
                 x: currentX,
-                y: 0,  // 占位，update_layout_metrics 中计算实际值
+                y: 0,  // 占位，updateLayoutMetrics 中计算实际值
                 w: btnSize,
                 h: btnSize,
                 img: LINK_ICONS[key] || LINK_ICONS["default"], 
-                is_hover: false,
+                isHover: false,
                 tooltip: key,
             });
             currentX += (btnSize + _scale(6));
@@ -585,22 +579,20 @@ function create_link_buttons() {
     }
 }
 
-// _drawImageFit / _drawImageCover 来自 lib/utils.js
 
 // =========================================================================
-// 8. 交互事件处理 (Event Handlers)
+// 交互事件处理 (Event Handlers)
 // =========================================================================
 
 /**
  * 检测坐标是否在元素矩形内
  */
-// _element_trace 来自 lib/utils.js
 
 function on_mouse_wheel(step) {
     if (!textImg || maxScrollY <= 0) return;
     scrollY -= step * SCROLL_STEP;
     scrollY = Math.max(0, Math.min(scrollY, maxScrollY));
-    window.RepaintRect(0, header_height, window.Width, window.Height - header_height);
+    window.RepaintRect(0, headerHeight, window.Width, window.Height - headerHeight);
 }
 
 // [核心] 状态机：on_mouse_move
@@ -608,15 +600,15 @@ function on_mouse_move(x, y) {
     let target = null;
 
     // 1. 检测 Tab 按钮
-    if (_element_trace(x, y, elements.profileBtn)) {
+    if (_hitTest(x, y, elements.profileBtn)) {
         target = elements.profileBtn;
-    } else if (_element_trace(x, y, elements.discographyBtn)) {
+    } else if (_hitTest(x, y, elements.discographyBtn)) {
         target = elements.discographyBtn;
     } 
     // 2. 检测链接按钮
     else {
         for (let btn of activeLinkBtns) {
-            if (_element_trace(x, y, btn)) {
+            if (_hitTest(x, y, btn)) {
                 target = btn;
                 break;
             }
@@ -624,61 +616,61 @@ function on_mouse_move(x, y) {
     }
 
     // 3. 状态切换
-    if (g_activeElement === target) return; // 没变，直接返回
+    if (activeElement === target) return; // 没变，直接返回
 
     // 旧元素复位
-    if (g_activeElement) {
-        g_activeElement.is_hover = false;
-        window.RepaintRect(g_activeElement.x, g_activeElement.y, g_activeElement.w, g_activeElement.h);
+    if (activeElement) {
+        activeElement.isHover = false;
+        window.RepaintRect(activeElement.x, activeElement.y, activeElement.w, activeElement.h);
     }
 
     // 新元素激活
     if (target) {
-        target.is_hover = true;
+        target.isHover = true;
         window.RepaintRect(target.x, target.y, target.w, target.h);
-        _tt(target.tooltip || "");
+        tooltip(target.tooltip || "");
         _setCursor(CURSOR_HAND); // Hand 手型光标
     } else {
-        _tt("");
+        tooltip("");
         _setCursor(CURSOR_ARROW); // Arrow 箭头光标
     }
 
-    g_activeElement = target;
+    activeElement = target;
 }
 
 function on_mouse_leave() {
-    if (g_activeElement) {
-        g_activeElement.is_hover = false;
-        window.RepaintRect(g_activeElement.x, g_activeElement.y, g_activeElement.w, g_activeElement.h);
-        g_activeElement = null;
+    if (activeElement) {
+        activeElement.isHover = false;
+        window.RepaintRect(activeElement.x, activeElement.y, activeElement.w, activeElement.h);
+        activeElement = null;
     }
-    _tt("");
+    tooltip("");
     _setCursor(CURSOR_ARROW);
 }
 
 function on_mouse_lbtn_up(x, y) {
     // 1. 封面点击 (切换图片)
-    if (y < cover_h && carousel.images.length > 1) {
-        _carousel_next(carousel, cover_h, IMG_CYCLE_MS);
+    if (y < coverH && carousel.images.length > 1) {
+        _carouselNext(carousel, coverH, IMG_CYCLE_MS);
         return;
     }
 
     // 2. Tab 切换
-    if (_element_trace(x, y, elements.profileBtn)) {
-        showDiscography = false;
-        create_text_buffer();
+    if (_hitTest(x, y, elements.profileBtn)) {
+        isShowingDiscography = false;
+        createTextBuffer();
         window.RepaintRect(0, elements.profileBtn.y, window.Width, window.Height - elements.profileBtn.y);
         return;
-    } else if (_element_trace(x, y, elements.discographyBtn)) {
-        showDiscography = true;
-        create_text_buffer();
+    } else if (_hitTest(x, y, elements.discographyBtn)) {
+        isShowingDiscography = true;
+        createTextBuffer();
         window.RepaintRect(0, elements.profileBtn.y, window.Width, window.Height - elements.profileBtn.y); 
         return;
     }
 
     // 3. 链接点击 (ActiveX 延迟加载)
     activeLinkBtns.forEach(btn => {
-        if (_element_trace(x, y, btn)) {
+        if (_hitTest(x, y, btn)) {
             try {
                 // 仅在点击时实例化 WScript.Shell，节省常驻资源
                 const WshShell = new ActiveXObject("WScript.Shell");
@@ -692,15 +684,15 @@ function on_mouse_lbtn_up(x, y) {
 
 // 播放/停止/切歌 -> 触发数据更新
 function on_playback_new_track(metadb) {
-    reload_artist_data(metadb);
+    reloadArtistData(metadb);
 }
 
 function on_playlist_items_selection_change() {
     let selection = fb.GetSelection(); 
     if (selection) {
-        reload_artist_data(selection);
+        reloadArtistData(selection);
     } else {
-        if (fb.IsPlaying) reload_artist_data(fb.GetNowPlaying());
+        if (fb.IsPlaying) reloadArtistData(fb.GetNowPlaying());
     }
 }
 
@@ -716,18 +708,18 @@ function on_script_unload() {
         });
     }
     if (textImg && typeof textImg.Dispose === "function") textImg.Dispose();
-    _dispose_image_dict(LINK_ICONS);
-    _measure_dispose();
+    _disposeImageDict(LINK_ICONS);
+    _measureDispose();
     ARTIST_CACHE.clear();
 }
 
 // =========================================================================
-// 9. 初始化执行 (Initialization)
+// 初始化执行 (Initialization)
 // =========================================================================
 
 let initSelection = fb.GetSelection();
 if (initSelection) {
-    reload_artist_data(initSelection);
+    reloadArtistData(initSelection);
 } else if (fb.IsPlaying) {
-    reload_artist_data(fb.GetNowPlaying());
+    reloadArtistData(fb.GetNowPlaying());
 }

@@ -25,36 +25,36 @@ window.DefineScript("Control Buttons", {
 // ============================================================================
 
 const COL = THEME.COL;
-let _tt = _init_tooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
+let tooltip = _initTooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
 
 // ============================================================================
 // 2. 资源定义
 // ============================================================================
 
-const imgs = {
-    recent: _load_image(IMGS_LUCIDE_DIR + "history.png"),
-    recent_hover: _load_image(IMGS_LUCIDE_DIR + "history_hover.png"),
-    favorite: _load_image(IMGS_LUCIDE_DIR + "flame.png"),
-    favorite_hover: _load_image(IMGS_LUCIDE_DIR + "flame_hover.png"),
-    rg_off: _load_image(IMGS_LUCIDE_DIR + "replaygain_off.png"),
-    rg_track: _load_image(IMGS_LUCIDE_DIR + "replaygain_track_on.png"),
-    rg_album: _load_image(IMGS_LUCIDE_DIR + "replaygain_other_on.png"),
-    rg_hover: _load_image(IMGS_LUCIDE_DIR + "replaygain_hover.png"),
-    vol: _load_image(IMGS_LUCIDE_DIR + "volume.png"),
-    vol_hover: _load_image(IMGS_LUCIDE_DIR + "volume_hover.png"),
-    mute: _load_image(IMGS_LUCIDE_DIR + "volume_mute.png"),
-    mute_hover: _load_image(IMGS_LUCIDE_DIR + "volume_mute_hover.png"),
-    asio: _load_image(IMGS_LUCIDE_DIR + "asio.png"),
-    asio_hover: _load_image(IMGS_LUCIDE_DIR + "asio_hover.png"),
-    wasapi: _load_image(IMGS_LUCIDE_DIR + "wasapi.png"),
-    wasapi_share: _load_image(IMGS_LUCIDE_DIR + "wasapi_share.png"),
-    wasapi_hover: _load_image(IMGS_LUCIDE_DIR + "wasapi_hover.png"),
-    search: _load_image(IMGS_LUCIDE_DIR + "search.png"),
-    search_hover: _load_image(IMGS_LUCIDE_DIR + "search_hover.png"),
-    queue: _load_image(IMGS_LUCIDE_DIR + "queue.png"),
-    queue_hover: _load_image(IMGS_LUCIDE_DIR + "queue_hover.png"),
-    menu: _load_image(IMGS_LUCIDE_DIR + "menu.png"),
-    menu_hover: _load_image(IMGS_LUCIDE_DIR + "menu_hover.png"),
+const images = {
+    recent: _loadImage(IMGS_LUCIDE_DIR + "history.png"),
+    recent_hover: _loadImage(IMGS_LUCIDE_DIR + "history_hover.png"),
+    favorite: _loadImage(IMGS_LUCIDE_DIR + "flame.png"),
+    favorite_hover: _loadImage(IMGS_LUCIDE_DIR + "flame_hover.png"),
+    rg_off: _loadImage(IMGS_LUCIDE_DIR + "replaygain_off.png"),
+    rg_track: _loadImage(IMGS_LUCIDE_DIR + "replaygain_track_on.png"),
+    rg_album: _loadImage(IMGS_LUCIDE_DIR + "replaygain_other_on.png"),
+    rg_hover: _loadImage(IMGS_LUCIDE_DIR + "replaygain_hover.png"),
+    vol: _loadImage(IMGS_LUCIDE_DIR + "volume.png"),
+    vol_hover: _loadImage(IMGS_LUCIDE_DIR + "volume_hover.png"),
+    mute: _loadImage(IMGS_LUCIDE_DIR + "volume_mute.png"),
+    mute_hover: _loadImage(IMGS_LUCIDE_DIR + "volume_mute_hover.png"),
+    asio: _loadImage(IMGS_LUCIDE_DIR + "asio.png"),
+    asio_hover: _loadImage(IMGS_LUCIDE_DIR + "asio_hover.png"),
+    wasapi: _loadImage(IMGS_LUCIDE_DIR + "wasapi.png"),
+    wasapi_share: _loadImage(IMGS_LUCIDE_DIR + "wasapi_share.png"),
+    wasapi_hover: _loadImage(IMGS_LUCIDE_DIR + "wasapi_hover.png"),
+    search: _loadImage(IMGS_LUCIDE_DIR + "search.png"),
+    search_hover: _loadImage(IMGS_LUCIDE_DIR + "search_hover.png"),
+    queue: _loadImage(IMGS_LUCIDE_DIR + "queue.png"),
+    queue_hover: _loadImage(IMGS_LUCIDE_DIR + "queue_hover.png"),
+    menu: _loadImage(IMGS_LUCIDE_DIR + "menu.png"),
+    menu_hover: _loadImage(IMGS_LUCIDE_DIR + "menu_hover.png"),
 };
 
 const ICON_W = _scale(15);
@@ -65,7 +65,6 @@ const DEFAULT_MARGIN = _scale(6);
 // 3. UI 组件类
 // ============================================================================
 
-// Button 类来自 lib/interaction.js (含 fn_rclick 支持)
 
 class VolumeControl {
     constructor() {
@@ -73,7 +72,7 @@ class VolumeControl {
         this.drag = false;
         this.hover = false;
         this.color = COL.SELECTED_TEXT;
-        this.current_tip = "";
+        this.currentTip = "";
     }
 
     repaint() {
@@ -96,24 +95,24 @@ class VolumeControl {
         gr.SetSmoothingMode(0); 
     }
 
-    trace(x, y) {
-        const m = this.drag ? 200 : 0;
+    containsPoint(x, y) {
+        const m = this.drag ? 200 : 0; // 拖拽时扩大热区范围，避免鼠标移出滑块
         return x > this.x - m && x < this.x + this.w + m && y > this.y - m && y < this.y + this.h + m * 2;
     }
 
     on_mouse_move(x, y) {
-        this.current_tip = "";
-        const isOver = this.trace(x, y);
+        this.currentTip = "";
+        const isOver = this.containsPoint(x, y);
         
         if (this.drag) {
             let v = (x - this.x) / this.w;
             v = Math.max(0, Math.min(1, v));
-            let db = (10 * Math.log(v)) / Math.LN2;
+            let db = (10 * Math.log(v)) / Math.LN2; // 线性 0~1 → 对数 dB 转换 (底数 2)
             if (v <= 0) db = -100;
             if (db > 0) db = 0;
             
             fb.Volume = db;
-            this.current_tip = db.toFixed(2) + " dB";
+            this.currentTip = db.toFixed(2) + " dB";
             this.repaint();
             return true;
         } 
@@ -128,7 +127,7 @@ class VolumeControl {
     }
 
     on_mouse_lbtn_down(x, y) {
-        if (this.trace(x, y)) {
+        if (this.containsPoint(x, y)) {
             this.drag = true;
             this.on_mouse_move(x, y); 
             return true;
@@ -145,7 +144,7 @@ class VolumeControl {
     }
 
     on_mouse_wheel(step) {
-        if (this.trace(this.x, this.y) || this.hover) {
+        if (this.containsPoint(this.x, this.y) || this.hover) {
             if (step > 0) fb.VolumeUp();
             else fb.VolumeDown();
             return true;
@@ -168,7 +167,7 @@ const buttons = {};
 const volumeBar = new VolumeControl();
 let currentHoverBtn = null;
 
-const TF = {
+const libraryQueryConfigs = {
     recent: {
         query: "%last_played% PRESENT",
         sort: fb.TitleFormat("%last_played%|%artist%|%date%|%album%|%discnumber%|%tracknumber%")
@@ -179,10 +178,10 @@ const TF = {
     }
 };
 
-function run_custom_query(type) {
+function runCustomQuery(type) {
     const config = (type === "recent") 
-        ? { tf: TF.recent, plName: "🕤️ 最近播放" }
-        : { tf: TF.favorite, plName: "🔥 最受欢迎" };
+        ? { tf: libraryQueryConfigs.recent, plName: "🕤️ 最近播放" }
+        : { tf: libraryQueryConfigs.favorite, plName: "🔥 最受欢迎" };
     
     const handleList = fb.GetQueryItems(fb.GetLibraryItems(), config.tf.query);
     handleList.OrderByFormat(config.tf.sort, -1);
@@ -198,7 +197,7 @@ function run_custom_query(type) {
     plman.ActivePlaylist = plIndex;
 }
 
-function show_main_menu(x, y) {
+function showMainMenu(x, y) {
     let menu = window.CreatePopupMenu();
     const add = (name, id) => {
         let sub = window.CreatePopupMenu();
@@ -209,148 +208,149 @@ function show_main_menu(x, y) {
         return mm;
     };
 
-    let mm_file = add("File", 1000);
-    let mm_edit = add("Edit", 2000);
-    let mm_view = add("View", 3000);
-    let mm_playback = add("Playback", 4000);
-    let mm_library = add("Library", 5000);
-    let mm_help = add("Help", 6000);
+    let mmFile = add("File", 1000);
+    let mmEdit = add("Edit", 2000);
+    let mmView = add("View", 3000);
+    let mmPlayback = add("Playback", 4000);
+    let mmLibrary = add("Library", 5000);
+    let mmHelp = add("Help", 6000);
 
     let idx = menu.TrackPopupMenu(x, y);
     
-    if (idx >= 1000 && idx < 2000) mm_file.ExecuteByID(idx - 1000);
-    else if (idx < 3000) mm_edit.ExecuteByID(idx - 2000);
-    else if (idx < 4000) mm_view.ExecuteByID(idx - 3000);
-    else if (idx < 5000) mm_playback.ExecuteByID(idx - 4000);
-    else if (idx < 6000) mm_library.ExecuteByID(idx - 5000);
-    else if (idx < 7000) mm_help.ExecuteByID(idx - 6000);
+    if (idx >= 1000 && idx < 2000) mmFile.ExecuteByID(idx - 1000);
+    else if (idx < 3000) mmEdit.ExecuteByID(idx - 2000);
+    else if (idx < 4000) mmView.ExecuteByID(idx - 3000);
+    else if (idx < 5000) mmPlayback.ExecuteByID(idx - 4000);
+    else if (idx < 6000) mmLibrary.ExecuteByID(idx - 5000);
+    else if (idx < 7000) mmHelp.ExecuteByID(idx - 6000);
     
 }
 
-function show_devices_menu(x, y) {
+function showDevicesMenu(x, y) {
     const menu = window.CreatePopupMenu();
     const devices = JSON.parse(fb.GetOutputDevices());
-    let active_idx = -1;
+    let activeIdx = -1;
 
     devices.forEach((dev, i) => {
         menu.AppendMenuItem(MF_STRING, i + 1, dev.name);
-        if (dev.active) active_idx = i;
+        if (dev.active) activeIdx = i;
     });
 
-    if (active_idx !== -1) {
-        menu.CheckMenuRadioItem(1, devices.length, active_idx + 1);
+    if (activeIdx !== -1) {
+        menu.CheckMenuRadioItem(1, devices.length, activeIdx + 1);
     }
 
     const idx = menu.TrackPopupMenu(x, y);
-    if (idx > 0 && (idx - 1) !== active_idx) {
+    if (idx > 0 && (idx - 1) !== activeIdx) {
         fb.RunMainMenuCommand(`Playback/Device/${devices[idx - 1].name}`);
     }
 }
 
-const rg_configs = [
-    { img: imgs.rg_off, text: "开启音轨增益 (当前:无)" },    
-    { img: imgs.rg_track, text: "关闭音轨增益 (当前:音轨)" }, 
-    { img: imgs.rg_album, text: "关闭专辑增益 (当前:专辑)" }, 
-    { img: imgs.rg_album, text: "关闭增益 (当前:智能)" }      
+// 数组索引 = fb.ReplaygainMode 值: 0=None, 1=Track, 2=Album, 3=Smart
+const replayGainConfigs = [
+    { img: images.rg_off, text: "开启音轨增益 (当前:无)" },    
+    { img: images.rg_track, text: "关闭音轨增益 (当前:音轨)" }, 
+    { img: images.rg_album, text: "关闭专辑增益 (当前:专辑)" }, 
+    { img: images.rg_album, text: "关闭增益 (当前:智能)" }      
 ];
 
 // replaygain = rg
-function update_rg_state() {
+function updateRgState() {
     const mode = fb.ReplaygainMode; 
-    const cfg = rg_configs[mode] || rg_configs[0];
-    if (buttons.replaygain) buttons.replaygain.updateState(cfg.img, imgs.rg_hover, cfg.text);
+    const cfg = replayGainConfigs[mode] || replayGainConfigs[0];
+    if (buttons.replaygain) buttons.replaygain.updateState(cfg.img, images.rg_hover, cfg.text);
 }
 
-function update_device_state() {
+function updateDeviceState() {
     const deviceArr = JSON.parse(fb.GetOutputDevices());
     const current = deviceArr.find(d => d.active)?.name || "";
     
-    let img = imgs.wasapi_share;
-    let img_hover = imgs.wasapi_hover;
+    let img = images.wasapi_share;
+    let imgHover = images.wasapi_hover;
     let tip = "切换设备";
     let cmd = "";
 
     if (current.includes("ASIO")) {
-        img = imgs.asio;
-        img_hover = imgs.asio_hover;
+        img = images.asio;
+        imgHover = images.asio_hover;
         tip = "当前: ASIO (点击切换 WASAPI shared)";
         cmd = "Playback/Device/WASAPI (shared) : Default Sound Device"; 
     } else if(current.includes("exclusive")) {
-        img = imgs.wasapi;
-        img_hover = imgs.wasapi_hover;
+        img = images.wasapi;
+        imgHover = images.wasapi_hover;
         tip = "当前: WASAPI (点击切换 WASAPI shared)";
         cmd = "Playback/Device/WASAPI (shared) : Default Sound Device"; 
     } else {
-        img = imgs.wasapi_share; 
-        img_hover = imgs.wasapi_hover;
+        img = images.wasapi_share; 
+        imgHover = images.wasapi_hover;
         tip = "点击切换 ASIO";
         cmd = "Playback/Device/ASIO : aune USB Audio Device"; 
     }
 
     if (buttons.device) {
-        buttons.device.updateState(img, img_hover, tip, () => {
+        buttons.device.updateState(img, imgHover, tip, () => {
             try { fb.RunMainMenuCommand(cmd); } catch(e) {}
         });
     }
 }
 
-function update_volume_state() {
+function updateVolumeState() {
     const isMuted = (fb.Volume === -100);
-    const img = isMuted ? imgs.mute : imgs.vol;
-    const hover = isMuted ? imgs.mute_hover : imgs.vol_hover;
+    const img = isMuted ? images.mute : images.vol;
+    const hover = isMuted ? images.mute_hover : images.vol_hover;
     const text = isMuted ? "取消静音" : "静音";
     
-    if (buttons.volume_btn) buttons.volume_btn.updateState(img, hover, text);
+    if (buttons.volumeBtn) buttons.volumeBtn.updateState(img, hover, text);
 }
 
 // ============================================================================
 // 5. 初始化与布局
 // ============================================================================
 
-function init_ui() {
+function initUi() {
     buttons.recent = new Button({ 
-        img_normal: imgs.recent, img_hover: imgs.recent_hover, 
-        func: () => run_custom_query("recent"), tiptext: "最近播放" 
+        imgNormal: images.recent, imgHover: images.recent_hover, 
+        func: () => runCustomQuery("recent"), tipText: "最近播放" 
     });
     buttons.favorite = new Button({ 
-        img_normal: imgs.favorite, img_hover: imgs.favorite_hover, 
-        func: () => run_custom_query("favorite"), tiptext: "最受欢迎" 
+        imgNormal: images.favorite, imgHover: images.favorite_hover, 
+        func: () => runCustomQuery("favorite"), tipText: "最受欢迎" 
     });
     buttons.queue = new Button({ 
-        img_normal: imgs.queue, img_hover: imgs.queue_hover, 
-        func: () => fb.RunMainMenuCommand("View/Queue Viewer"), tiptext: "队列" 
+        imgNormal: images.queue, imgHover: images.queue_hover, 
+        func: () => fb.RunMainMenuCommand("View/Queue Viewer"), tipText: "队列" 
     });
     buttons.search = new Button({ 
-        img_normal: imgs.search, img_hover: imgs.search_hover, 
+        imgNormal: images.search, imgHover: images.search_hover, 
         func: () => {
             fb.RunMainMenuCommand("View/Show now playing in playlist");
             fb.RunMainMenuCommand("Edit/Search");
-        }, tiptext: "搜索" 
+        }, tipText: "搜索" 
     });
     buttons.replaygain = new Button({
-        img_normal: imgs.rg_off, img_hover: imgs.rg_hover,
+        imgNormal: images.rg_off, imgHover: images.rg_hover,
         func: () => { fb.ReplaygainMode = (fb.ReplaygainMode === 0 ? 1 : 0); }
     });
     buttons.device = new Button({
-        img_normal: imgs.wasapi_share, img_hover: imgs.wasapi_hover,
+        imgNormal: images.wasapi_share, imgHover: images.wasapi_hover,
         func: null, 
-        func_rclick: (x, y) => show_devices_menu(x, y)
+        fnRightClick: (x, y) => showDevicesMenu(x, y)
     });
-    buttons.volume_btn = new Button({
-        img_normal: imgs.vol, img_hover: imgs.vol_hover,
+    buttons.volumeBtn = new Button({
+        imgNormal: images.vol, imgHover: images.vol_hover,
         func: () => fb.VolumeMute()
     });
     buttons.menu = new Button({
-        img_normal: imgs.menu, img_hover: imgs.menu_hover,
-        func: (x, y) => show_main_menu(x, y), tiptext: "主菜单"
+        imgNormal: images.menu, imgHover: images.menu_hover,
+        func: (x, y) => showMainMenu(x, y), tipText: "主菜单"
     });
 
-    update_rg_state();
-    update_device_state();
-    update_volume_state();
+    updateRgState();
+    updateDeviceState();
+    updateVolumeState();
 }
 
-init_ui();
+initUi();
 
 function on_size() {
     if (window.Width <= 0 || window.Height <= 0) return;
@@ -358,7 +358,7 @@ function on_size() {
     const layout = [
         { key: 'menu', w: ICON_W, m: DEFAULT_MARGIN },
         { key: 'volume', w: _scale(60), m: DEFAULT_MARGIN },
-        { key: 'volume_btn', w: ICON_W, m: _scale(2) },
+        { key: 'volumeBtn', w: ICON_W, m: _scale(2) },
         { key: 'device', w: ICON_W, m: DEFAULT_MARGIN },
         { key: 'replaygain', w: ICON_W, m: DEFAULT_MARGIN },
         { key: 'search', w: ICON_W, m: DEFAULT_MARGIN },
@@ -392,7 +392,7 @@ function on_size() {
 }
 
 function on_paint(gr) {
-    gr.FillSolidRect(0, 0, window.Width, window.Height, COL.ITEMDETAIL_BG);
+    gr.FillSolidRect(0, 0, window.Width, window.Height, COL.ITEM_DETAIL_BG);
     for (let key in buttons) {
         buttons[key].paint(gr);
     }
@@ -414,10 +414,10 @@ function on_mouse_move(x, y) {
         }
         
         if (volumeBar.drag) {
-            _tt(volumeBar.current_tip);
+            tooltip(volumeBar.currentTip);
             _setCursor(CURSOR_HAND);
         } else {
-            _tt("");
+            tooltip("");
             _setCursor(CURSOR_ARROW);
         }
         return;
@@ -426,7 +426,7 @@ function on_mouse_move(x, y) {
     // 2. 检测按钮 (状态机逻辑)
     let newHoverBtn = null;
     for (let key in buttons) {
-        if (buttons[key].trace(x, y)) {
+        if (buttons[key].containsPoint(x, y)) {
             newHoverBtn = buttons[key];
             break; 
         }
@@ -439,10 +439,10 @@ function on_mouse_move(x, y) {
 
         if (newHoverBtn) {
             newHoverBtn.activate();
-            _tt(newHoverBtn.tiptext);
+            tooltip(newHoverBtn.tipText);
             _setCursor(CURSOR_HAND);
         } else {
-            _tt("");
+            tooltip("");
             _setCursor(CURSOR_ARROW);
         }
 
@@ -456,7 +456,7 @@ function on_mouse_leave() {
         currentHoverBtn = null;
     }
     volumeBar.on_mouse_move(-1, -1);
-    _tt("");
+    tooltip("");
     _setCursor(CURSOR_ARROW);
 }
 
@@ -467,14 +467,14 @@ function on_mouse_lbtn_down(x, y) {
 function on_mouse_lbtn_up(x, y) {
     if (volumeBar.on_mouse_lbtn_up(x, y)) return;
     if (currentHoverBtn) {
-        currentHoverBtn.on_mouse_lbtn_up(x, y);
+        currentHoverBtn.onLbtnUp(x, y);
     }
 }
 
 function on_mouse_rbtn_down(x, y) {
     // 这里屏蔽默认的右键菜单
     if (currentHoverBtn) {
-        return currentHoverBtn.on_mouse_rbtn_down(x, y);
+        return currentHoverBtn.onRbtnDown(x, y);
     }
     return true; 
 }
@@ -484,18 +484,18 @@ function on_mouse_wheel(step) {
 }
 
 function on_volume_change(val) {
-    update_volume_state(); 
+    updateVolumeState(); 
     volumeBar.repaint();
 }
 
 function on_output_device_changed() {
-    update_device_state();
+    updateDeviceState();
 }
 
 function on_replaygain_mode_changed() {
-    update_rg_state();
+    updateRgState();
 }
 
 function on_script_unload() {
-    _dispose_image_dict(imgs);
+    _disposeImageDict(images);
 }

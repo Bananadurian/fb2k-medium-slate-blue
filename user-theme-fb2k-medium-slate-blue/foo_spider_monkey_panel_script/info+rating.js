@@ -31,22 +31,20 @@ const TEXT_FLAGS =
 // 2. 专辑信息: 左对齐 + 垂直居中 + 禁用前缀 + 省略号
 const ALBUM_FLAGS = DT_LEFT | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS;
 
-// --- 颜色 (来自 lib/theme.js) ---
 const COL = THEME.COL;
 
-// 字体来自 lib/theme.js (THEME.FONT.HEADING / .TEXT_SM / .BADGE)
 
 // --- 路径与图片资源 (Paths & Images) ---
 const STAR_ICONS = {
-  StarOff: _load_image(IMGS_LUCIDE_DIR + "star1.png"),
-  StarOn: _load_image(IMGS_LUCIDE_DIR + "star.png"),
+  StarOff: _loadImage(IMGS_LUCIDE_DIR + "star1.png"),
+  StarOn: _loadImage(IMGS_LUCIDE_DIR + "star.png"),
 };
 
 // 来源图标缓存 (使用共享库 SourceIconCache)
-const g_sourceIconCache = new SourceIconCache(IMGS_LINKS_DIR);
+const sourceIconCache = new SourceIconCache(IMGS_LINKS_DIR);
 
 // --- 布局参数 (Layout Constants) ---
-// MAX_BUFFER_H 由 _measure_string 内部处理 (lib/utils.js)
+// 注: 此面板使用紧凑布局，MARGIN/LINE_H 有意不同于 THEME.LAYOUT 的默认值
 const LINE_H = _scale(14);
 const MARGIN = _scale(1);
 const ALBUM_YEAR_GAP = _scale(2);
@@ -61,12 +59,12 @@ const STAR_SIZE = _scale(16);
 const HAS_PLAYCOUNT = utils.CheckComponent("foo_playcount", true);
 
 // 全局句柄
-let g_metadb = null; // 当前操作的句柄
-let g_activeElement = null; // 当前鼠标激活的UI元素
+let metadb = null; // 当前操作的句柄
+let activeElement = null; // 当前鼠标激活的UI元素
 
 // 评分数据
-let g_currentRating = 0; // 当前歌曲真实评分
-let g_hoverRating = 0; // 鼠标悬停时的临时评分 (0表示无悬停)
+let currentRating = 0; // 当前歌曲真实评分
+let hoverRating = 0; // 鼠标悬停时的临时评分 (0表示无悬停)
 
 // 布局区域缓存 (减少每一帧计算)
 const ratingArea = { x: 0, y: 0, w: 0, h: 0 };
@@ -76,45 +74,50 @@ let currentSourceIcon = {
   w: THEME.CFG.SOURCE_ICON_SIZE,
   h: THEME.CFG.SOURCE_ICON_SIZE,
   img: null,
-  is_hover: false,
+  isHover: false,
   tooltip: "",
 };
 
 // 音质标识状态
 let currentAQBadge = null;
-let currentAQBadgeRect = {
+let badgeElement = {
   x: 0,
   y: 0,
   w: 0,
   h: 0,
-  is_hover: false,
+  isHover: false,
   tooltip: "",
 };
 
 // TitleFormat 定义
-const tf_rating = fb.TitleFormat("$if2(%rating%,0)");
-const tf_track_title = fb.TitleFormat("%title%");
-const tf_track_artist = fb.TitleFormat("%artist%");
-const tf_track_year = fb.TitleFormat("$year(%date%)");
-const tf_track_album = fb.TitleFormat("%album%");
-const tf_album_source = fb.TitleFormat("$if2($meta(SOURCE),WEB)");
+const ratingTf = fb.TitleFormat("$if2(%rating%,0)");
+const trackTitleTf = fb.TitleFormat("%title%");
+const trackArtistTf = fb.TitleFormat("%artist%");
+const trackYearTf = fb.TitleFormat("$year(%date%)");
+const trackAlbumTf = fb.TitleFormat("%album%");
+const albumSourceTf = fb.TitleFormat("$if2($meta(SOURCE),WEB)");
 
-const tf_track_bpm = fb.TitleFormat("$if2($meta(BPM) BPM,Unknown BPM)");
-const tf_track_genre = fb.TitleFormat("%GENRE%");
+const trackBpmTf = fb.TitleFormat("$if2($meta(BPM) BPM,Unknown BPM)");
+const trackGenreTf = fb.TitleFormat("%GENRE%");
 
 // AQ 音质参数提取 TF
-const tf_codec = fb.TitleFormat("%codec%");
-const tf_samplerate = fb.TitleFormat("%samplerate%");
-const tf_bitdepth = fb.TitleFormat("%__bitspersample%");
+const codecTf = fb.TitleFormat("%codec%");
+const sampleRateTf = fb.TitleFormat("%samplerate%");
+const bitDepthTf = fb.TitleFormat("%__bitspersample%");
 
 // ============================================================================
 // 3. 辅助组件 (Tooltip)
 // ============================================================================
 
-let _tt = _init_tooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
+let tooltip = _initTooltip(THEME.FONT.TEXT_SM, _scale(13), 1200);
 
 
-// --- 独立星星组件类 (StarElement) ---
+/**
+ * @class StarElement
+ * @property {number} value - 星级值 (1-5)
+ * @property {number} x,y,w,h - 布局坐标与尺寸
+ * @property {boolean} isHover - 鼠标悬停状态，在 on_mouse_move 中切换
+ */
 class StarElement {
   constructor(value) {
     this.value = value; // 1, 2, 3, 4, 5
@@ -122,7 +125,7 @@ class StarElement {
     this.y = 0;
     this.w = STAR_SIZE;
     this.h = STAR_SIZE;
-    this.is_hover = false;
+    this.isHover = false;
     // Tooltip 动态生成
   }
 
@@ -134,8 +137,8 @@ class StarElement {
 
   // 绘制逻辑
   paint(gr) {
-    // 逻辑：如果处于悬停模式(g_hoverRating > 0)，则显示悬停分；否则显示真实分
-    const targetRating = g_hoverRating > 0 ? g_hoverRating : g_currentRating;
+    // 逻辑：如果处于悬停模式(hoverRating > 0)，则显示悬停分；否则显示真实分
+    const targetRating = hoverRating > 0 ? hoverRating : currentRating;
     const isStarOn = this.value <= targetRating;
 
     const icon = isStarOn ? STAR_ICONS.StarOn : STAR_ICONS.StarOff;
@@ -156,18 +159,18 @@ class StarElement {
 
   // 激活：鼠标移入
   activate() {
-    this.is_hover = true;
-    g_hoverRating = this.value; // 设置全局悬停分
+    this.isHover = true;
+    hoverRating = this.value; // 设置全局悬停分
     // 重绘整个评分条区域，因为第3颗星变亮，第1、2颗也要跟着变
     window.RepaintRect(ratingArea.x, ratingArea.y, ratingArea.w, ratingArea.h);
   }
 
   // 休眠：鼠标移出
   deactivate() {
-    this.is_hover = false;
-    // 注意：这里不直接重置 g_hoverRating = 0
+    this.isHover = false;
+    // 注意：这里不直接重置 hoverRating = 0
     // 因为鼠标可能马上移入隔壁星星，由 on_mouse_move 的逻辑控制是否重置
-    // 但如果没有任何星星被激活，g_hoverRating 应该由外部重置
+    // 但如果没有任何星星被激活，hoverRating 应该由外部重置
     window.RepaintRect(ratingArea.x, ratingArea.y, ratingArea.w, ratingArea.h);
   }
 }
@@ -183,14 +186,14 @@ for (let i = 1; i <= 5; i++) {
 // ============================================================================
 
 // 文本内容状态对象
-const CONTENTS = {
+const contentState = {
   title: {
     text: "",
     w: 0,
     x: 0,
     y: 0,
     h: LINE_H,
-    is_hover: false,
+    isHover: false,
     tooltip: "",
   },
   artist: {
@@ -199,7 +202,7 @@ const CONTENTS = {
     x: 0,
     y: 0,
     h: LINE_H,
-    is_hover: false,
+    isHover: false,
     tooltip: "",
   },
   album: {
@@ -208,56 +211,55 @@ const CONTENTS = {
     x: 0,
     y: 0,
     h: LINE_H,
-    is_hover: false,
+    isHover: false,
     tooltip: "",
   },
-  year: { text: "", w: 0, x: 0, y: 0, h: LINE_H, is_hover: false, tooltip: "" },
+  year: { text: "", w: 0, x: 0, y: 0, h: LINE_H, isHover: false, tooltip: "" },
 };
 
-// _measure_string 来自 lib/utils.js
 
 /**
  * 核心数据更新函数：读取元数据并更新UI状态
  */
-function update_contents() {
-  g_metadb = fb.IsPlaying ? fb.GetNowPlaying() : fb.GetFocusItem();
+function updateContent() {
+  metadb = fb.IsPlaying ? fb.GetNowPlaying() : fb.GetFocusItem();
 
-  if (g_metadb) {
-    CONTENTS.title.text =
-      tf_track_title.EvalWithMetadb(g_metadb) || "Unknown Title";
-    const track_bpm = tf_track_bpm.EvalWithMetadb(g_metadb) || "0 BPM";
-    const track_genre =
-      tf_track_genre.EvalWithMetadb(g_metadb) || "Umknown Genre";
-    CONTENTS.title.tooltip = track_genre + "\n" + track_bpm;
+  if (metadb) {
+    contentState.title.text =
+      trackTitleTf.EvalWithMetadb(metadb) || "Unknown Title";
+    const trackBpm = trackBpmTf.EvalWithMetadb(metadb) || "0 BPM";
+    const trackGenre =
+      trackGenreTf.EvalWithMetadb(metadb) || "Unknown Genre";
+    contentState.title.tooltip = trackGenre + "\n" + trackBpm;
 
-    CONTENTS.artist.text =
-      tf_track_artist.EvalWithMetadb(g_metadb) || "Unknown Artist";
-    CONTENTS.album.text =
-      tf_track_album.EvalWithMetadb(g_metadb) || "Unknown Album";
-    const y = tf_track_year.EvalWithMetadb(g_metadb);
-    CONTENTS.year.text = y && y !== "?" ? `©${y}` : "";
+    contentState.artist.text =
+      trackArtistTf.EvalWithMetadb(metadb) || "Unknown Artist";
+    contentState.album.text =
+      trackAlbumTf.EvalWithMetadb(metadb) || "Unknown Album";
+    const y = trackYearTf.EvalWithMetadb(metadb);
+    contentState.year.text = y && y !== "?" ? `©${y}` : "";
 
     // 更新评分
-    g_currentRating = parseInt(tf_rating.EvalWithMetadb(g_metadb)) || 0;
+    currentRating = parseInt(ratingTf.EvalWithMetadb(metadb)) || 0;
   } else {
-    CONTENTS.title.text = "No Track";
-    CONTENTS.artist.text = "";
-    CONTENTS.album.text = "";
-    CONTENTS.year.text = "";
-    g_currentRating = 0;
+    contentState.title.text = "No Track";
+    contentState.artist.text = "";
+    contentState.album.text = "";
+    contentState.year.text = "";
+    currentRating = 0;
   }
 
   // 重置悬停状态
-  g_hoverRating = 0;
+  hoverRating = 0;
 
   // 音质标识独立处理，不缓存进 albumData, 有些专辑是混合音质
-  const newAQBadge = get_aq_badge_state(g_metadb);
+  const newAQBadge = resolveBadgeForTrack(metadb);
   if (currentAQBadge !== newAQBadge) {
     currentAQBadge = newAQBadge;
   }
 
-  if (g_metadb) {
-    update_source_icon(g_metadb);
+  if (metadb) {
+    updateSourceIcon(metadb);
   }
 
   if (window.Width > 0) {
@@ -267,32 +269,32 @@ function update_contents() {
 }
 
 /**
- * 判断音质分级 (委托给共享库 _get_aq_badge_state)
+ * 判断音质分级 (委托给共享库 _classifyAudioQuality)
  * @param {FbMetadbHandle} metadb
  * @returns {AQBadgeStyle|null}
  */
-function get_aq_badge_state(metadb) {
+function resolveBadgeForTrack(metadb) {
   if (!metadb) return null;
-  const codec = tf_codec.EvalWithMetadb(metadb).toUpperCase();
-  const sr = parseInt(tf_samplerate.EvalWithMetadb(metadb));
-  let bits = parseInt(tf_bitdepth.EvalWithMetadb(metadb));
-  return _get_aq_badge_state(codec, sr, bits);
+  const codec = codecTf.EvalWithMetadb(metadb).toUpperCase();
+  const sampleRate = parseInt(sampleRateTf.EvalWithMetadb(metadb));
+  let bitDepth = parseInt(bitDepthTf.EvalWithMetadb(metadb));
+  return _classifyAudioQuality(codec, sampleRate, bitDepth);
 }
 
 /**
  * 更新来源图标 (使用共享库 SourceIconCache)
  */
-function update_source_icon(metadb) {
-  const sourceText = tf_album_source
+function updateSourceIcon(metadb) {
+  const sourceText = albumSourceTf
     .EvalWithMetadb(metadb)
     .trim()
     .toUpperCase();
   let filename = SOURCE_ICON_MAP[sourceText];
   if (!filename) filename = DEFAULT_SOURCE_ICON_FILENAME;
 
-  let img = g_sourceIconCache.get(filename);
+  let img = sourceIconCache.get(filename);
   if (!img && filename !== DEFAULT_SOURCE_ICON_FILENAME) {
-    img = g_sourceIconCache.get(DEFAULT_SOURCE_ICON_FILENAME);
+    img = sourceIconCache.get(DEFAULT_SOURCE_ICON_FILENAME);
   }
   currentSourceIcon.img = img;
   currentSourceIcon.tooltip = sourceText;
@@ -303,7 +305,7 @@ function update_source_icon(metadb) {
 // ============================================================================
 
 // 初始加载
-update_contents();
+updateContent();
 
 /**
  * 布局计算回调
@@ -312,63 +314,63 @@ update_contents();
 function on_size() {
   if (window.Width <= 0 || window.Height <= 0) return;
 
-  const max_text_w = window.Width - MARGIN * 8;
+  const maxTextW = window.Width - MARGIN * 8;
 
   // 1. 测量各元素的尺寸
-  const titleMeasureFull = _measure_string(
-    CONTENTS.title.text,
+  const titleMeasureFull = _measureString(
+    contentState.title.text,
     THEME.FONT.HEADING,
-    max_text_w,
+    maxTextW,
     TEXT_FLAGS,
   );
-  CONTENTS.title.w = titleMeasureFull.Width + _scale(1);
-  CONTENTS.title.h = Math.min(titleMeasureFull.Height, LINE_H);
-  CONTENTS.artist.w =
-    _measure_string(CONTENTS.artist.text, THEME.FONT.TEXT_SM, max_text_w, TEXT_FLAGS)
+  contentState.title.w = titleMeasureFull.Width + _scale(1);
+  contentState.title.h = Math.min(titleMeasureFull.Height, LINE_H);
+  contentState.artist.w =
+    _measureString(contentState.artist.text, THEME.FONT.TEXT_SM, maxTextW, TEXT_FLAGS)
       .Width + _scale(1);
   // _scale(1) GDI、GDI+计算偏差 一个像素容差
-  CONTENTS.album.w =
-    _measure_string(CONTENTS.album.text, THEME.FONT.TEXT_SM, max_text_w, TEXT_FLAGS)
+  contentState.album.w =
+    _measureString(contentState.album.text, THEME.FONT.TEXT_SM, maxTextW, TEXT_FLAGS)
       .Width + _scale(1);
-  CONTENTS.year.w = CONTENTS.year.text
-    ? _measure_string(CONTENTS.year.text, THEME.FONT.TEXT_SM, max_text_w, TEXT_FLAGS)
+  contentState.year.w = contentState.year.text
+    ? _measureString(contentState.year.text, THEME.FONT.TEXT_SM, maxTextW, TEXT_FLAGS)
         .Width
     : 0;
 
   // 2. 垂直布局计算 (自上而下)
   const totalContentH =
-    CONTENTS.title.h + LINE_H * 2 + MARGIN * 4 + STAR_SIZE + THEME.CFG.SOURCE_ICON_SIZE;
+    contentState.title.h + LINE_H * 2 + MARGIN * 4 + STAR_SIZE + THEME.CFG.SOURCE_ICON_SIZE;
   let startY = Math.round((window.Height - totalContentH) / 2);
 
   // --- Title ---
-  CONTENTS.title.y = startY;
-  CONTENTS.title.w = Math.min(CONTENTS.title.w, max_text_w);
-  CONTENTS.title.x = Math.round((window.Width - CONTENTS.title.w) / 2);
+  contentState.title.y = startY;
+  contentState.title.w = Math.min(contentState.title.w, maxTextW);
+  contentState.title.x = Math.round((window.Width - contentState.title.w) / 2);
   startY += LINE_H + MARGIN;
 
   // --- Artist ---
-  CONTENTS.artist.y = startY;
-  CONTENTS.artist.w = Math.min(CONTENTS.artist.w, max_text_w);
-  CONTENTS.artist.x = Math.round((window.Width - CONTENTS.artist.w) / 2);
+  contentState.artist.y = startY;
+  contentState.artist.w = Math.min(contentState.artist.w, maxTextW);
+  contentState.artist.x = Math.round((window.Width - contentState.artist.w) / 2);
   startY += LINE_H + MARGIN;
 
   // --- Album & Year ---
   let albumYearTotalW =
-    CONTENTS.album.w +
-    (CONTENTS.year.text ? ALBUM_YEAR_GAP + CONTENTS.year.w : 0);
-  if (albumYearTotalW > max_text_w) {
-    albumYearTotalW = max_text_w;
-    CONTENTS.album.w =
-      max_text_w - (CONTENTS.year.text ? ALBUM_YEAR_GAP + CONTENTS.year.w : 0);
+    contentState.album.w +
+    (contentState.year.text ? ALBUM_YEAR_GAP + contentState.year.w : 0);
+  if (albumYearTotalW > maxTextW) {
+    albumYearTotalW = maxTextW;
+    contentState.album.w =
+      maxTextW - (contentState.year.text ? ALBUM_YEAR_GAP + contentState.year.w : 0);
   }
   let albumX = Math.round((window.Width - albumYearTotalW) / 2);
 
-  CONTENTS.album.x = albumX;
-  CONTENTS.album.y = startY;
+  contentState.album.x = albumX;
+  contentState.album.y = startY;
 
-  if (CONTENTS.year.text) {
-    CONTENTS.year.x = albumX + CONTENTS.album.w + ALBUM_YEAR_GAP;
-    CONTENTS.year.y = startY;
+  if (contentState.year.text) {
+    contentState.year.x = albumX + contentState.album.w + ALBUM_YEAR_GAP;
+    contentState.year.y = startY;
   }
   startY += LINE_H + MARGIN;
 
@@ -388,78 +390,78 @@ function on_size() {
   startY += LINE_H + MARGIN * 6;
 
   // --- 音源图标 和 音质徽章 ---
-  let sourchIconAQBadgeTotalW = 0;
+  let sourceIconAqBadgeTotalW = 0;
   if (currentSourceIcon.img) {
-    sourchIconAQBadgeTotalW += currentSourceIcon.w;
+    sourceIconAqBadgeTotalW += currentSourceIcon.w;
   }
   if (currentAQBadge) {
-    const badgeTextSize = _measure_string(
+    const badgeTextSize = _measureString(
       currentAQBadge.label,
       THEME.FONT.BADGE,
-      max_text_w,
+      maxTextW,
       BADGE_TEXT_ALIGN,
     );
-    currentAQBadgeRect.w = badgeTextSize.Width + THEME.CFG.AQ_BADGE.paddingX;
-    currentAQBadgeRect.h = badgeTextSize.Height + THEME.CFG.AQ_BADGE.paddingY;
-    sourchIconAQBadgeTotalW += currentAQBadgeRect.w;
+    badgeElement.w = badgeTextSize.Width + THEME.CFG.AQ_BADGE.PADDING_X;
+    badgeElement.h = badgeTextSize.Height + THEME.CFG.AQ_BADGE.PADDING_Y;
+    sourceIconAqBadgeTotalW += badgeElement.w;
   }
-  currentSourceIcon.x = Math.ceil((window.Width - sourchIconAQBadgeTotalW) / 2);
+  currentSourceIcon.x = Math.ceil((window.Width - sourceIconAqBadgeTotalW) / 2);
   currentSourceIcon.y = startY + Math.ceil((LINE_H - currentSourceIcon.h) / 2);
-  currentAQBadgeRect.x = currentSourceIcon.x + currentSourceIcon.w + MARGIN * 2;
-  currentAQBadgeRect.y =
-    startY + Math.ceil((LINE_H - currentAQBadgeRect.h) / 2);
+  badgeElement.x = currentSourceIcon.x + currentSourceIcon.w + MARGIN * 2;
+  badgeElement.y =
+    startY + Math.ceil((LINE_H - badgeElement.h) / 2);
 }
 
 /**
  * 绘制回调
  */
 function on_paint(gr) {
-  gr.FillSolidRect(0, 0, window.Width, window.Height, COL.ITEMDETAIL_BG);
+  gr.FillSolidRect(0, 0, window.Width, window.Height, COL.ITEM_DETAIL_BG);
   gr.SetTextRenderingHint(5); // ClearType
 
   // --- 绘制文本 ---
   gr.GdiDrawText(
-    CONTENTS.title.text,
+    contentState.title.text,
     THEME.FONT.HEADING,
-    CONTENTS.title.is_hover ? COL.ACTIVE_ITEM : COL.SELECTED_TEXT,
-    CONTENTS.title.x,
-    CONTENTS.title.y,
-    CONTENTS.title.w,
-    CONTENTS.title.h,
+    contentState.title.isHover ? COL.ACTIVE_ITEM : COL.SELECTED_TEXT,
+    contentState.title.x,
+    contentState.title.y,
+    contentState.title.w,
+    contentState.title.h,
     TEXT_FLAGS,
   );
 
   gr.GdiDrawText(
-    CONTENTS.artist.text,
+    contentState.artist.text,
     THEME.FONT.TEXT_SM,
-    CONTENTS.artist.is_hover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT,
-    CONTENTS.artist.x,
-    CONTENTS.artist.y,
-    CONTENTS.artist.w,
-    CONTENTS.artist.h,
+    contentState.artist.isHover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT,
+    contentState.artist.x,
+    contentState.artist.y,
+    contentState.artist.w,
+    contentState.artist.h,
     TEXT_FLAGS,
   );
 
   gr.GdiDrawText(
-    CONTENTS.album.text,
+    contentState.album.text,
     THEME.FONT.TEXT_SM,
-    CONTENTS.album.is_hover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT,
-    CONTENTS.album.x,
-    CONTENTS.album.y,
-    CONTENTS.album.w,
-    CONTENTS.album.h,
+    contentState.album.isHover ? COL.ACTIVE_ITEM : COL.ITEM_TEXT,
+    contentState.album.x,
+    contentState.album.y,
+    contentState.album.w,
+    contentState.album.h,
     ALBUM_FLAGS,
   );
 
-  if (CONTENTS.year.text) {
+  if (contentState.year.text) {
     gr.GdiDrawText(
-      CONTENTS.year.text,
+      contentState.year.text,
       THEME.FONT.TEXT_SM,
       COL.ITEM_TEXT,
-      CONTENTS.year.x,
-      CONTENTS.year.y,
-      CONTENTS.year.w,
-      CONTENTS.year.h,
+      contentState.year.x,
+      contentState.year.y,
+      contentState.year.w,
+      contentState.year.h,
       ALBUM_FLAGS,
     );
   }
@@ -471,10 +473,10 @@ function on_paint(gr) {
     ratingArea.y,
     ratingArea.w,
     ratingArea.h,
-    COL.ITEMDETAIL_BG,
+    COL.ITEM_DETAIL_BG,
   );
 
-  if (HAS_PLAYCOUNT && g_metadb) {
+  if (HAS_PLAYCOUNT && metadb) {
     // 让每颗星星自己画自己
     for (let i = 0; i < 5; i++) {
       stars[i].paint(gr);
@@ -503,12 +505,12 @@ function on_paint(gr) {
 
     // 背景 & 边框
     gr.FillRoundRect(
-      currentAQBadgeRect.x,
-      currentAQBadgeRect.y,
-      currentAQBadgeRect.w,
-      currentAQBadgeRect.h,
-      THEME.CFG.AQ_BADGE.radius,
-      THEME.CFG.AQ_BADGE.radius,
+      badgeElement.x,
+      badgeElement.y,
+      badgeElement.w,
+      badgeElement.h,
+      THEME.CFG.AQ_BADGE.RADIUS,
+      THEME.CFG.AQ_BADGE.RADIUS,
       currentAQBadge.bgColor,
     );
 
@@ -518,10 +520,10 @@ function on_paint(gr) {
       currentAQBadge.label,
       THEME.FONT.BADGE,
       currentAQBadge.color,
-      currentAQBadgeRect.x,
-      currentAQBadgeRect.y,
-      currentAQBadgeRect.w,
-      currentAQBadgeRect.h,
+      badgeElement.x,
+      badgeElement.y,
+      badgeElement.w,
+      badgeElement.h,
       BADGE_TEXT_ALIGN,
     );
   }
@@ -530,7 +532,6 @@ function on_paint(gr) {
 /**
  * 元素碰撞检测辅助函数
  */
-// _element_trace 来自 lib/utils.js
 
 /**
  * [核心] 状态机：处理鼠标移动事件
@@ -541,9 +542,9 @@ function on_mouse_move(x, y) {
 
   // 1. 检测 5 颗星星 (作为 5 个独立按钮处理)
   // 这里的关键是，星星是紧密排列的，状态机能完美处理从 星1 移到 星2 的逻辑
-  if (HAS_PLAYCOUNT && g_metadb) {
+  if (HAS_PLAYCOUNT && metadb) {
     for (let i = 0; i < 5; i++) {
-      if (_element_trace(x, y, stars[i])) {
+      if (_hitTest(x, y, stars[i])) {
         target = stars[i];
         break;
       }
@@ -552,30 +553,30 @@ function on_mouse_move(x, y) {
 
   // 2. 检测文本与图标
   if (!target) {
-    if (_element_trace(x, y, CONTENTS.title)) {
-      target = CONTENTS.title;
-    } else if (_element_trace(x, y, CONTENTS.artist)) {
-      target = CONTENTS.artist;
-    } else if (_element_trace(x, y, CONTENTS.album)) {
-      target = CONTENTS.album;
-    } else if (_element_trace(x, y, currentSourceIcon)) {
+    if (_hitTest(x, y, contentState.title)) {
+      target = contentState.title;
+    } else if (_hitTest(x, y, contentState.artist)) {
+      target = contentState.artist;
+    } else if (_hitTest(x, y, contentState.album)) {
+      target = contentState.album;
+    } else if (_hitTest(x, y, currentSourceIcon)) {
       target = currentSourceIcon;
-    } else if (_element_trace(x, y, currentAQBadgeRect) && currentAQBadge) {
-      currentAQBadgeRect.tooltip = currentAQBadge.desc;
-      target = currentAQBadgeRect;
+    } else if (_hitTest(x, y, badgeElement) && currentAQBadge) {
+      badgeElement.tooltip = currentAQBadge.desc;
+      target = badgeElement;
     }
   }
 
   // 3. 状态切换逻辑
-  if (g_activeElement === target) return;
+  if (activeElement === target) return;
 
   // A. 旧元素复位 (Deactivate)
-  if (g_activeElement) {
-    if (g_activeElement instanceof StarElement) {
-      g_activeElement.deactivate();
+  if (activeElement) {
+    if (activeElement instanceof StarElement) {
+      activeElement.deactivate();
       // 如果移出了整个评分条区域，重置悬停分
       if (!target || !(target instanceof StarElement)) {
-        g_hoverRating = 0;
+        hoverRating = 0;
         window.RepaintRect(
           ratingArea.x,
           ratingArea.y,
@@ -584,12 +585,12 @@ function on_mouse_move(x, y) {
         );
       }
     } else {
-      g_activeElement.is_hover = false;
+      activeElement.isHover = false;
       window.RepaintRect(
-        g_activeElement.x,
-        g_activeElement.y,
-        g_activeElement.w,
-        g_activeElement.h,
+        activeElement.x,
+        activeElement.y,
+        activeElement.w,
+        activeElement.h,
       );
     }
   }
@@ -597,27 +598,27 @@ function on_mouse_move(x, y) {
   // B. 新元素激活 (Activate)
   if (target) {
     if (target instanceof StarElement) {
-      target.activate(); // 这会更新 g_hoverRating
+      target.activate(); // 这会更新 hoverRating
     } else {
-      target.is_hover = true;
+      target.isHover = true;
       window.RepaintRect(target.x, target.y, target.w, target.h);
     }
 
-    _tt(target.tooltip || "");
-    _setCursor(32649); // Hand cursor
+    tooltip(target.tooltip || "");
+    _setCursor(CURSOR_HAND); // Hand cursor
   } else {
-    _tt("");
-    _setCursor(32512); // Arrow cursor
+    tooltip("");
+    _setCursor(CURSOR_ARROW); // Arrow cursor
   }
 
-  g_activeElement = target;
+  activeElement = target;
 }
 
 function on_mouse_leave() {
-  if (g_activeElement) {
-    if (g_activeElement instanceof StarElement) {
-      g_activeElement.deactivate();
-      g_hoverRating = 0;
+  if (activeElement) {
+    if (activeElement instanceof StarElement) {
+      activeElement.deactivate();
+      hoverRating = 0;
       window.RepaintRect(
         ratingArea.x,
         ratingArea.y,
@@ -625,79 +626,79 @@ function on_mouse_leave() {
         ratingArea.h,
       );
     } else {
-      g_activeElement.is_hover = false;
-      if (g_activeElement === CONTENTS.artist) {
+      activeElement.isHover = false;
+      if (activeElement === contentState.artist) {
         // 艺人行可能比较宽，重绘整行更安全
         window.RepaintRect(
           0,
-          g_activeElement.y,
+          activeElement.y,
           window.Width,
-          g_activeElement.h,
+          activeElement.h,
         );
       } else {
         window.RepaintRect(
-          g_activeElement.x,
-          g_activeElement.y,
-          g_activeElement.w,
-          g_activeElement.h,
+          activeElement.x,
+          activeElement.y,
+          activeElement.w,
+          activeElement.h,
         );
       }
     }
-    g_activeElement = null;
+    activeElement = null;
   }
-  _tt("");
-  _setCursor(32512);
+  tooltip("");
+  _setCursor(CURSOR_ARROW);
 }
 
 function on_mouse_lbtn_up(x, y) {
-  if (!g_activeElement) return;
-  const target = g_activeElement;
+  if (!activeElement) return;
+  const target = activeElement;
 
   // 1. 星星点击：设置评分
   if (target instanceof StarElement) {
-    if (!g_metadb) return;
+    if (!metadb) return;
     // 逻辑：如果点击的分数等于当前分数，则取消评分 (<not set>)
     const newRating =
-      target.value === g_currentRating ? "<not set>" : target.value;
+      target.value === currentRating ? "<not set>" : target.value;
     fb.RunContextCommandWithMetadb(
       "Playback Statistics/Rating/" + newRating,
-      g_metadb,
+      metadb,
       8,
     );
     return;
   }
 
   // 2. 文本点击：弹出面板
-  if (target === CONTENTS.artist) {
+  if (target === contentState.artist) {
     fb.RunMainMenuCommand("View/Popup panels/Show/SMP-艺人资料");
-  } else if (target === CONTENTS.album) {
+  } else if (target === contentState.album) {
     fb.RunMainMenuCommand("View/Popup panels/Show/SMP-专辑介绍");
   }
 }
 
 function on_mouse_lbtn_dblclk(x, y) {
-  // 只有点空地才触发定位正在播放
-  if (!g_activeElement) {
+  // 只有点空白处才触发定位正在播放
+  if (!activeElement) {
     fb.RunMainMenuCommand("View/Show now playing in playlist");
   }
 }
 
 // 播放与列表事件回调
 function on_playback_new_track() {
-  update_contents();
+  updateContent();
 }
 function on_playback_stop(reason) {
   // console.log("==========  on_playback_stop: " + reason);
-  if (reason !== 2) update_contents();
+  if (reason !== 2) updateContent();
 }
 function on_item_focus_change() {
-  if (!fb.IsPlaying) update_contents();
+  if (!fb.IsPlaying) updateContent();
 }
 function on_playlist_switch() {
-  if (!fb.IsPlaying) update_contents();
+  if (!fb.IsPlaying) updateContent();
 }
 function on_metadb_changed() {
-  update_contents();
+  updateContent();
 }
 
 /**
@@ -705,7 +706,7 @@ function on_metadb_changed() {
  * 必须在此处释放所有 GDI 资源，防止内存泄漏
  */
 function on_script_unload() {
-  _measure_dispose();
-  _dispose_image_dict(STAR_ICONS);
-  g_sourceIconCache.clear();
+  _measureDispose();
+  _disposeImageDict(STAR_ICONS);
+  sourceIconCache.clear();
 }
