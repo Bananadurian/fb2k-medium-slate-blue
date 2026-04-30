@@ -445,7 +445,7 @@ class Button {
 | `_drawTabIndicator(gr, activeBtn, headerH, panelW, margin, accentColor, dimColor)` | `(GdiGraphics, ...) → void` | Draws a 2px accent line under the active tab button plus a 1px divider |
 | `_drawEmptyState(gr, text, font, color, panelW, panelH)` | `(GdiGraphics, ...) → void` | Draws centered placeholder/error text using `BTN_STYLE_FLAGS` |
 | `_drawPageIndicator(gr, currentIndex, totalCount, x, y, w, h, font)` | `(GdiGraphics, number, number, number, number, number, number, GdiFont) → void` | Draws a semi-transparent rounded page counter (e.g. "2 / 5") on cover carousels |
-| `_createTextBuffer(text, font, color, viewW, textStyleFlags)` | `(string, GdiFont, number, number, number) → {img, fullH}` | Creates an offscreen GDI bitmap with rendered text for scrollable content. Max height capped at `_scale(2000)` |
+| `_createTextBuffer(text, font, color, viewW, textStyleFlags, bgColor)` | `(string, GdiFont, number, number, number, number) → {img, fullH}` | Creates an offscreen GDI bitmap with rendered text for scrollable content. Fills background with `bgColor` before text rendering to avoid ClearType artifacts on transparent surfaces. Max height capped at `_scale(2000)` |
 | `_disposeImageDict(dict)` | `(Object<string, GdiBitmap>) → void` | Iterates all values in a dict and calls `.Dispose()` on each GDI image |
 
 #### 7.1.4. `lib/theme.js` — Theme Configuration

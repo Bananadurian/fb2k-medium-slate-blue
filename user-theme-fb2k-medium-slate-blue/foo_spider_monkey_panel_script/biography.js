@@ -144,7 +144,7 @@ function on_paint(gr) {
     gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
 
     if (!artistData) {
-        _drawEmptyState(gr, errorText, THEME.FONT.BODY, COL.SEL_FG, window.Width, window.Height);
+        _drawEmptyState(gr, errorText, THEME.FONT.BODY, COL.FG, window.Width, window.Height);
         return;
     }
 
@@ -167,25 +167,25 @@ function on_paint(gr) {
     // 3. 绘制头部信息 (Header)
     
     // 3.1 艺人标题 (超长截断逻辑)
-    gr.GdiDrawText(artistData.title, THEME.FONT.TITLE, COL.SEL_FG, MARGIN, currentY, titleW > lineW ? lineW : titleW, titleH, ONE_LINE_FLAGS);
+    gr.GdiDrawText(artistData.title, THEME.FONT.TITLE, COL.FG, MARGIN, currentY, titleW > lineW ? lineW : titleW, titleH, ONE_LINE_FLAGS);
     // 别名 (如果标题没占满一行，在后面追加显示)
     if (artistData.aliases && titleW < (lineW - MARGIN * 2)) {
-        gr.GdiDrawText(" (" + artistData.aliases + ")", THEME.FONT.BODY, COL.SEL_FG, titleW + MARGIN, currentY + _scale(4), lineW - titleW - MARGIN, LINE_H, ONE_LINE_FLAGS);
+        gr.GdiDrawText(" (" + artistData.aliases + ")", THEME.FONT.BODY, COL.FG, titleW + MARGIN, currentY + _scale(4), lineW - titleW - MARGIN, LINE_H, ONE_LINE_FLAGS);
     }
     currentY += titleH + LINE_SPACE;
     
     // 3.2 风格 (多行)
     if (LINK_ICONS.Genres) gr.DrawImage(LINK_ICONS.Genres, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Genres.Width, LINK_ICONS.Genres.Height);
-    gr.GdiDrawText(artistData.genres || "Unknown Genre", THEME.FONT.BODY, COL.SEL_FG, MARGIN * 2.5, currentY, lineW, genresH, MULTI_LINE_FLAGS);
+    gr.GdiDrawText(artistData.genres || "Unknown Genre", THEME.FONT.BODY, COL.FG, MARGIN * 2.5, currentY, lineW, genresH, MULTI_LINE_FLAGS);
     currentY += genresH + LINE_SPACE;
 
     // 3.3 生日
     if (LINK_ICONS.Born) gr.DrawImage(LINK_ICONS.Born, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Born.Width, LINK_ICONS.Born.Height);
-    gr.GdiDrawText(artistData.born || "-", THEME.FONT.BODY, COL.SEL_FG, MARGIN * 2.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
+    gr.GdiDrawText(artistData.born || "-", THEME.FONT.BODY, COL.FG, MARGIN * 2.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
 
     // 3.4 地区 (与生日同一行，靠右侧布局)
     if (LINK_ICONS.Country) gr.DrawImage(LINK_ICONS.Country, MARGIN * 13, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Country.Width, LINK_ICONS.Country.Height);
-    gr.GdiDrawText(artistData.country || "-", THEME.FONT.BODY, COL.SEL_FG, MARGIN * 14.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
+    gr.GdiDrawText(artistData.country || "-", THEME.FONT.BODY, COL.FG, MARGIN * 14.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
     currentY += LINE_H + LINE_SPACE;
 
     // 3.5 链接图标按钮
@@ -203,8 +203,8 @@ function on_paint(gr) {
     const isProfile = !isShowingDiscography;
     
     // 根据状态确定颜色
-    const pColor = isProfile ? COL.SEL_FG : (pBtn.isHover ? COL.FRAME : COL.FG);
-    const dColor = !isProfile ? COL.SEL_FG : (dBtn.isHover ? COL.FRAME : COL.FG);
+    const pColor = isProfile ? COL.FG : (pBtn.isHover ? COL.FRAME : COL.FG);
+    const dColor = !isProfile ? COL.FG : (dBtn.isHover ? COL.FRAME : COL.FG);
 
     gr.GdiDrawText(pBtn.displayText, isProfile ? THEME.FONT.BOLD : THEME.FONT.BODY, pColor, pBtn.x, pBtn.y, pBtn.w, pBtn.h, BTN_STYLE_FLAGS);
     gr.GdiDrawText(dBtn.displayText, !isProfile ? THEME.FONT.BOLD : THEME.FONT.BODY, dColor, dBtn.x, dBtn.y, dBtn.w, dBtn.h, BTN_STYLE_FLAGS);
@@ -352,8 +352,10 @@ function loadImagesFromCache(paths, metadb) {
     // 1. 加载本地扫描到的图片
     if (paths && paths.length > 0) {
         paths.forEach(path => {
-            let img = gdi.Image(path); 
-            if (img) carousel.images.push(img);
+            try {
+                let img = gdi.Image(path);
+                if (img) carousel.images.push(img);
+            } catch (e) { console.log("Image load error: " + e); }
         });
     }
 
@@ -529,7 +531,7 @@ function createTextBuffer() {
 
     const text = isShowingDiscography ? getDiscoText() : (artistData.artistbiography || "暂无详细简介信息");
 
-    const result = _createTextBuffer(text, THEME.FONT.BODY, COL.FG, viewW, MULTI_LINE_FLAGS);
+    const result = _createTextBuffer(text, THEME.FONT.BODY, COL.SEL_BG, viewW, MULTI_LINE_FLAGS, COL.BG);
     textImg = result.img;
     const fullH = result.fullH;
 
@@ -698,11 +700,13 @@ function on_playlist_items_selection_change() {
 
 function on_colours_changed() {
     _refreshThemeColors();
+    createTextBuffer();
     window.Repaint();
 }
 
 function on_font_changed() {
     _refreshThemeFonts();
+    createTextBuffer();
     window.Repaint();
 }
 

@@ -239,6 +239,8 @@ function on_playlist_items_selection_change() {
 function on_colours_changed() {
     _refreshThemeColors();
     themeBgColor = THEME.COL.BG;
+    bgColor1 = themeBgColor;
+    bgColor2 = themeBgColor;
     window.Repaint();
 }
 

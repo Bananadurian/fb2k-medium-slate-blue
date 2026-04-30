@@ -134,12 +134,8 @@ function updateAllStates() {
 
 function togglePlaybackOrder() {
     const cycle = [0, 1, 2, 4]; // 跳过模式 3 (随机播放), 仅循环 Default/Repeat/Shuffle
-    const current = plman.PlaybackOrder;
-    let nextIndex = cycle.indexOf(current) + 1;
-    if (nextIndex >= cycle.length || nextIndex === 0) {
-        nextIndex = 0;
-        if (cycle.indexOf(current) === -1) nextIndex = 1; 
-    }
+    const pos = cycle.indexOf(plman.PlaybackOrder);
+    const nextIndex = (pos === -1 || pos >= cycle.length - 1) ? 0 : pos + 1;
     plman.PlaybackOrder = cycle[nextIndex];
 }
 

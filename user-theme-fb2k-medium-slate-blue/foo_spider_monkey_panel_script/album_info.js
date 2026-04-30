@@ -333,7 +333,7 @@ function createTextBuffer() {
         ? (albumData.tracklist || "暂无曲目信息 (需TAG (TRACKLIST)支持)")
         : (albumData.description || "暂无专辑简介 (需TAG (ALBUMDESCRIPTION)支持)");
 
-    const result = _createTextBuffer(text, THEME.FONT.BODY, COL.FG, viewW, MULTI_LINE_FLAGS);
+    const result = _createTextBuffer(text, THEME.FONT.BODY, COL.FG, viewW, MULTI_LINE_FLAGS, COL.BG);
     textImg = result.img;
     const fullH = result.fullH;
 
@@ -378,7 +378,7 @@ function on_paint(gr) {
     gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
 
     if (!albumData) {
-        _drawEmptyState(gr, errorText, THEME.FONT.BODY, COL.SEL_FG, window.Width, window.Height);
+        _drawEmptyState(gr, errorText, THEME.FONT.BODY, COL.FG, window.Width, window.Height);
         return;
     }
 
@@ -401,18 +401,20 @@ function on_paint(gr) {
     // --- 2. 绘制文本信息 ---
     
     // 标题 (多行)
-    gr.GdiDrawText(albumData.title, THEME.FONT.TITLE, COL.SEL_FG, MARGIN, currentY, lineW, titleH, MULTI_LINE_FLAGS);
+    gr.GdiDrawText(albumData.title, THEME.FONT.TITLE, COL.FG, MARGIN, currentY, lineW, titleH, MULTI_LINE_FLAGS);
     
     // 版本 & 来源 & 音质标识行
     if (albumData.edition || currentSourceIcon.img || currentAQBadge) {
         currentY += titleH + LINE_SPACE;
 
+        if (LINK_ICONS.Edition) {
+            gr.DrawImage(LINK_ICONS.Edition, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Edition.Width, LINK_ICONS.Edition.Height);
+        }        
+
         // 版本图标 + 版本文字
         if (albumData.edition) {
-            if (LINK_ICONS.Edition) {
-                gr.DrawImage(LINK_ICONS.Edition, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Edition.Width, LINK_ICONS.Edition.Height);
-            }
-            gr.GdiDrawText(albumData.edition, THEME.FONT.BODY, COL.SEL_FG, MARGIN * 2.5, currentY, editionW, LINE_H, ONE_LINE_FLAGS);
+
+            gr.GdiDrawText(albumData.edition, THEME.FONT.BODY, COL.FG, MARGIN * 2.5, currentY, editionW, LINE_H, ONE_LINE_FLAGS);
         }
 
         // 来源图标
@@ -436,28 +438,28 @@ function on_paint(gr) {
 
     // 艺人 (单行)
     if (LINK_ICONS.Artist) gr.DrawImage(LINK_ICONS.Artist, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Artist.Width, LINK_ICONS.Artist.Height);
-    gr.GdiDrawText(albumData.artist || "Unknown Artist", THEME.FONT.BODY, COL.SEL_FG, MARGIN * 2.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
+    gr.GdiDrawText(albumData.artist || "Unknown Artist", THEME.FONT.BODY, COL.FG, MARGIN * 2.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
     currentY += LINE_H + LINE_SPACE;    
 
     // 风格 (多行)
     if (LINK_ICONS.Genres) gr.DrawImage(LINK_ICONS.Genres, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Genres.Width, LINK_ICONS.Genres.Height);
-    gr.GdiDrawText(albumData.genres || "Unknown Genre", THEME.FONT.BODY, COL.SEL_FG, MARGIN * 2.5, currentY, lineW, genresH, MULTI_LINE_FLAGS);
+    gr.GdiDrawText(albumData.genres || "Unknown Genre", THEME.FONT.BODY, COL.FG, MARGIN * 2.5, currentY, lineW, genresH, MULTI_LINE_FLAGS);
     currentY += genresH + LINE_SPACE;
 
     // 日期 & 语言 (单行)
     if (LINK_ICONS.Date) gr.DrawImage(LINK_ICONS.Date, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Date.Width, LINK_ICONS.Date.Height);
-    gr.GdiDrawText(albumData.date || "-", THEME.FONT.BODY, COL.SEL_FG, MARGIN * 2.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
+    gr.GdiDrawText(albumData.date || "-", THEME.FONT.BODY, COL.FG, MARGIN * 2.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
 
     if (LINK_ICONS.Language) gr.DrawImage(LINK_ICONS.Language, MARGIN * 13, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Language.Width, LINK_ICONS.Language.Height);
-    gr.GdiDrawText(albumData.language || "-", THEME.FONT.BODY, COL.SEL_FG, MARGIN * 14.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
+    gr.GdiDrawText(albumData.language || "-", THEME.FONT.BODY, COL.FG, MARGIN * 14.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
 
     // --- 3. 绘制 Tab 按钮 ---
     const dBtn = elements.descBtn;
     const tBtn = elements.tracklistBtn;
     const isDescMode = !isShowingTracklist;
     
-    const dColor = isDescMode ? COL.SEL_FG : (dBtn.isHover ? COL.FRAME : COL.FG);
-    const tColor = !isDescMode ? COL.SEL_FG : (tBtn.isHover ? COL.FRAME : COL.FG);
+    const dColor = isDescMode ? COL.FG : (dBtn.isHover ? COL.FRAME : COL.FG);
+    const tColor = !isDescMode ? COL.FG : (tBtn.isHover ? COL.FRAME : COL.FG);
 
     gr.GdiDrawText(dBtn.displayText, isDescMode ? THEME.FONT.BOLD : THEME.FONT.BODY, dColor, dBtn.x, dBtn.y, dBtn.w, dBtn.h, BTN_STYLE_FLAGS);
     gr.GdiDrawText(tBtn.displayText, !isDescMode ? THEME.FONT.BOLD : THEME.FONT.BODY, tColor, tBtn.x, tBtn.y, tBtn.w, tBtn.h, BTN_STYLE_FLAGS);
@@ -632,11 +634,13 @@ function on_playlist_items_selection_change() {
 
 function on_colours_changed() {
     _refreshThemeColors();
+    createTextBuffer();
     window.Repaint();
 }
 
 function on_font_changed() {
     _refreshThemeFonts();
+    createTextBuffer();
     window.Repaint();
 }
 
