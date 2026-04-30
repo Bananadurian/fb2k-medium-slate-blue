@@ -49,7 +49,6 @@ const LINE_H = _scale(14);
 const MARGIN = _scale(1);
 const ALBUM_YEAR_GAP = _scale(2);
 const STAR_SIZE = _scale(16);
-// THEME.CFG.SOURCE_ICON_SIZE / AQ_BADGE 来自 THEME.CFG
 
 // ============================================================================
 // 2. 状态变量与 TitleFormat (State & TF)
@@ -220,7 +219,7 @@ function updateContent() {
   if (metadb) {
     contentState.title.text =
       trackTitleTf.EvalWithMetadb(metadb) || "Unknown Title";
-    const trackBpm = trackBpmTf.EvalWithMetadb(metadb) || "0 BPM";
+    const trackBpm = trackBpmTf.EvalWithMetadb(metadb);
     const trackGenre =
       trackGenreTf.EvalWithMetadb(metadb) || "Unknown Genre";
     contentState.title.tooltip = trackGenre + "\n" + trackBpm;
@@ -253,6 +252,9 @@ function updateContent() {
 
   if (metadb) {
     updateSourceIcon(metadb);
+  } else {
+    currentSourceIcon.img = null;
+    currentSourceIcon.tooltip = "";
   }
 
   if (window.Width > 0) {
@@ -327,7 +329,7 @@ function on_size() {
       .Width + _scale(1);
   contentState.year.w = contentState.year.text
     ? _measureString(contentState.year.text, THEME.FONT.LABEL, maxTextW, ALBUM_FLAGS)
-        .Width
+        .Width + _scale(1)
     : 0;
 
   // 2. 垂直布局计算 (自上而下)
@@ -684,6 +686,9 @@ function on_item_focus_change() {
   if (!fb.IsPlaying) updateContent();
 }
 function on_playlist_switch() {
+  if (!fb.IsPlaying) updateContent();
+}
+function on_playlist_items_selection_change() {
   if (!fb.IsPlaying) updateContent();
 }
 function on_metadb_changed() {

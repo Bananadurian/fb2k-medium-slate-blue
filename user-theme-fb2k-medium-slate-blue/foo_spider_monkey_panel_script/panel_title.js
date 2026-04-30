@@ -80,14 +80,6 @@ function on_size() {
 function on_paint(gr) {
   gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
 
-  gr.FillSolidRect(
-    window.Width - layout.sliderW + _scale(0.8),
-    0,
-    layout.sliderW,
-    window.Height,
-    COL.BG,
-  );
-
   if (!layout.isMetricsReady) return;
 
   gr.SetTextRenderingHint(5);
@@ -109,7 +101,7 @@ function on_paint(gr) {
   gr.GdiDrawText(
     displayText,
     THEME.FONT.LABEL,
-    COL.SEL_FG,
+    COL.FG,
     layout.startX + layout.textH + _scale(5),
     layout.contentY,
     layout.textW,

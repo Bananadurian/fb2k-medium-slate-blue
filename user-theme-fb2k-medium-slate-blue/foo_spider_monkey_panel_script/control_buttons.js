@@ -228,7 +228,8 @@ function showMainMenu(x, y) {
 
 function showDevicesMenu(x, y) {
     const menu = window.CreatePopupMenu();
-    const devices = JSON.parse(fb.GetOutputDevices());
+    let devices;
+    try { devices = JSON.parse(fb.GetOutputDevices()); } catch (e) { console.log("Device list error: " + e); return; }
     let activeIdx = -1;
 
     devices.forEach((dev, i) => {
@@ -262,7 +263,8 @@ function updateRgState() {
 }
 
 function updateDeviceState() {
-    const deviceArr = JSON.parse(fb.GetOutputDevices());
+    let deviceArr;
+    try { deviceArr = JSON.parse(fb.GetOutputDevices()); } catch (e) { console.log("Device list error: " + e); return; }
     const current = deviceArr.find(d => d.active)?.name || "";
     
     let img = images.wasapi_share;
