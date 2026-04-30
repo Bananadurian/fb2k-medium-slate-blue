@@ -395,7 +395,7 @@ function on_paint(gr) {
         }
 
         if (carousel.images.length > 1) {
-            _drawPageIndicator(gr, carousel.index, carousel.images.length, MARGIN, coverH - MARGIN - LINE_H, _scale(50), LINE_H, THEME.FONT.BODY);
+            _drawPageIndicator(gr, carousel.index, carousel.images.length, MARGIN, coverH - MARGIN - LINE_H, _scale(50), LINE_H, THEME.FONT.BODY, COL.FG, _argb(153, (COL.BG >> 16) & 0xff, (COL.BG >> 8) & 0xff, COL.BG & 0xff));
         }
     }
 

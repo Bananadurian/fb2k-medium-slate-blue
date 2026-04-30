@@ -23,7 +23,7 @@ const PANEL_CFG = {
 
     // --- 颜色与背景选项 ---
     useCoverColor: true,           // true: 提取封面颜色, false: 强制使用 CUI 全局背景色
-    useGradient: true,              // (仅在 useCoverColor 为 true 时有效) true: 渐变色, false: 单色
+    useGradient: false,              // (仅在 useCoverColor 为 true 时有效) true: 渐变色, false: 单色
     gradientAngle: 90,              // 渐变角度 (90=从上到下, 0=从左到右)
     textColor: _rgb(200, 200, 200)   // 提示文字颜色
 };
@@ -43,80 +43,11 @@ const font = THEME.FONT.TITLE;
 let panelW = 0, panelH = 0;         
 
 // ==========================================
-// 3. 通用工具函数 (UTILITY FUNCTIONS)
+// 3. 数据层 (DATA LAYER)
 // ==========================================
 
-// _rgb 来自 lib/utils.js
+// _rgb / _createRoundedImage / _extractImageColors 来自 lib/utils.js
 
-/**
- * [纯函数] 将指定图片等比缩放、居中裁剪，并应用透明圆角遮罩 (支持长方形)
- */
-function createRoundedImage(img, targetW, targetH, radius) {
-    if (!img || targetW <= 0 || targetH <= 0) return null;
-
-    let bmp = gdi.CreateImage(targetW, targetH);
-    let gr = bmp.GetGraphics();
-    try {
-        let srcW = img.Width;
-        let srcH = img.Height;
-
-        let scale = Math.max(targetW / srcW, targetH / srcH);
-        let drawW = Math.round(srcW * scale);
-        let drawH = Math.round(srcH * scale);
-        let drawX = Math.round((targetW - drawW) / 2);
-        let drawY = Math.round((targetH - drawH) / 2);
-
-        gr.SetInterpolationMode(7);
-        gr.DrawImage(img, drawX, drawY, drawW, drawH, 0, 0, srcW, srcH);
-    } finally {
-        bmp.ReleaseGraphics(gr);
-    }
-
-    let mask = gdi.CreateImage(targetW, targetH);
-    let grMask = mask.GetGraphics();
-    try {
-        grMask.SetSmoothingMode(2);
-        grMask.FillSolidRect(0, 0, targetW, targetH, _rgb(255, 255, 255));
-        grMask.FillRoundRect(0, 0, targetW, targetH, radius, radius, _rgb(0, 0, 0));
-    } finally {
-        mask.ReleaseGraphics(grMask);
-    }
-
-    bmp.ApplyMask(mask);
-    if (mask && typeof mask.Dispose === "function") mask.Dispose();
-    return bmp;
-}
-
-/**
- * [纯函数] 从图像中提取主色调
- * @returns {{ c1: number, c2: number }} c1 为主色调, c2 为次色调 (渐变用; 单色模式下 c2===c1)
- */
-function extractCoverColors(img, useGradient, fallbackColor) {
-    let result = { c1: fallbackColor, c2: fallbackColor };
-    if (!img) return result;
-    
-    try {
-        let colorsJson = img.GetColourSchemeJSON(2);
-        let colors = JSON.parse(colorsJson);
-        
-        if (colors && colors.length > 0) {
-            result.c1 = colors[0].col; 
-            if (useGradient && colors.length >= 2) {
-                result.c2 = colors[1].col; 
-            } else {
-                result.c2 = colors[0].col; 
-            }
-        }
-    } catch (e) {
-        console.log("SMP Extract Colors Error: " + e);
-    }
-    return result;
-}
-
-/**
- * [异步数据层] 获取封面图像对象及配套颜色数据
- * 包含阻断式性能优化：当 useCoverColor 为 false 时直接跳过颜色提取
- */
 function getAlbumArtData(metadb, artId, useCoverColor, useGradient, fallbackColor) {
     return new Promise((resolve) => {
         if (!metadb) {
@@ -131,7 +62,7 @@ function getAlbumArtData(metadb, artId, useCoverColor, useGradient, fallbackColo
                 
                 // 【性能优化核心】仅在允许提取颜色，且有封面的情况下才去跑分析算法
                 if (useCoverColor && img) {
-                    colors = extractCoverColors(img, useGradient, fallbackColor);
+                    colors = _extractImageColors(img, useGradient, fallbackColor);
                 } else {
                     colors = { c1: fallbackColor, c2: fallbackColor };
                 }
@@ -169,7 +100,7 @@ function recalculateCoverGeometry() {
     let targetW = Math.floor(img.Width * scale);
     let targetH = Math.floor(img.Height * scale);
     
-    imgRounded = createRoundedImage(img, targetW, targetH, PANEL_CFG.cornerRadius);
+    imgRounded = _createRoundedImage(img, targetW, targetH, PANEL_CFG.cornerRadius);
 }
 
 /**
@@ -256,7 +187,6 @@ function on_font_changed() {
 function on_script_unload() {
     if (img && typeof img.Dispose === "function") img.Dispose();
     if (imgRounded && typeof imgRounded.Dispose === "function") imgRounded.Dispose();
-    _measureDispose();
 }
 
 let currentTrack = fb.GetNowPlaying();
