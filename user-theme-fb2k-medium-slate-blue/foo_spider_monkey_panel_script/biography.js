@@ -98,7 +98,8 @@ const carousel = { images: [], index: 0, timer: null };
 let isShowingDiscography = false; // Tab状态：False=简介(Profile), True=作品集(Discography)
 let scrollY = 0;             // 当前垂直滚动条位置
 let maxScrollY = 0;          // 最大可滚动距离
-let textImg = null;          // 文本内容的离屏渲染缓冲图 (GdiBitmap)
+let currentText = "";        // 当前显示的文本内容
+let fullTextH = 0;           // 文本总高度
 let errorText = "请选择或播放歌曲..."; // 空状态或错误提示文案
 
 // 交互状态
@@ -148,7 +149,10 @@ function on_paint(gr) {
         return;
     }
 
-    // 2. 绘制封面区
+    // 2. 绘制滚动文本 (在封面/头部之前，溢出部分会被后续遮盖)
+    _drawScrollText(gr, currentText, THEME.FONT.BODY, COL.FG, MARGIN, headerHeight - scrollY, viewW, fullTextH, MULTI_LINE_FLAGS, COL.BG, window.Width, headerHeight);
+
+    // 3. 绘制封面区
     if (carousel.images.length > 0 && carousel.images[carousel.index]) {
         let currentImg = carousel.images[carousel.index];
         if (PANEL_CFG.isCoverFit) {
@@ -164,7 +168,7 @@ function on_paint(gr) {
 
     let currentY = lineStartY; 
     
-    // 3. 绘制头部信息 (Header)
+    // 4. 绘制头部信息 (Header)
     
     // 3.1 艺人标题 (超长截断逻辑)
     gr.GdiDrawText(artistData.title, THEME.FONT.TITLE, COL.FG, MARGIN, currentY, titleW > lineW ? lineW : titleW, titleH, ONE_LINE_FLAGS);
@@ -197,7 +201,7 @@ function on_paint(gr) {
         gr.DrawImage(btn.img, btn.x, btn.y, btn.w, btn.h, 0, 0, btn.img.Width, btn.img.Height);
     });
     
-    // 4. 绘制 Tab 切换按钮
+    // 5. 绘制 Tab 切换按钮
     const pBtn = elements.profileBtn;
     const dBtn = elements.discographyBtn;
     const isProfile = !isShowingDiscography;
@@ -213,16 +217,9 @@ function on_paint(gr) {
     const activeBtn = isProfile ? pBtn : dBtn;
     _drawTabIndicator(gr, activeBtn, headerHeight, window.Width, MARGIN, COL.SEL_BG, COL.FG);
 
-    // 5. 绘制滚动内容 (使用离屏缓冲直绘，提高性能)
-    if (textImg) {
-        const sourceH = Math.min(viewH, textImg.Height - scrollY);
-        if (sourceH > 0) {
-            gr.DrawImage(textImg, MARGIN, headerHeight, viewW, sourceH, 0, scrollY, viewW, sourceH);
-        }
-        // 绘制滚动条
-        if (maxScrollY > 0) {
-            _drawScrollbar(gr, viewH, textImg.Height, scrollY, maxScrollY, window.Width, headerHeight, COL.SCROLLBAR);
-        }
+    // 6. 绘制滚动条
+    if (currentText && maxScrollY > 0) {
+        _drawScrollbar(gr, viewH, fullTextH, scrollY, maxScrollY, window.Width, headerHeight, COL.SCROLLBAR);
     }
 }
 
@@ -519,23 +516,19 @@ function calcElementsBtnSize() {
     elements.discographyBtn.x = MARGIN * 3.5 + elements.profileBtn.w;
 }
 
-/**
- * 创建离屏文本缓冲 (Text Buffer)
- * 将耗时的文本排版渲染到一张图片上，滚动时直接绘制图片
- */
+// 测量文本高度并更新滚动状态
 function createTextBuffer() {
-    if (textImg && typeof textImg.Dispose === "function") textImg.Dispose();
-    textImg = null;
+    currentText = "";
+    fullTextH = 0;
 
     if (!artistData || viewW <= 0 || viewH <= 0) return;
 
-    const text = isShowingDiscography ? getDiscoText() : (artistData.artistbiography || "暂无详细简介信息");
+    currentText = isShowingDiscography ? getDiscoText() : (artistData.artistbiography || "暂无详细简介信息");
 
-    const result = _createTextBuffer(text, THEME.FONT.BODY, COL.SEL_BG, viewW, MULTI_LINE_FLAGS, COL.BG);
-    textImg = result.img;
-    const fullH = result.fullH;
+    const measured = _measureString(currentText, THEME.FONT.BODY, viewW, MULTI_LINE_FLAGS);
+    fullTextH = Math.max(1, Math.min(Math.ceil(measured.Height), _scale(2000)));
 
-    maxScrollY = Math.max(0, fullH - viewH);
+    maxScrollY = Math.max(0, fullTextH - viewH);
     if (scrollY > maxScrollY) scrollY = maxScrollY;
 }
 
@@ -580,7 +573,7 @@ function createLinkButtons() {
  */
 
 function on_mouse_wheel(step) {
-    if (!textImg || maxScrollY <= 0) return;
+    if (!currentText || maxScrollY <= 0) return;
     scrollY -= step * SCROLL_STEP;
     scrollY = Math.max(0, Math.min(scrollY, maxScrollY));
     window.RepaintRect(0, headerHeight, window.Width, window.Height - headerHeight);
@@ -721,7 +714,6 @@ function on_script_unload() {
             if (img && typeof img.Dispose === "function") img.Dispose();
         });
     }
-    if (textImg && typeof textImg.Dispose === "function") textImg.Dispose();
     _disposeImageDict(LINK_ICONS);
     _measureDispose();
     ARTIST_CACHE.clear();

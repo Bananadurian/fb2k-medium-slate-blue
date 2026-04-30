@@ -152,18 +152,12 @@ class StarElement {
   // 激活：鼠标移入
   activate() {
     this.isHover = true;
-    hoverRating = this.value; // 设置全局悬停分
-    // 重绘整个评分条区域，因为第3颗星变亮，第1、2颗也要跟着变
-    window.RepaintRect(ratingArea.x, ratingArea.y, ratingArea.w, ratingArea.h);
+    hoverRating = this.value;
   }
 
   // 休眠：鼠标移出
   deactivate() {
     this.isHover = false;
-    // 注意：这里不直接重置 hoverRating = 0
-    // 因为鼠标可能马上移入隔壁星星，由 on_mouse_move 的逻辑控制是否重置
-    // 但如果没有任何星星被激活，hoverRating 应该由外部重置
-    window.RepaintRect(ratingArea.x, ratingArea.y, ratingArea.w, ratingArea.h);
   }
 }
 
@@ -418,7 +412,7 @@ function on_paint(gr) {
   gr.GdiDrawText(
     contentState.title.text,
     THEME.FONT.BOLD,
-    contentState.title.isHover ? COL.FRAME : COL.SEL_FG,
+    contentState.title.isHover ? COL.FRAME : COL.FG,
     contentState.title.x,
     contentState.title.y,
     contentState.title.w,
@@ -566,15 +560,8 @@ function on_mouse_move(x, y) {
   if (activeElement) {
     if (activeElement instanceof StarElement) {
       activeElement.deactivate();
-      // 如果移出了整个评分条区域，重置悬停分
       if (!target || !(target instanceof StarElement)) {
         hoverRating = 0;
-        window.RepaintRect(
-          ratingArea.x,
-          ratingArea.y,
-          ratingArea.w,
-          ratingArea.h,
-        );
       }
     } else {
       activeElement.isHover = false;
@@ -590,7 +577,7 @@ function on_mouse_move(x, y) {
   // B. 新元素激活 (Activate)
   if (target) {
     if (target instanceof StarElement) {
-      target.activate(); // 这会更新 hoverRating
+      target.activate();
     } else {
       target.isHover = true;
       window.RepaintRect(target.x, target.y, target.w, target.h);
@@ -601,6 +588,11 @@ function on_mouse_move(x, y) {
   } else {
     tooltip("");
     _setCursor(CURSOR_ARROW); // Arrow cursor
+  }
+
+  // 星级区域统一重绘 (避免 deactivate/activate 各自触发重复 RepaintRect)
+  if ((activeElement instanceof StarElement) || (target instanceof StarElement)) {
+    window.RepaintRect(ratingArea.x, ratingArea.y, ratingArea.w, ratingArea.h);
   }
 
   activeElement = target;
