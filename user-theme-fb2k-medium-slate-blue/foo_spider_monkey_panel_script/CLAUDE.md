@@ -301,7 +301,7 @@ This project contains 7 SMP panel scripts for a foobar2000 theme ("medium-slate-
 | `playback_buttons.js` | Playback Buttons | Transport controls: play/pause, stop, prev/next, seek, playback order, random. Uses Button class. |
 | `control_buttons.js` | Control Buttons | Utility buttons: recent tracks, favorites, search, queue, replaygain, output device, volume slider+mute, main menu. Uses Button + VolumeControl classes. |
 | `panel_title.js` | Panel Title | Playlist name display with icon, chevron, and action button. |
-| `cover_panel.js` | Cover Panel | Cover art display: rounded corners, cover color extraction for gradient background, async art loading. |
+| `cover_panel.js` | Cover Panel | Cover art display: rounded corners, color extraction for gradient background, sync loading + LRU cache (5 entries). |
 
 ### 6.2. Directory Layout
 
@@ -519,7 +519,7 @@ const PANEL_CFG = { showCover: true, coverScale: 1/1, showArtistCover: false, is
 // biography.js
 const PANEL_CFG = { dataPath: "D:\\...", coverScale: 3/4, isCoverFit: true };
 // cover_panel.js
-const PANEL_CFG = { useCoverColor: true, useGradient: true, gradientAngle: 90, cornerRadius: _scale(20) };
+const PANEL_CFG = { cornerRadius: _scale(20), margin: _scale(40), useCoverColor: true, useGradient: false, gradientAngle: 90 };
 ```
 
 ### 7.2. UI State Machine Pattern (Critical)
@@ -577,22 +577,24 @@ Key principles:
 - Interactive elements must have `x, y, w, h, isHover` properties at minimum.
 - Star rating panels (info+rating.js) need special handling: `activeElement instanceof StarElement` checks for transitioning between stars within the rating area without resetting `hoverRating`.
 
-### 7.3. Offscreen Text Buffer for Scrolling
+### 7.3. Scroll Text Rendering
 
-For scrollable text content, render text once to an offscreen `GdiBitmap`, then blit the visible portion in `on_paint()`. The shared `_createTextBuffer()` handles buffer creation:
+Scroll text is rendered directly in `on_paint()` via `_drawScrollText()` for native ClearType quality:
 
 ```javascript
-// Creating the buffer (using shared function):
-const buffer = _createTextBuffer(text, THEME.FONT.BODY, COL.FG, viewW, MULTI_LINE_FLAGS);
-textImg = buffer.img;
-let fullH = buffer.fullH;
-maxScrollY = Math.max(0, fullH - viewH);
+// Measure full text height (in createTextBuffer):
+const measured = _measureString(currentText, THEME.FONT.BODY, viewW, MULTI_LINE_FLAGS);
+fullTextH = Math.max(1, Math.min(Math.ceil(measured.Height), _scale(2000)));
+maxScrollY = Math.max(0, fullTextH - viewH);
 
-// In on_paint:
-if (textImg) {
-    const sourceH = Math.min(viewH, textImg.Height - scrollY);
-    gr.DrawImage(textImg, MARGIN, headerHeight, viewW, sourceH, 0, scrollY, viewW, sourceH);
-}
+// In on_paint — draw text then cover overflow above header:
+_drawScrollText(gr, currentText, THEME.FONT.BODY, COL.FG, MARGIN,
+    headerHeight - scrollY, viewW, fullTextH, MULTI_LINE_FLAGS,
+    COL.BG, window.Width, headerHeight);
+// Cover/header are redrawn AFTER _drawScrollText (the function covers overflow with FillSolidRect)
+
+// Scrollbar:
+_drawScrollbar(gr, viewH, fullTextH, scrollY, maxScrollY, window.Width, headerHeight, COL.SCROLLBAR);
 ```
 
 ### 7.4. Scrollbar Rendering
@@ -611,11 +613,16 @@ Every script MUST implement `on_script_unload()`:
 
 ```javascript
 function on_script_unload() {
-    _measureDispose();          // lib/utils.js — release measurement singleton
-    _disposeImageDict(images);   // lib/interaction.js — release all gdi.Image objects in a dict
-    sourceIconCache.clear();   // SourceIconCache.clear() from lib/data.js
-    // Clear timers
+    _measureDispose();                                    // lib/utils.js
+    _disposeImageDict(images);                             // lib/interaction.js
+    sourceIconCache.clear();                               // lib/data.js
     if (carousel.timer) { window.ClearInterval(carousel.timer); carousel.timer = null; }
+    // cover_panel.js: dispose cached images + clear LRU cache
+    for (let entry of coverCache._map.values()) {
+        if (entry && entry.imgRounded && typeof entry.imgRounded.Dispose === "function")
+            entry.imgRounded.Dispose();
+    }
+    coverCache.clear();
 }
 ```
 
