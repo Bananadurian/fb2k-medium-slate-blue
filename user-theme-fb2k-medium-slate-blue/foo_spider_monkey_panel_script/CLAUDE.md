@@ -347,6 +347,7 @@ lib/utils.js  (独立 — 无 lib 依赖)
 |--------|-----------|-------------|
 | `_scale(size)` | `(number) → number` | DPI-aware pixel scaling: `Math.round((size * window.DPI) / 72)` |
 | `_rgb(r, g, b)` | `(int, int, int) → number` | Opaque ARGB color: `0xff000000 \| (r<<16) \| (g<<8) \| b` |
+| `_argb(a, r, g, b)` | `(int, int, int, int) → number` | ARGB color with alpha: `(a<<24) \| (r<<16) \| (g<<8) \| b` |
 | `_getDimColor(color)` | `(number) → number` | Darkens a color (brightness * 0.2). Pure white (#FFFFFF) → cool gray (#393940) |
 | `_loadImage(path)` | `(string) → GdiBitmap\|null` | Loads image if file exists, else returns null |
 | `_hitTest(x, y, ele)` | `(number, number, {x,y,w,h}) → boolean` | Hit-test: `x >= ele.x && x <= ele.x + ele.w && y >= ele.y && y <= ele.y + ele.h`. Returns false if ele is null. |
@@ -355,6 +356,8 @@ lib/utils.js  (独立 — 无 lib 依赖)
 | `_measureDispose()` | `() → void` | Releases the `_measure` singleton. Call in `on_script_unload()` |
 | `_drawImageFit(gr, img, x, y, w, h)` | `(GdiGraphics, GdiBitmap, ...) → void` | Aspect-fit: scales image to fully fit target, centered with letterboxing |
 | `_drawImageCover(gr, img, x, y, w, h)` | `(GdiGraphics, GdiBitmap, ...) → void` | Aspect-cover: scales image to fill target, crops overflow |
+| `_createRoundedImage(img, targetW, targetH, radius)` | `(GdiBitmap, number, number, number) → GdiBitmap\|null` | Aspect-cover crop + rounded corner mask. Used by `cover_panel.js` |
+| `_extractImageColors(img, useGradient, fallbackColor)` | `(GdiBitmap, boolean, number) → {c1, c2}` | Extracts dominant colors via `GetColourSchemeJSON`. `c2===c1` when `useGradient=false` |
 
 #### 7.1.2. `lib/data.js` — Data Constants & Systems
 
@@ -444,7 +447,7 @@ class Button {
 | `_carouselNext(carouselState, coverH, cycleMs?, panelW?)` | `(...) → void` | Advances carousel to next image and repaints |
 | `_drawTabIndicator(gr, activeBtn, headerH, panelW, margin, accentColor, dimColor)` | `(GdiGraphics, ...) → void` | Draws a 2px accent line under the active tab button plus a 1px divider |
 | `_drawEmptyState(gr, text, font, color, panelW, panelH)` | `(GdiGraphics, ...) → void` | Draws centered placeholder/error text using `BTN_STYLE_FLAGS` |
-| `_drawPageIndicator(gr, currentIndex, totalCount, x, y, w, h, font)` | `(GdiGraphics, number, number, number, number, number, number, GdiFont) → void` | Draws a semi-transparent rounded page counter (e.g. "2 / 5") on cover carousels |
+| `_drawPageIndicator(gr, currentIndex, totalCount, x, y, w, h, font, fgColor?, bgColor?)` | `(GdiGraphics, number, number, number, number, number, number, GdiFont, number?, number?) → void` | Draws a semi-transparent rounded page counter (e.g. "2 / 5") on cover carousels. `fgColor` defaults to `0xFFFFFFFF`, `bgColor` defaults to `0x99000000` |
 | `_drawScrollText(gr, text, font, color, x, y, w, h, flags, bgColor, panelW, headerH)` | `(GdiGraphics, string, GdiFont, number, number, number, number, number, number, number, number, number) → void` | Directly renders scrollable text via `GdiDrawText` for native ClearType, then covers overflow above `headerH` with `FillSolidRect`. Caller must redraw cover/header after. Max height capped at `_scale(2000)` |
 | `_disposeImageDict(dict)` | `(Object<string, GdiBitmap>) → void` | Iterates all values in a dict and calls `.Dispose()` on each GDI image |
 
@@ -626,7 +629,7 @@ function on_script_unload() {
 | panel_title.js | Yes | Yes (images) | — | — |
 | playback_buttons.js | — | Yes (images) | — | — |
 | control_buttons.js | — | Yes (images) | — | — |
-| cover_panel.js | Yes | — | — | — |
+| cover_panel.js | — | — | — | — |
 
 ### 7.6. Data Initialization Pattern
 
