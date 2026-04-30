@@ -93,9 +93,10 @@ const carousel = { images: [], index: 0, timer: null };
 
 // 视图与交互状态
 let isShowingTracklist = false;          // False=介绍, True=曲目
-let scrollY = 0;                    
-let maxScrollY = 0;             
-let textImg = null;                 // 离屏渲染缓冲图 (GdiBitmap)
+let scrollY = 0;
+let maxScrollY = 0;
+let currentText = "";               // 当前显示的文本内容
+let fullTextH = 0;                  // 文本总高度
 let errorText = "请选择或播放歌曲...";
 let activeElement = null;         // [状态机] 当前激活的 UI 元素
 
@@ -322,22 +323,21 @@ function calcElementsBtnSize() {
     elements.tracklistBtn.x = MARGIN * 3.5 + elements.descBtn.w;
 }
 
-// 创建离屏文本缓冲 (使用 _createTextBuffer)
+// 测量文本高度并更新滚动状态
 function createTextBuffer() {
-    if (textImg && typeof textImg.Dispose === "function") textImg.Dispose();
-    textImg = null;
+    currentText = "";
+    fullTextH = 0;
 
     if (!albumData || viewW <= 0 || viewH <= 0) return;
 
-    const text = isShowingTracklist
+    currentText = isShowingTracklist
         ? (albumData.tracklist || "暂无曲目信息 (需TAG (TRACKLIST)支持)")
         : (albumData.description || "暂无专辑简介 (需TAG (ALBUMDESCRIPTION)支持)");
 
-    const result = _createTextBuffer(text, THEME.FONT.BODY, COL.FG, viewW, MULTI_LINE_FLAGS, COL.BG);
-    textImg = result.img;
-    const fullH = result.fullH;
+    const measured = _measureString(currentText, THEME.FONT.BODY, viewW, MULTI_LINE_FLAGS);
+    fullTextH = Math.max(1, Math.min(Math.ceil(measured.Height), _scale(2000)));
 
-    maxScrollY = Math.max(0, fullH - viewH);
+    maxScrollY = Math.max(0, fullTextH - viewH);
     if (scrollY > maxScrollY) scrollY = maxScrollY;
 }
 
@@ -382,7 +382,10 @@ function on_paint(gr) {
         return;
     }
 
-    // --- 1. 绘制封面 (仅当 PANEL_CFG.showCover 为 true 时) ---
+    // --- 1. 绘制滚动文本 (在封面/头部之前，溢出部分会被后续遮盖) ---
+    _drawScrollText(gr, currentText, THEME.FONT.BODY, COL.FG, MARGIN, headerHeight - scrollY, viewW, fullTextH, MULTI_LINE_FLAGS, COL.BG, window.Width, headerHeight);
+
+    // --- 2. 绘制封面 (仅当 PANEL_CFG.showCover 为 true 时) ---
     if (PANEL_CFG.showCover && carousel.images.length > 0 && carousel.images[carousel.index]) {
         let currentImg = carousel.images[carousel.index];
         if (PANEL_CFG.isCoverFit) {
@@ -398,7 +401,7 @@ function on_paint(gr) {
 
     let currentY = lineStartY; 
     
-    // --- 2. 绘制文本信息 ---
+    // --- 3. 绘制文本信息 ---
     
     // 标题 (多行)
     gr.GdiDrawText(albumData.title, THEME.FONT.TITLE, COL.FG, MARGIN, currentY, lineW, titleH, MULTI_LINE_FLAGS);
@@ -453,7 +456,7 @@ function on_paint(gr) {
     if (LINK_ICONS.Language) gr.DrawImage(LINK_ICONS.Language, MARGIN * 13, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Language.Width, LINK_ICONS.Language.Height);
     gr.GdiDrawText(albumData.language || "-", THEME.FONT.BODY, COL.FG, MARGIN * 14.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
 
-    // --- 3. 绘制 Tab 按钮 ---
+    // --- 4. 绘制 Tab 按钮 ---
     const dBtn = elements.descBtn;
     const tBtn = elements.tracklistBtn;
     const isDescMode = !isShowingTracklist;
@@ -467,15 +470,9 @@ function on_paint(gr) {
     const activeBtn = isDescMode ? dBtn : tBtn;
     _drawTabIndicator(gr, activeBtn, headerHeight, window.Width, MARGIN, COL.SEL_BG, COL.FG);
 
-    // --- 4. 绘制滚动内容 ---
-    if (textImg) {
-        const sourceH = Math.min(viewH, textImg.Height - scrollY);
-        if (sourceH > 0) {
-            gr.DrawImage(textImg, MARGIN, headerHeight, viewW, sourceH, 0, scrollY, viewW, sourceH);
-        }
-        if (maxScrollY > 0) {
-            _drawScrollbar(gr, viewH, textImg.Height, scrollY, maxScrollY, window.Width, headerHeight, COL.SCROLLBAR);
-        }
+    // --- 5. 绘制滚动条 ---
+    if (currentText && maxScrollY > 0) {
+        _drawScrollbar(gr, viewH, fullTextH, scrollY, maxScrollY, window.Width, headerHeight, COL.SCROLLBAR);
     }
 }
 
@@ -528,7 +525,7 @@ function updateSourceIcon(sourceText) {
 
 
 function on_mouse_wheel(step) {
-    if (!textImg || maxScrollY <= 0) return;
+    if (!currentText || maxScrollY <= 0) return;
     scrollY -= step * SCROLL_STEP;
     scrollY = Math.max(0, Math.min(scrollY, maxScrollY));
     window.RepaintRect(0, headerHeight, window.Width, window.Height - headerHeight);
@@ -655,7 +652,6 @@ function on_script_unload() {
             if (img && typeof img.Dispose === "function") img.Dispose();
         });
     }
-    if (textImg && typeof textImg.Dispose === "function") textImg.Dispose();
     _disposeImageDict(LINK_ICONS);
     _measureDispose();
     albumCache.clear();
