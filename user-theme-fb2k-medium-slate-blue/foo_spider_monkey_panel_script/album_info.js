@@ -536,7 +536,7 @@ function loadAlbumImages(metadb) {
 
 // 图片轮播定时器
 function manageCycleTimer() {
-    _manageCarousel(carousel, coverH, IMG_CYCLE_MS);
+    _manageCarousel(carousel, coverH, IMG_CYCLE_MS, panelW);
 }
 
 // 来源图标缓存更新 (使用 SourceIconCache)
@@ -619,7 +619,7 @@ function on_mouse_leave() {
 function on_mouse_lbtn_up(x, y) {
     // 封面点击 -> 切换下一张图 (仅在开启封面显示时有效)
     if (PANEL_CFG.showCover && y < coverH && carousel.images.length > 1) {
-        _carouselNext(carousel, coverH, IMG_CYCLE_MS);
+        _carouselNext(carousel, coverH, IMG_CYCLE_MS, panelW);
         return;
     }
 
