@@ -28,8 +28,11 @@ window.DefineScript("Biography", {
 // 面板配置开关
 const PANEL_CFG = {
     dataPath:    "D:\\11_MusicLib\\_Extras\\",  // 数据根目录
-    coverScale:  3 / 4,                          // 封面宽高比
-    isCoverFit:  true,                            // true=适配, false=裁剪
+    showCover:   true,                            // 是否显示封面
+    coverAspectRatio: 3 / 4,                      // 封面宽高比
+    coverMode:   "fit",                          // 封面缩放模式 (fit=完整显示, cover=裁剪填充)
+    cornerRadius: _scale(0),                              // 封面圆角半径, 0=直角
+    coverMargin: _scale(0),                               // 封面四周内边距
 };
 const JSON_DIR = PANEL_CFG.dataPath + "ArtistBiography\\";
 const ARTIST_COVER_DIR = PANEL_CFG.dataPath + "ArtistCover\\";
@@ -87,11 +90,19 @@ let tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
 
 // 数据状态
 let artistName = null;      // 缓存当前加载的艺人名 (用于比对是否需要重载)
+let currentMetadb = null;    // 当前数据来源句柄 (用于尺寸变化后重建封面)
+let lastCoverProcessKey = ""; // 最近一次封面预处理签名 (避免重复重建)
 let artistData = null;       // 解析后的艺人 JSON 数据对象
 const ARTIST_CACHE = new LRUCache(THEME.CFG.CACHE_SIZE); // LRU 缓存 (存储最近访问的艺人数据和图片路径)
 
 // 图片与轮播状态
-const carousel = { images: [], index: 0, timer: null };
+const carousel = {
+    images: [],
+    index: 0,
+    timer: null,
+    rawPaths: [],
+    fallbackMetadb: null,
+};
 // IMG_CYCLE_MS 来自上方别名 (THEME.LAYOUT.IMG_CYCLE_MS)
 
 // UI 视图状态
@@ -107,6 +118,9 @@ let activeLinkBtns = [];     // 当前生成的外部链接按钮数组
 let activeElement = null;  // [状态机] 当前鼠标悬停/激活的 UI 元素
 
 // 布局动态计算变量 (初始化为 LINE_H 防止除零或计算异常)
+let panelW = window.Width;
+let panelH = window.Height;
+const coverRect = { x: 0, y: 0, w: 0, h: 0 };
 let titleH = LINE_H;        
 let titleW = 0;     
 let coverH = 0;              
@@ -124,10 +138,65 @@ const elements = {
 };
 
 
-// =========================================================================
-// 核心渲染循环 (Core Render Loop)
-// =========================================================================
+// 构建封面处理签名 (用于尺寸/模式变化失效)
+function buildCoverProcessKey(pathsSig) {
+    return [
+        artistName,
+        coverRect.w,
+        coverRect.h,
+        PANEL_CFG.coverMode,
+        PANEL_CFG.cornerRadius,
+        PANEL_CFG.showCover,
+        pathsSig || "",
+    ].join("|");
+}
 
+// 确保指定索引封面已处理完成
+function ensureCarouselImageReady(nextIndex, carouselState, reason) {
+    if (!carouselState || !carouselState.images || carouselState.images.length === 0) return false;
+
+    const count = carouselState.images.length;
+    const index = ((nextIndex % count) + count) % count;
+    if (carouselState.images[index]) return true;
+
+    const targetW = Math.max(1, coverRect.w);
+    const targetH = Math.max(1, coverRect.h);
+
+    if (carouselState.rawPaths && carouselState.rawPaths.length > 0) {
+        const path = carouselState.rawPaths[index];
+        if (!path) return false;
+        try {
+            let srcImg = gdi.Image(path);
+            if (!srcImg) return false;
+            const processed = _createRoundedImage(srcImg, targetW, targetH, PANEL_CFG.cornerRadius, PANEL_CFG.coverMode);
+            if (typeof srcImg.Dispose === "function") srcImg.Dispose();
+            srcImg = null;
+            if (!processed) return false;
+            carouselState.images[index] = processed;
+            return true;
+        } catch (e) {
+            console.log("Image load error: " + e);
+            return false;
+        }
+    }
+
+    if (carouselState.fallbackMetadb) {
+        const tryTypes = [4, 0];
+        for (const typeId of tryTypes) {
+            let internalArt = utils.GetAlbumArtV2(carouselState.fallbackMetadb, typeId);
+            if (!internalArt) continue;
+            const processed = _createRoundedImage(internalArt, targetW, targetH, PANEL_CFG.cornerRadius, PANEL_CFG.coverMode);
+            if (typeof internalArt.Dispose === "function") internalArt.Dispose();
+            internalArt = null;
+            if (processed) {
+                carouselState.images[index] = processed;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
 function on_size() {
     if (window.Width <= 0 || window.Height <= 0) return;
 
@@ -135,13 +204,26 @@ function on_size() {
     calcElementsBtnSize();
     // 2. 计算整体布局 (确定Y坐标和高度)
     updateLayoutMetrics();
+
+    if (currentMetadb && artistName) {
+        const cached = ARTIST_CACHE.get(artistName);
+        if (cached !== undefined) {
+            const pathsSig = cached.imgPaths && cached.imgPaths.length > 0 ? cached.imgPaths.join("||") : "fallback";
+            const nextKey = buildCoverProcessKey(pathsSig);
+            if (nextKey !== lastCoverProcessKey) {
+                loadImagesFromCache(cached.imgPaths, currentMetadb);
+                lastCoverProcessKey = nextKey;
+            }
+        }
+    }
+
     // 3. 生成文本缓冲 (耗时操作)
-    createTextBuffer(); 
+    createTextBuffer();
 }
 
 function on_paint(gr) {
     // 1. 绘制背景 (关闭抗锯齿以保持矩形边缘锐利)
-    gr.SetSmoothingMode(0); 
+    gr.SetSmoothingMode(0);
     gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
 
     if (!artistData) {
@@ -153,23 +235,25 @@ function on_paint(gr) {
     _drawScrollText(gr, currentText, THEME.FONT.BODY, COL.FG, MARGIN, headerHeight - scrollY, viewW, fullTextH, MULTI_LINE_FLAGS, COL.BG, window.Width, headerHeight);
 
     // 3. 绘制封面区
-    if (carousel.images.length > 0 && carousel.images[carousel.index]) {
-        let currentImg = carousel.images[carousel.index];
-        if (PANEL_CFG.isCoverFit) {
-            _drawImageFit(gr, currentImg, 0, 0, window.Width, coverH);
-        } else {
-            _drawImageCover(gr, currentImg, 0, 0, window.Width, coverH);
+    if (PANEL_CFG.showCover && carousel.images.length > 0) {
+        if (!carousel.images[carousel.index]) {
+            ensureCarouselImageReady(carousel.index, carousel, "paint");
         }
 
-        if (carousel.images.length > 1) {
-            _drawPageIndicator(gr, carousel.index, carousel.images.length, MARGIN, coverH - MARGIN - LINE_H, _scale(50), LINE_H, THEME.FONT.BODY, COL.FG, _argb(153, (COL.BG >> 16) & 0xff, (COL.BG >> 8) & 0xff, COL.BG & 0xff));
+        const currentImg = carousel.images[carousel.index];
+        if (currentImg) {
+            gr.DrawImage(currentImg, coverRect.x, coverRect.y, coverRect.w, coverRect.h, 0, 0, currentImg.Width, currentImg.Height);
+
+            if (carousel.images.length > 1) {
+                _drawPageIndicator(gr, carousel.index, carousel.images.length, coverRect.x + MARGIN, coverRect.y + coverRect.h - MARGIN - LINE_H, _scale(50), LINE_H, THEME.FONT.BODY, COL.FG, _argb(153, (COL.BG >> 16) & 0xff, (COL.BG >> 8) & 0xff, COL.BG & 0xff));
+            }
         }
     }
 
-    let currentY = lineStartY; 
-    
+    let currentY = lineStartY;
+
     // 4. 绘制头部信息 (Header)
-    
+
     // 3.1 艺人标题 (超长截断逻辑)
     gr.GdiDrawText(artistData.title, THEME.FONT.TITLE, COL.FG, MARGIN, currentY, titleW > lineW ? lineW : titleW, titleH, ONE_LINE_FLAGS);
     // 别名 (如果标题没占满一行，在后面追加显示)
@@ -177,7 +261,7 @@ function on_paint(gr) {
         gr.GdiDrawText(" (" + artistData.aliases + ")", THEME.FONT.BODY, COL.FG, titleW + MARGIN, currentY + _scale(4), lineW - titleW - MARGIN, LINE_H, ONE_LINE_FLAGS);
     }
     currentY += titleH + LINE_SPACE;
-    
+
     // 3.2 风格 (多行)
     if (LINK_ICONS.Genres) gr.DrawImage(LINK_ICONS.Genres, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Genres.Width, LINK_ICONS.Genres.Height);
     gr.GdiDrawText(artistData.genres || "Unknown Genre", THEME.FONT.BODY, COL.FG, MARGIN * 2.5, currentY, lineW, genresH, MULTI_LINE_FLAGS);
@@ -194,18 +278,18 @@ function on_paint(gr) {
 
     // 3.5 链接图标按钮
     if (LINK_ICONS.Links) gr.DrawImage(LINK_ICONS.Links, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Links.Width, LINK_ICONS.Links.Height);
-    
+
     activeLinkBtns.forEach(btn => {
         if (!btn.img) return;
         // if (btn.isHover) { ... } // 可选：绘制按钮Hover背景
         gr.DrawImage(btn.img, btn.x, btn.y, btn.w, btn.h, 0, 0, btn.img.Width, btn.img.Height);
     });
-    
+
     // 5. 绘制 Tab 切换按钮
     const pBtn = elements.profileBtn;
     const dBtn = elements.discographyBtn;
     const isProfile = !isShowingDiscography;
-    
+
     // 根据状态确定颜色
     const pColor = isProfile ? COL.FG : (pBtn.isHover ? COL.FRAME : COL.FG);
     const dColor = !isProfile ? COL.FG : (dBtn.isHover ? COL.FRAME : COL.FG);
@@ -234,6 +318,8 @@ function on_paint(gr) {
 function reloadArtistData(metadb) {
     if (!metadb) return;
 
+    currentMetadb = metadb;
+
     const artist = artistTf.EvalWithMetadb(metadb);
     // 文件名安全处理：替换非法字符
     const safeName = artist.replace(/[\\\/:*?"<>|]/g, "_");
@@ -253,11 +339,12 @@ function reloadArtistData(metadb) {
     }else{
         errorText = artistData ? "" : "暂无艺人资料: " + safeName;
     }
-    loadImagesFromCache(cacheEntry.imgPaths, metadb);
-
     if (window.Width > 0) {
         createLinkButtons();
         updateLayoutMetrics();
+        loadImagesFromCache(cacheEntry.imgPaths, metadb);
+        const pathsSig = cacheEntry.imgPaths && cacheEntry.imgPaths.length > 0 ? cacheEntry.imgPaths.join("||") : "fallback";
+        lastCoverProcessKey = buildCoverProcessKey(pathsSig);
         createTextBuffer();
         window.Repaint();
     }
@@ -345,30 +432,53 @@ function loadImagesFromCache(paths, metadb) {
     }
     carousel.images = [];
     carousel.index = 0;
+    carousel.rawPaths = [];
+    carousel.fallbackMetadb = null;
 
-    // 1. 加载本地扫描到的图片
+    if (!PANEL_CFG.showCover) {
+        manageCycleTimer();
+        return;
+    }
+
+    const targetW = Math.max(1, coverRect.w);
+    const targetH = Math.max(1, coverRect.h);
+
+    // 1. 本地多图：首图立即处理，其余延迟到切换前处理
     if (paths && paths.length > 0) {
-        paths.forEach(path => {
-            try {
-                let img = gdi.Image(path);
-                if (img) carousel.images.push(img);
-            } catch (e) { console.log("Image load error: " + e); }
-        });
-    }
+        carousel.rawPaths = paths.slice();
+        carousel.images = new Array(paths.length).fill(null);
 
-    // 2. Fallback: 如果没有本地图，尝试获取内嵌封面
-    if (carousel.images.length === 0) {
-        const tryTypes = [4, 0]; // 4=Artist, 0=Front
-        for (const typeId of tryTypes) {
-            const internalArt = utils.GetAlbumArtV2(metadb, typeId);
-            if (internalArt) {
-                carousel.images.push(internalArt);
-                break; 
+        try {
+            let srcImg = gdi.Image(paths[0]);
+            if (srcImg) {
+                const processed = _createRoundedImage(srcImg, targetW, targetH, PANEL_CFG.cornerRadius, PANEL_CFG.coverMode);
+                if (typeof srcImg.Dispose === "function") srcImg.Dispose();
+                srcImg = null;
+                if (processed) carousel.images[0] = processed;
             }
+        } catch (e) {
+            console.log("Image load error: " + e);
         }
+
+        // 首图失败时兜底，避免首屏空白
+        if (!carousel.images[0]) {
+            ensureCarouselImageReady(0, carousel, "initial");
+        }
+
+        manageCycleTimer();
+        return;
     }
 
-    // 3. 启动轮播逻辑
+    // 2. Fallback: 无本地图时尝试内嵌封面
+    carousel.fallbackMetadb = metadb;
+    carousel.images = [null];
+    ensureCarouselImageReady(0, carousel, "fallback-initial");
+
+    // 如果仍然失败，保留空数组，面板进入无封面文本态
+    if (!carousel.images[0]) {
+        carousel.images = [];
+    }
+
     manageCycleTimer();
 }
 
@@ -376,7 +486,7 @@ function loadImagesFromCache(paths, metadb) {
  * 管理图片轮播定时器
  */
 function manageCycleTimer() {
-    _manageCarousel(carousel, coverH, IMG_CYCLE_MS);
+    _manageCarousel(carousel, coverH, IMG_CYCLE_MS, panelW, ensureCarouselImageReady);
 }
 
 /**
@@ -437,14 +547,40 @@ function getDiscoText() {
 // 布局与几何计算 (Layout & Geometry)
 // =========================================================================
 
+/**
+ * 预计算封面绘制矩形 (coverRect): 在顶部封面区域内应用四周 margin
+ */
+function recalculateCoverLayout() {
+    if (!PANEL_CFG.showCover) {
+        coverRect.x = 0;
+        coverRect.y = 0;
+        coverRect.w = 0;
+        coverRect.h = 0;
+        return;
+    }
+
+    const margin = Math.max(0, PANEL_CFG.coverMargin);
+    const coverW = Math.max(1, panelW - margin * 2);
+    const coverInnerH = Math.max(1, coverH - margin * 2);
+
+    coverRect.w = coverW;
+    coverRect.h = coverInnerH;
+    coverRect.x = Math.round((panelW - coverRect.w) / 2);
+    coverRect.y = Math.round((coverH - coverRect.h) / 2);
+}
+
 
 /**
  * 布局核心算法
  * 负责计算所有元素的坐标和尺寸，实现逻辑与渲染分离
  */
 function updateLayoutMetrics() {
-    coverH = Math.floor(window.Width * PANEL_CFG.coverScale);
-    lineW = window.Width - MARGIN * 4;
+    panelW = window.Width;
+    panelH = window.Height;
+
+    coverH = PANEL_CFG.showCover ? Math.floor(panelW * PANEL_CFG.coverAspectRatio) : 0;
+    recalculateCoverLayout();
+    lineW = panelW - MARGIN * 4;
     lineStartY = coverH + MARGIN;
 
     // 1. 计算标题高度
@@ -634,8 +770,8 @@ function on_mouse_leave() {
 
 function on_mouse_lbtn_up(x, y) {
     // 1. 封面点击 (切换图片)
-    if (y < coverH && carousel.images.length > 1) {
-        _carouselNext(carousel, coverH, IMG_CYCLE_MS);
+    if (PANEL_CFG.showCover && y < coverH && carousel.images.length > 1) {
+        _carouselNext(carousel, coverH, IMG_CYCLE_MS, panelW, ensureCarouselImageReady);
         return;
     }
 

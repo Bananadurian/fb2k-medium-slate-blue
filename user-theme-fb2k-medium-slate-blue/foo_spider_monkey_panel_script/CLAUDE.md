@@ -517,7 +517,7 @@ const LINE_H = THEME.LAYOUT.LINE_H;
 // album_info.js
 const PANEL_CFG = { showCover: true, coverAspectRatio: 1/1, showArtistCover: false, coverMode: "cover", cornerRadius: _scale(20), coverMargin: _scale(20) };
 // biography.js
-const PANEL_CFG = { dataPath: "D:\\...", coverScale: 3/4, isCoverFit: true };
+const PANEL_CFG = { dataPath: "D:\\...", showCover: true, coverAspectRatio: 3/4, coverMode: "fit", cornerRadius: 0, coverMargin: 0 };
 // cover_panel.js
 const PANEL_CFG = { cornerRadius: _scale(20), margin: _scale(40), useCoverColor: true, useGradient: false, gradientAngle: 90, coverMode: "cover" };
 ```
