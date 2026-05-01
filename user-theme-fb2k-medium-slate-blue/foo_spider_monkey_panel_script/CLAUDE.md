@@ -408,7 +408,8 @@ Composite styles:
 **LRU Cache:**
 
 - `LRUCache` class — Map-based LRU cache with max-size limit
-  - `constructor(maxSize)`, `get(key)`, `set(key, value)`, `clear()`, `get size()`
+  - `constructor(maxSize, onEvict?)`, `get(key)`, `set(key, value)`, `clear()`, `get size()`
+  - `onEvict(value, key)` is optional and is called when an entry is evicted by LRU or removed during `clear()`
 
 **Misc:**
 - `MF_STRING` = `0x00000000` — popup menu item flag
@@ -451,7 +452,7 @@ class Button {
 | `_drawEmptyState(gr, text, font, color, panelW, panelH)` | `(GdiGraphics, ...) → void` | Draws centered placeholder/error text using `BTN_STYLE_FLAGS` |
 | `_drawPageIndicator(gr, currentIndex, totalCount, x, y, w, h, font, fgColor?, bgColor?)` | `(GdiGraphics, number, number, number, number, number, number, GdiFont, number?, number?) → void` | Draws a semi-transparent rounded page counter (e.g. "2 / 5") on cover carousels. `fgColor` defaults to `0xFFFFFFFF`, `bgColor` defaults to `0x99000000` |
 | `_drawScrollText(gr, text, font, color, x, y, w, h, flags, bgColor, panelW, headerH)` | `(GdiGraphics, string, GdiFont, number, number, number, number, number, number, number, number, number) → void` | Directly renders scrollable text via `GdiDrawText` for native ClearType, then covers overflow above `headerH` with `FillSolidRect`. Caller must redraw cover/header after. Max height capped at `_scale(2000)` |
-| `_disposeImageDict(dict)` | `(Object<string, GdiBitmap>) → void` | Iterates all values in a dict and calls `.Dispose()` on each GDI image |
+| `_disposeImageDict(dict)` | `(Object<string, GdiBitmap>) → void` | Iterates all values in a dict and performs guarded `.Dispose()` when available (for compatibility paths). |
 
 #### 7.1.4. `lib/theme.js` — Theme Configuration
 
@@ -619,11 +620,7 @@ function on_script_unload() {
     _disposeImageDict(images);                             // lib/interaction.js
     sourceIconCache.clear();                               // lib/data.js
     if (carousel.timer) { window.ClearInterval(carousel.timer); carousel.timer = null; }
-    // cover_panel.js: dispose cached images + clear LRU cache
-    for (let entry of coverCache._map.values()) {
-        if (entry && entry.imgRounded && typeof entry.imgRounded.Dispose === "function")
-            entry.imgRounded.Dispose();
-    }
+    // cover_panel.js: cache-owned bitmap lifecycle (eviction/clear does disposal)
     coverCache.clear();
 }
 ```
@@ -639,6 +636,8 @@ function on_script_unload() {
 | playback_buttons.js | — | Yes (images) | — | — |
 | control_buttons.js | — | Yes (images) | — | — |
 | cover_panel.js | — | — | — | — |
+
+**Cache ownership rule:** when a `GdiBitmap` is owned by a cache with `onEvict` disposal, unload code should clear that cache and avoid disposing the same bitmap a second time.
 
 ### 7.6. Data Initialization Pattern
 

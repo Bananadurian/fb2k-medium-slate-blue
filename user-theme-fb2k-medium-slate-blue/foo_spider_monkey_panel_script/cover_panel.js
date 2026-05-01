@@ -46,7 +46,11 @@ const coverRect = { x: 0, y: 0, w: 0, h: 0 };
 // 封面缓存：LRU，上限 min(5, THEME.CFG.CACHE_SIZE)
 // Key = "%album artist% - %album%"，Value = { imgRounded, bgColor1, bgColor2 }
 const coverKeyTf = fb.TitleFormat("%album artist% - %album%");
-const coverCache = new LRUCache(Math.min(5, THEME.CFG.CACHE_SIZE));
+const coverCache = new LRUCache(Math.min(5, THEME.CFG.CACHE_SIZE), (entry) => {
+  if (entry && entry.imgRounded && typeof entry.imgRounded.Dispose === "function") {
+    entry.imgRounded.Dispose();
+  }
+});
 
 // ==========================================
 // 3. 业务逻辑 (Business Logic)
@@ -99,8 +103,13 @@ function updatePanelData(metadb) {
   const key = coverKeyTf.EvalWithMetadb(metadb) || metadb.Path;
   const cached = coverCache.get(key);
 
-  if (cached !== undefined && imgRounded === cached.imgRounded) {
-    return; // 同一缓存对象，无需更新
+  if (cached !== undefined) {
+    imgRounded = cached.imgRounded || null;
+    bgColor1 = cached.bgColor1;
+    bgColor2 = cached.bgColor2;
+    recalculateLayout(imgRounded);
+    window.Repaint();
+    return;
   }
 
   const rawImg = utils.GetAlbumArtV2(metadb, 0);
@@ -232,17 +241,8 @@ function on_font_changed() {
 // ==========================================
 
 function on_script_unload() {
-  if (imgRounded && typeof imgRounded.Dispose === "function")
-    imgRounded.Dispose();
-  for (let entry of coverCache._map.values()) {
-    if (
-      entry &&
-      entry.imgRounded &&
-      typeof entry.imgRounded.Dispose === "function"
-    )
-      entry.imgRounded.Dispose();
-  }
   coverCache.clear();
+  imgRounded = null;
 }
 
 let currentTrack = fb.GetNowPlaying();
