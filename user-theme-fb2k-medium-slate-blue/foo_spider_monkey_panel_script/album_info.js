@@ -99,6 +99,7 @@ const carousel = {
 };
 let lastCarouselTimerKey = ""; // 轮播定时器签名，未变化则不重建 interval
 let deferredCoverTimer = null; // 延后 fallback 任务句柄，切歌时可取消旧任务
+let deferredPaintEnsureTimer = null; // 避免在 on_paint 内做重型封面处理
 // IMG_CYCLE_MS 来自 THEME.LAYOUT.IMG_CYCLE_MS
 
 // 视图与交互状态
@@ -183,11 +184,34 @@ function reloadAlbumData(metadb) {
     const albumKey = albumKeyTf.EvalWithMetadb(metadb);
     const safeAlbumKey = albumKey.replace(/[\\\/:*?"<>|]/g, "_");
 
-    // 缓存检查 (如果 Key 没变，仅更新布局后返回)
+    // 缓存检查 (同专辑时仅刷新曲目级状态)
     if (currentAlbumKey === safeAlbumKey) {
         if (window.Width > 0) {
+            const latestSource = albumSourceTf.EvalWithMetadb(metadb).trim().toUpperCase();
+            if (albumData) {
+                albumData.source = latestSource;
+            }
+            updateSourceIcon(latestSource);
+
+            let coverReloaded = false;
+            if (PANEL_CFG.showCover) {
+                carousel.fallbackMetadb = metadb;
+                let needsCoverRefresh = !carousel.images || carousel.images.length === 0;
+                if (!needsCoverRefresh && carousel.images.length === 1 && !carousel.images[0]) {
+                    needsCoverRefresh = true;
+                }
+                if (needsCoverRefresh) {
+                    loadAlbumImages(metadb);
+                    coverReloaded = true;
+                }
+            }
+
             updateLayoutMetrics();
-            window.Repaint();
+            if (coverReloaded) {
+                window.Repaint();
+            } else {
+                window.RepaintRect(0, coverH, window.Width, window.Height - coverH);
+            }
         }
         return;
     }
@@ -437,7 +461,7 @@ function getLanguageName(code) {
 
     // 统一处理为数组：数组直接用，字符串按 ; 或 , 分割
     let codeList = Array.isArray(code) ? code : code.split(/[;,]/);
-    
+
     // 遍历每个代码，清洗并转换为语言名称
     let nameList = codeList.map(item => {
         const cleanCode = item.trim().toLowerCase();
@@ -449,6 +473,24 @@ function getLanguageName(code) {
     return nameList.join('; ');
 }
 
+
+function scheduleEnsureFromPaint() {
+    if (deferredPaintEnsureTimer) return;
+    deferredPaintEnsureTimer = window.SetTimeout(() => {
+        deferredPaintEnsureTimer = null;
+        if (!PANEL_CFG.showCover || !carousel.images || carousel.images.length === 0) return;
+
+        const count = carousel.images.length;
+        const index = ((carousel.index % count) + count) % count;
+        if (carousel.images[index]) return;
+
+        const changed = ensureCarouselImageReady(index, carousel, "paint-deferred");
+        if (changed) {
+            manageCycleTimer();
+            window.RepaintRect(0, 0, panelW, coverH);
+        }
+    }, 0);
+}
 
 // =========================================================================
 // 渲染与绘图 (Rendering & Drawing)
@@ -476,11 +518,13 @@ function on_paint(gr) {
 
     // --- 2. 绘制封面 (仅当 PANEL_CFG.showCover 为 true 时) ---
     if (PANEL_CFG.showCover && carousel.images.length > 0) {
-        if (!carousel.images[carousel.index]) {
-            ensureCarouselImageReady(carousel.index, carousel, "paint");
+        const count = carousel.images.length;
+        const index = ((carousel.index % count) + count) % count;
+        if (!carousel.images[index]) {
+            scheduleEnsureFromPaint();
         }
 
-        const currentImg = carousel.images[carousel.index];
+        const currentImg = carousel.images[index];
         if (currentImg) {
             gr.DrawImage(currentImg, coverRect.x, coverRect.y, coverRect.w, coverRect.h, 0, 0, currentImg.Width, currentImg.Height);
 
@@ -789,6 +833,10 @@ function on_font_changed() {
 
 // 脚本资源清理
 function on_script_unload() {
+    if (deferredPaintEnsureTimer) {
+        window.ClearTimeout(deferredPaintEnsureTimer);
+        deferredPaintEnsureTimer = null;
+    }
     if (deferredCoverTimer) {
         window.ClearTimeout(deferredCoverTimer);
         deferredCoverTimer = null;

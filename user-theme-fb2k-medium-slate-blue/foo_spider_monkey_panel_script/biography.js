@@ -94,6 +94,7 @@ let currentMetadb = null;    // 当前数据来源句柄 (用于尺寸变化后�
 let lastCoverProcessKey = ""; // 最近一次封面预处理签名 (避免重复重建)
 let reloadSeq = 0; // 重载序列号，防止快速切换时旧任务回写
 let deferredRefreshTimer = null; // 合并同帧内重复重活刷新，降低切换抖动
+let deferredPaintEnsureTimer = null; // 避免在 on_paint 内执行重型封面处理
 let lastCarouselTimerKey = ""; // 轮播定时器签名，未变化则不重建 interval
 let artistData = null;       // 解析后的艺人 JSON 数据对象
 const ARTIST_CACHE = new LRUCache(THEME.CFG.CACHE_SIZE); // LRU 缓存 (存储最近访问的艺人数据和图片路径)
@@ -259,11 +260,13 @@ function on_paint(gr) {
 
     // 3. 绘制封面区
     if (PANEL_CFG.showCover && carousel.images.length > 0) {
-        if (!carousel.images[carousel.index]) {
-            ensureCarouselImageReady(carousel.index, carousel, "paint");
+        const count = carousel.images.length;
+        const index = ((carousel.index % count) + count) % count;
+        if (!carousel.images[index]) {
+            scheduleEnsureFromPaint();
         }
 
-        const currentImg = carousel.images[carousel.index];
+        const currentImg = carousel.images[index];
         if (currentImg) {
             gr.DrawImage(currentImg, coverRect.x, coverRect.y, coverRect.w, coverRect.h, 0, 0, currentImg.Width, currentImg.Height);
 
@@ -330,6 +333,24 @@ function on_paint(gr) {
     }
 }
 
+function scheduleEnsureFromPaint() {
+    if (deferredPaintEnsureTimer) return;
+    deferredPaintEnsureTimer = window.SetTimeout(() => {
+        deferredPaintEnsureTimer = null;
+        if (!PANEL_CFG.showCover || !carousel.images || carousel.images.length === 0) return;
+
+        const count = carousel.images.length;
+        const index = ((carousel.index % count) + count) % count;
+        if (carousel.images[index]) return;
+
+        const changed = ensureCarouselImageReady(index, carousel, "paint-deferred");
+        if (changed) {
+            manageCycleTimer();
+            window.RepaintRect(0, 0, panelW, coverH);
+        }
+    }, 0);
+}
+
 // =========================================================================
 // 数据处理与缓存 (Data Processing & Cache)
 // =========================================================================
@@ -347,7 +368,44 @@ function reloadArtistData(metadb) {
     const artist = artistTf.EvalWithMetadb(metadb);
     const safeName = artist.replace(/[\\\/:*?"<>|]/g, "_");
 
-    if (artistName === safeName) return;
+    if (artistName === safeName) {
+        if (window.Width > 0) {
+            panelW = window.Width;
+            panelH = window.Height;
+            coverH = PANEL_CFG.showCover ? Math.floor(panelW * PANEL_CFG.coverAspectRatio) : 0;
+            recalculateCoverLayout();
+
+            let coverReloaded = false;
+            if (PANEL_CFG.showCover) {
+                carousel.fallbackMetadb = metadb;
+                if (!carousel.images || carousel.images.length === 0) {
+                    carousel.images = [null];
+                    carousel.rawPaths = [];
+                    carousel.index = 0;
+                }
+
+                const count = carousel.images.length;
+                const index = ((carousel.index % count) + count) % count;
+                if (!carousel.images[index]) {
+                    const changed = ensureCarouselImageReady(index, carousel, "same-artist-refresh");
+                    manageCycleTimer();
+                    if (changed) {
+                        window.RepaintRect(0, 0, panelW, coverH);
+                        coverReloaded = true;
+                    }
+                }
+            }
+
+            updateLayoutMetrics();
+            if (coverReloaded) {
+                window.Repaint();
+            } else {
+                window.RepaintRect(0, coverH, window.Width, window.Height - coverH);
+            }
+        }
+        return;
+    }
+
     artistName = safeName;
 
     scrollY = 0;
@@ -942,6 +1000,10 @@ function on_font_changed() {
 
 // 脚本卸载/重载时释放资源
 function on_script_unload() {
+    if (deferredPaintEnsureTimer) {
+        window.ClearTimeout(deferredPaintEnsureTimer);
+        deferredPaintEnsureTimer = null;
+    }
     if (deferredRefreshTimer) {
         window.ClearTimeout(deferredRefreshTimer);
         deferredRefreshTimer = null;
