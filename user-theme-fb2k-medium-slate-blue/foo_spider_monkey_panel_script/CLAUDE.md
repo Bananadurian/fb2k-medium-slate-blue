@@ -356,7 +356,7 @@ lib/utils.js  (独立 — 无 lib 依赖)
 | `_measureDispose()` | `() → void` | Releases the `_measure` singleton. Call in `on_script_unload()` |
 | `_drawImageFit(gr, img, x, y, w, h)` | `(GdiGraphics, GdiBitmap, ...) → void` | Aspect-fit: scales image to fully fit target, centered with letterboxing |
 | `_drawImageCover(gr, img, x, y, w, h)` | `(GdiGraphics, GdiBitmap, ...) → void` | Aspect-cover: scales image to fill target, crops overflow |
-| `_createRoundedImage(img, targetW, targetH, radius)` | `(GdiBitmap, number, number, number) → GdiBitmap\|null` | Aspect-cover crop + rounded corner mask. Used by `cover_panel.js` |
+| `_createRoundedImage(img, targetW, targetH, radius, mode?)` | `(GdiBitmap, number, number, number, string?) → GdiBitmap\|null` | Scales by mode (`"cover"`/`"fit"`) then applies optional rounded corner mask. Used by cover/album panels. |
 | `_extractImageColors(img, useGradient, fallbackColor)` | `(GdiBitmap, boolean, number) → {c1, c2}` | Extracts dominant colors via `GetColourSchemeJSON`. `c2===c1` when `useGradient=false` |
 
 #### 7.1.2. `lib/data.js` — Data Constants & Systems
@@ -515,11 +515,11 @@ const LINE_H = THEME.LAYOUT.LINE_H;
 
 ```javascript
 // album_info.js
-const PANEL_CFG = { showCover: true, coverScale: 1/1, showArtistCover: false, isCoverFit: false };
+const PANEL_CFG = { showCover: true, coverAspectRatio: 1/1, showArtistCover: false, coverMode: "cover", cornerRadius: _scale(20), coverMargin: _scale(20) };
 // biography.js
 const PANEL_CFG = { dataPath: "D:\\...", coverScale: 3/4, isCoverFit: true };
 // cover_panel.js
-const PANEL_CFG = { cornerRadius: _scale(20), margin: _scale(40), useCoverColor: true, useGradient: false, gradientAngle: 90 };
+const PANEL_CFG = { cornerRadius: _scale(20), margin: _scale(40), useCoverColor: true, useGradient: false, gradientAngle: 90, coverMode: "cover" };
 ```
 
 ### 7.2. UI State Machine Pattern (Critical)
