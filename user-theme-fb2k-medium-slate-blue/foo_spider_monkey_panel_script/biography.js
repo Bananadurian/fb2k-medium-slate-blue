@@ -92,6 +92,9 @@ let tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
 let artistName = null;      // 缓存当前加载的艺人名 (用于比对是否需要重载)
 let currentMetadb = null;    // 当前数据来源句柄 (用于尺寸变化后重建封面)
 let lastCoverProcessKey = ""; // 最近一次封面预处理签名 (避免重复重建)
+let reloadSeq = 0; // 重载序列号，防止快速切换时旧任务回写
+let deferredRefreshTimer = null; // 合并同帧内重复重活刷新，降低切换抖动
+let lastCarouselTimerKey = ""; // 轮播定时器签名，未变化则不重建 interval
 let artistData = null;       // 解析后的艺人 JSON 数据对象
 const ARTIST_CACHE = new LRUCache(THEME.CFG.CACHE_SIZE); // LRU 缓存 (存储最近访问的艺人数据和图片路径)
 
@@ -155,6 +158,7 @@ function buildCoverProcessKey(pathsSig) {
 function ensureCarouselImageReady(nextIndex, carouselState, reason) {
     if (!carouselState || !carouselState.images || carouselState.images.length === 0) return false;
 
+    // _carouselNext/_manageCarousel 可能给出越界索引，统一归一化避免切图失败
     const count = carouselState.images.length;
     const index = ((nextIndex % count) + count) % count;
     if (carouselState.images[index]) return true;
@@ -219,6 +223,25 @@ function on_size() {
 
     // 3. 生成文本缓冲 (耗时操作)
     createTextBuffer();
+}
+
+
+function scheduleDeferredRefresh(seq) {
+    if (deferredRefreshTimer) {
+        window.ClearTimeout(deferredRefreshTimer);
+        deferredRefreshTimer = null;
+    }
+    deferredRefreshTimer = window.SetTimeout(() => {
+        deferredRefreshTimer = null;
+        if (seq !== reloadSeq) return;
+
+        createLinkButtons();
+        updateLayoutMetrics();
+        createTextBuffer();
+        if (window.Width > 0) {
+            window.Repaint();
+        }
+    }, 0);
 }
 
 function on_paint(gr) {
@@ -318,35 +341,42 @@ function on_paint(gr) {
 function reloadArtistData(metadb) {
     if (!metadb) return;
 
+    const seq = ++reloadSeq;
     currentMetadb = metadb;
 
     const artist = artistTf.EvalWithMetadb(metadb);
-    // 文件名安全处理：替换非法字符
     const safeName = artist.replace(/[\\\/:*?"<>|]/g, "_");
-    
-    if (artistName === safeName) return; // 相同艺人无需重载
+
+    if (artistName === safeName) return;
     artistName = safeName;
-    
-    // 重置滚动状态
+
     scrollY = 0;
     maxScrollY = 0;
-    
-    // 获取或创建缓存
+    currentText = "";
+    fullTextH = 0;
+
     const cacheEntry = getArtistCacheEntry(safeName);
     artistData = cacheEntry.json;
-    if (cacheEntry.jsonError){
+    if (cacheEntry.jsonError) {
         errorText = cacheEntry.jsonError;
-    }else{
+    } else {
         errorText = artistData ? "" : "暂无艺人资料: " + safeName;
     }
+
     if (window.Width > 0) {
-        createLinkButtons();
-        updateLayoutMetrics();
-        loadImagesFromCache(cacheEntry.imgPaths, metadb);
+        panelW = window.Width;
+        panelH = window.Height;
+        coverH = PANEL_CFG.showCover ? Math.floor(panelW * PANEL_CFG.coverAspectRatio) : 0;
+        recalculateCoverLayout();
+
+        loadImagesFromCache(cacheEntry.imgPaths, metadb, seq);
         const pathsSig = cacheEntry.imgPaths && cacheEntry.imgPaths.length > 0 ? cacheEntry.imgPaths.join("||") : "fallback";
         lastCoverProcessKey = buildCoverProcessKey(pathsSig);
-        createTextBuffer();
-        window.Repaint();
+
+        if (window.Width > 0) {
+            window.Repaint();
+        }
+        scheduleDeferredRefresh(seq);
     }
 }
 
@@ -395,8 +425,9 @@ function getArtistCacheEntry(safeName) {
     let jsonErrorData = null;
     const jsonPath = JSON_DIR + safeName + ".json";
     if (utils.IsFile(jsonPath)) {
+        const rawText = utils.ReadTextFile(jsonPath);
         try {
-            jsonData = JSON.parse(utils.ReadTextFile(jsonPath));
+            jsonData = JSON.parse(rawText);
             // 数组转字符串，方便显示
             if (jsonData.aliases && Array.isArray(jsonData.aliases)) {
                 jsonData.aliases = jsonData.aliases.join(", ");
@@ -405,8 +436,65 @@ function getArtistCacheEntry(safeName) {
                 jsonData.genres = jsonData.genres.join(", ");
             }
         } catch (e) {
-            jsonErrorData = "JSON Error: " + e;
-            console.log("JSON Error: " + e);
+            const sanitizedText = rawText
+                .replace(/^﻿/, "")
+                .replace(/[\x00-\x1F]/g, " ");
+
+            const variants = [];
+            variants.push(sanitizedText);
+            variants.push(sanitizedText.replace(/,\s*([}\]])/g, "$1"));
+
+            const objStart = sanitizedText.indexOf("{");
+            const objEnd = sanitizedText.lastIndexOf("}");
+            if (objStart >= 0 && objEnd > objStart) {
+                const sliced = sanitizedText.slice(objStart, objEnd + 1);
+                variants.push(sliced);
+                variants.push(sliced.replace(/,\s*([}\]])/g, "$1"));
+            }
+
+            let parsed = null;
+            let lastErr = null;
+            for (let i = 0; i < variants.length; i++) {
+                try {
+                    parsed = JSON.parse(variants[i]);
+                    break;
+                } catch (e2) {
+                    lastErr = e2;
+                }
+            }
+
+            if (parsed) {
+                jsonData = parsed;
+                if (jsonData.aliases && Array.isArray(jsonData.aliases)) {
+                    jsonData.aliases = jsonData.aliases.join(", ");
+                }
+                if (jsonData.genres && Array.isArray(jsonData.genres)) {
+                    jsonData.genres = jsonData.genres.join(", ");
+                }
+                console.log("JSON Warning: sanitized/recovered -> " + jsonPath);
+            } else {
+                const errText = String(lastErr || "unknown parse error");
+                const colMatch = errText.match(/column\s+(\d+)/i);
+                if (colMatch) {
+                    const col = Math.max(1, parseInt(colMatch[1], 10));
+                    const idx = Math.max(0, col - 1);
+                    const start = Math.max(0, idx - 80);
+                    const end = Math.min(sanitizedText.length, idx + 80);
+                    console.log("JSON Error Context (" + jsonPath + "): " + sanitizedText.slice(start, end));
+                }
+
+                jsonData = {
+                    title: safeName,
+                    aliases: "",
+                    genres: "",
+                    born: "",
+                    country: "",
+                    artistbiography: "",
+                    links: {}
+                };
+                jsonErrorData = "JSON Error (" + jsonPath + "): " + errText;
+                console.log("JSON Error (" + jsonPath + "): " + errText + " -> fallback object used");
+            }
         }
     }
 
@@ -423,8 +511,7 @@ function getArtistCacheEntry(safeName) {
  * @param {Array<String>} paths - 图片路径数组
  * @param {FbMetadbHandle} metadb - 音频句柄 (用于Fallback)
  */
-function loadImagesFromCache(paths, metadb) {
-    // 释放旧资源
+function loadImagesFromCache(paths, metadb, seq) {
     if (carousel.images && carousel.images.length > 0) {
         carousel.images.forEach(img => {
             if (img && typeof img.Dispose === "function") img.Dispose();
@@ -443,7 +530,6 @@ function loadImagesFromCache(paths, metadb) {
     const targetW = Math.max(1, coverRect.w);
     const targetH = Math.max(1, coverRect.h);
 
-    // 1. 本地多图：首图立即处理，其余延迟到切换前处理
     if (paths && paths.length > 0) {
         carousel.rawPaths = paths.slice();
         carousel.images = new Array(paths.length).fill(null);
@@ -460,7 +546,6 @@ function loadImagesFromCache(paths, metadb) {
             console.log("Image load error: " + e);
         }
 
-        // 首图失败时兜底，避免首屏空白
         if (!carousel.images[0]) {
             ensureCarouselImageReady(0, carousel, "initial");
         }
@@ -469,23 +554,37 @@ function loadImagesFromCache(paths, metadb) {
         return;
     }
 
-    // 2. Fallback: 无本地图时尝试内嵌封面
     carousel.fallbackMetadb = metadb;
     carousel.images = [null];
-    ensureCarouselImageReady(0, carousel, "fallback-initial");
-
-    // 如果仍然失败，保留空数组，面板进入无封面文本态
-    if (!carousel.images[0]) {
-        carousel.images = [];
-    }
-
     manageCycleTimer();
+
+    window.SetTimeout(() => {
+        // 切歌很快时，旧轮次的 deferred fallback 不能覆盖当前艺人状态
+        if (typeof seq === "number" && seq !== reloadSeq) return;
+        if (!carousel.fallbackMetadb) return;
+
+        ensureCarouselImageReady(0, carousel, "fallback-deferred");
+        if (!carousel.images[0]) {
+            carousel.images = [];
+        }
+
+        manageCycleTimer();
+        window.RepaintRect(0, 0, panelW, coverH);
+    }, 0);
 }
 
 /**
  * 管理图片轮播定时器
  */
 function manageCycleTimer() {
+    const nextKey = [
+        PANEL_CFG.showCover ? 1 : 0,
+        carousel.images && carousel.images.length > 1 ? 1 : 0,
+        coverH,
+        panelW,
+    ].join("|");
+    if (nextKey === lastCarouselTimerKey) return;
+    lastCarouselTimerKey = nextKey;
     _manageCarousel(carousel, coverH, IMG_CYCLE_MS, panelW, ensureCarouselImageReady);
 }
 
@@ -823,7 +922,9 @@ function on_playlist_items_selection_change() {
         artistName = null;
         artistData = null;
         errorText = "请选择或播放歌曲...";
-        window.Repaint();
+        if (window.Width > 0) {
+            window.Repaint();
+        }
     }
 }
 
@@ -841,6 +942,10 @@ function on_font_changed() {
 
 // 脚本卸载/重载时释放资源
 function on_script_unload() {
+    if (deferredRefreshTimer) {
+        window.ClearTimeout(deferredRefreshTimer);
+        deferredRefreshTimer = null;
+    }
     if (carousel.timer) {
         window.ClearInterval(carousel.timer);
         carousel.timer = null;
