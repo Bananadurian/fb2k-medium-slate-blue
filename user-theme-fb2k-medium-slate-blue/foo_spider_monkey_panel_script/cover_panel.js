@@ -25,10 +25,11 @@ const PANEL_CFG = {
   useCoverColor: true, // true: 提取封面颜色, false: 强制使用 CUI 全局背景色
   useGradient: true, // (仅在 useCoverColor 为 true 时有效) true: 渐变色, false: 单色
   gradientAngle: 90, // 渐变角度 (90=从上到下, 0=从左到右)
+  coverMode: "fit", // cover=裁剪填充, fit=完整显示
 };
 
 // ==========================================
-// 2. 全局状态 (GLOBAL STATE)
+// 2. 全局状态 (Global State)
 // ==========================================
 
 let themeBgColor = THEME.COL.BG; // CUI 背景色兜底 (ColourType.background)
@@ -48,13 +49,13 @@ const coverKeyTf = fb.TitleFormat("%album artist% - %album%");
 const coverCache = new LRUCache(Math.min(5, THEME.CFG.CACHE_SIZE));
 
 // ==========================================
-// 3. 业务逻辑 (BUSINESS LOGIC)
+// 3. 业务逻辑 (Business Logic)
 // ==========================================
 
 // _rgb / _createRoundedImage / _extractImageColors 来自 lib/utils.js
 
 /**
- * 预计算封面在面板中的 Aspect-Fit 绘制矩形 (存入 coverRect)
+ * 预计算封面绘制矩形 (存入 coverRect): cover=填满可用区, fit=完整显示
  * @param {GdiBitmap|null} img - 封面图像, null 时清零
  */
 function recalculateLayout(img) {
@@ -64,6 +65,15 @@ function recalculateLayout(img) {
   }
   const maxW = Math.max(10, panelW - PANEL_CFG.margin);
   const maxH = Math.max(10, panelH - PANEL_CFG.margin);
+
+  if (PANEL_CFG.coverMode === "cover") {
+    coverRect.w = maxW;
+    coverRect.h = maxH;
+    coverRect.x = Math.round((panelW - coverRect.w) / 2);
+    coverRect.y = Math.round((panelH - coverRect.h) / 2);
+    return;
+  }
+
   const scale = Math.min(maxW / img.Width, maxH / img.Height);
   coverRect.w = Math.floor(img.Width * scale);
   coverRect.h = Math.floor(img.Height * scale);
@@ -116,6 +126,7 @@ function updatePanelData(metadb) {
       coverRect.w,
       coverRect.h,
       PANEL_CFG.cornerRadius,
+      PANEL_CFG.coverMode,
     );
     coverCache.set(key, {
       imgRounded: imgRounded,
@@ -133,7 +144,7 @@ function updatePanelData(metadb) {
 }
 
 // ==========================================
-// 4. 系统回调事件 (SYSTEM CALLBACKS)
+// 4. 系统回调 (System Callbacks)
 // ==========================================
 
 function on_size() {
@@ -217,7 +228,7 @@ function on_font_changed() {
 }
 
 // ==========================================
-// 5. 启动初始化 (INITIALIZATION)
+// 5. 启动初始化 (Initialization)
 // ==========================================
 
 function on_script_unload() {

@@ -36,10 +36,12 @@ const IMG_CYCLE_MS = THEME.LAYOUT.IMG_CYCLE_MS;
 
 // 面板配置开关
 const PANEL_CFG = {
-    coverScale:      1 / 1,   // 封面宽高比
+    coverAspectRatio:      1 / 1,   // 封面宽高比
     showCover:       true,    // 是否显示封面
     showArtistCover: false,   // 是否显示艺人封面
-    isCoverFit: false,   // true=适配, false=裁剪
+    coverMode: "fit",   // 封面缩放模式 (fit=完整显示, cover=裁剪填充)
+    cornerRadius: _scale(10), // 封面圆角半径, 0=直角
+    coverMargin: _scale(20),  // 封面四周内边距
 };
 
 
@@ -92,7 +94,7 @@ const carousel = { images: [], index: 0, timer: null };
 // IMG_CYCLE_MS 来自 THEME.LAYOUT.IMG_CYCLE_MS
 
 // 视图与交互状态
-let isShowingTracklist = false;          // False=介绍, True=曲目
+let isShowingTracklist = false;          // false=介绍 (Description), true=曲目 (Tracklist)
 let scrollY = 0;
 let maxScrollY = 0;
 let currentText = "";               // 当前显示的文本内容
@@ -100,19 +102,22 @@ let fullTextH = 0;                  // 文本总高度
 let errorText = "请选择或播放歌曲...";
 let activeElement = null;         // [状态机] 当前激活的 UI 元素
 
+// 封面布局状态 (与 cover_panel.js 对齐)
+let panelW = window.Width;
+let panelH = window.Height;
+const coverRect = { x: 0, y: 0, w: 0, h: 0 };
 // 布局计算变量 (动态更新)
-let titleH = LINE_H;               
+let titleH = LINE_H;
 let genresH = LINE_H;
 let coverH = 0;
 let editionW = 0;                  // GDI/GDI+ 计算容差缓存
 
 let lineW = 0;
 let lineStartY = 0;
-let headerHeight = 0;              
-let viewW = 0;                     
-let viewH = 0;                     
+let headerHeight = 0;
+let viewW = 0;
+let viewH = 0;
 
-// UI 元素 (按钮)
 const elements = {
     descBtn:      { displayText: "Description", x: 0, y: 0, w: 0, h: 0, isHover: false, tooltip: "专辑介绍"  },
     tracklistBtn: { displayText: "Tracklist", x: 0, y: 0, w: 0, h: 0, isHover: false, tooltip: "专辑曲目"  }
@@ -187,11 +192,11 @@ function reloadAlbumData(metadb) {
 
     errorText = albumData ? "" : "暂无专辑资料";
 
-    loadAlbumImages(metadb);
     updateSourceIcon(albumData.source);
 
     if (window.Width > 0) {
         updateLayoutMetrics();
+        loadAlbumImages(metadb);
         createTextBuffer();
         window.Repaint();
     }
@@ -229,13 +234,39 @@ function resolveBadgeForTrack(metadb) {
     );
 }
 
-// 更新布局指标 (Height, Width, Positions)
+/**
+ * 预计算封面绘制矩形 (coverRect): 在顶部封面区域内应用四周 margin
+ */
+function recalculateCoverLayout() {
+    // 封面布局限定在顶部 coverH 区域内，并应用四周 margin
+    if (!PANEL_CFG.showCover) {
+        coverRect.x = 0;
+        coverRect.y = 0;
+        coverRect.w = 0;
+        coverRect.h = 0;
+        return;
+    }
+
+    const margin = Math.max(0, PANEL_CFG.coverMargin);
+    const coverW = Math.max(1, panelW - margin * 2);
+    const coverInnerH = Math.max(1, coverH - margin * 2);
+
+    coverRect.w = coverW;
+    coverRect.h = coverInnerH;
+    coverRect.x = Math.round((panelW - coverRect.w) / 2);
+    coverRect.y = Math.round((coverH - coverRect.h) / 2);
+}
+
 function updateLayoutMetrics() {
     // 没有播放歌曲的时候数据为空
     if (!albumData) return;
 
-    coverH = PANEL_CFG.showCover ? Math.floor(window.Width * PANEL_CFG.coverScale) : 0;
-    lineW = window.Width - MARGIN * 4;  
+    panelW = window.Width;
+    panelH = window.Height;
+
+    coverH = PANEL_CFG.showCover ? Math.floor(panelW * PANEL_CFG.coverAspectRatio) : 0;
+    recalculateCoverLayout();
+    lineW = panelW - MARGIN * 4;
     lineStartY = coverH + MARGIN;
 
     // 1. 计算标题高度
@@ -388,14 +419,10 @@ function on_paint(gr) {
     // --- 2. 绘制封面 (仅当 PANEL_CFG.showCover 为 true 时) ---
     if (PANEL_CFG.showCover && carousel.images.length > 0 && carousel.images[carousel.index]) {
         let currentImg = carousel.images[carousel.index];
-        if (PANEL_CFG.isCoverFit) {
-            _drawImageFit(gr, currentImg, 0, 0, window.Width, coverH);
-        } else {
-            _drawImageCover(gr, currentImg, 0, 0, window.Width, coverH);
-        }
+        gr.DrawImage(currentImg, coverRect.x, coverRect.y, coverRect.w, coverRect.h, 0, 0, currentImg.Width, currentImg.Height);
 
         if (carousel.images.length > 1) {
-            _drawPageIndicator(gr, carousel.index, carousel.images.length, MARGIN, coverH - MARGIN - LINE_H, _scale(50), LINE_H, THEME.FONT.BODY, COL.FG, _argb(153, (COL.BG >> 16) & 0xff, (COL.BG >> 8) & 0xff, COL.BG & 0xff));
+            _drawPageIndicator(gr, carousel.index, carousel.images.length, coverRect.x + MARGIN, coverRect.y + coverRect.h - MARGIN - LINE_H, _scale(50), LINE_H, THEME.FONT.BODY, COL.FG, _argb(153, (COL.BG >> 16) & 0xff, (COL.BG >> 8) & 0xff, COL.BG & 0xff));
         }
     }
 
@@ -491,11 +518,17 @@ function loadAlbumImages(metadb) {
     // 封面类型: 0=front, 1=back, 2=disc; 4=artist (可选)
     const tryTypes = [0, 1, 2];
     if (PANEL_CFG.showArtistCover) {tryTypes.push(4)};
-    
+
+    const targetW = Math.max(1, coverRect.w);
+    const targetH = Math.max(1, coverRect.h);
+
     for (const typeId of tryTypes) {
-        const internalArt = utils.GetAlbumArtV2(metadb, typeId);
+        let internalArt = utils.GetAlbumArtV2(metadb, typeId);
         if (internalArt) {
-            carousel.images.push(internalArt);
+            const processed = _createRoundedImage(internalArt, targetW, targetH, PANEL_CFG.cornerRadius, PANEL_CFG.coverMode);
+            if (typeof internalArt.Dispose === "function") internalArt.Dispose();
+            internalArt = null;
+            if (processed) carousel.images.push(processed);
         }
     }
     manageCycleTimer();
