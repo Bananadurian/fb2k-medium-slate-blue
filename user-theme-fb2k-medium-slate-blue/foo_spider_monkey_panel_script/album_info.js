@@ -90,7 +90,15 @@ const albumCache = new LRUCache(THEME.CFG.CACHE_SIZE);
 const sourceIconCache = new SourceIconCache(IMGS_LINKS_DIR); // 来源图标缓存
 
 // 封面与轮播
-const carousel = { images: [], index: 0, timer: null };
+const carousel = {
+    images: [],
+    index: 0,
+    timer: null,
+    rawTypes: [],
+    fallbackMetadb: null,
+};
+let lastCarouselTimerKey = ""; // 轮播定时器签名，未变化则不重建 interval
+let deferredCoverTimer = null; // 延后 fallback 任务句柄，切歌时可取消旧任务
 // IMG_CYCLE_MS 来自 THEME.LAYOUT.IMG_CYCLE_MS
 
 // 视图与交互状态
@@ -373,7 +381,57 @@ function createTextBuffer() {
 }
 
 
-// 语言代码转换为普通标识（兼容多值）
+
+function ensureCarouselImageReady(nextIndex, carouselState, reason) {
+    if (!carouselState || !carouselState.images || carouselState.images.length === 0) return false;
+
+    // _carouselNext/_manageCarousel 可能给出越界索引，统一归一化避免切图失败
+    const count = carouselState.images.length;
+    const index = ((nextIndex % count) + count) % count;
+    if (carouselState.images[index]) return true;
+
+    const targetW = Math.max(1, coverRect.w);
+    const targetH = Math.max(1, coverRect.h);
+
+    if (
+        carouselState.fallbackMetadb &&
+        carouselState.images.length === 1 &&
+        carouselState.rawTypes &&
+        carouselState.rawTypes.length > 0
+    ) {
+        for (let i = 0; i < carouselState.rawTypes.length; i++) {
+            const typeId = carouselState.rawTypes[i];
+            let internalArt = utils.GetAlbumArtV2(carouselState.fallbackMetadb, typeId);
+            if (!internalArt) continue;
+
+            const processed = _createRoundedImage(internalArt, targetW, targetH, PANEL_CFG.cornerRadius, PANEL_CFG.coverMode);
+            if (typeof internalArt.Dispose === "function") internalArt.Dispose();
+            internalArt = null;
+
+            if (processed) {
+                carouselState.images[0] = processed;
+                carouselState.rawTypes = [typeId];
+                carouselState.index = 0;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    if (!carouselState.fallbackMetadb || !carouselState.rawTypes || carouselState.rawTypes.length <= index) return false;
+
+    const targetType = carouselState.rawTypes[index];
+    let art = utils.GetAlbumArtV2(carouselState.fallbackMetadb, targetType);
+    if (!art) return false;
+
+    const processed = _createRoundedImage(art, targetW, targetH, PANEL_CFG.cornerRadius, PANEL_CFG.coverMode);
+    if (typeof art.Dispose === "function") art.Dispose();
+    art = null;
+
+    if (!processed) return false;
+    carouselState.images[index] = processed;
+    return true;
+}
 function getLanguageName(code) {
     if (!code) return "";
 
@@ -417,12 +475,18 @@ function on_paint(gr) {
     _drawScrollText(gr, currentText, THEME.FONT.BODY, COL.FG, MARGIN, headerHeight - scrollY, viewW, fullTextH, MULTI_LINE_FLAGS, COL.BG, window.Width, headerHeight);
 
     // --- 2. 绘制封面 (仅当 PANEL_CFG.showCover 为 true 时) ---
-    if (PANEL_CFG.showCover && carousel.images.length > 0 && carousel.images[carousel.index]) {
-        let currentImg = carousel.images[carousel.index];
-        gr.DrawImage(currentImg, coverRect.x, coverRect.y, coverRect.w, coverRect.h, 0, 0, currentImg.Width, currentImg.Height);
+    if (PANEL_CFG.showCover && carousel.images.length > 0) {
+        if (!carousel.images[carousel.index]) {
+            ensureCarouselImageReady(carousel.index, carousel, "paint");
+        }
 
-        if (carousel.images.length > 1) {
-            _drawPageIndicator(gr, carousel.index, carousel.images.length, coverRect.x + MARGIN, coverRect.y + coverRect.h - MARGIN - LINE_H, _scale(50), LINE_H, THEME.FONT.BODY, COL.FG, _argb(153, (COL.BG >> 16) & 0xff, (COL.BG >> 8) & 0xff, COL.BG & 0xff));
+        const currentImg = carousel.images[carousel.index];
+        if (currentImg) {
+            gr.DrawImage(currentImg, coverRect.x, coverRect.y, coverRect.w, coverRect.h, 0, 0, currentImg.Width, currentImg.Height);
+
+            if (carousel.images.length > 1) {
+                _drawPageIndicator(gr, carousel.index, carousel.images.length, coverRect.x + MARGIN, coverRect.y + coverRect.h - MARGIN - LINE_H, _scale(50), LINE_H, THEME.FONT.BODY, COL.FG, _argb(153, (COL.BG >> 16) & 0xff, (COL.BG >> 8) & 0xff, COL.BG & 0xff));
+            }
         }
     }
 
@@ -505,38 +569,87 @@ function on_paint(gr) {
 
 // 封面图片加载逻辑
 function loadAlbumImages(metadb) {
+    if (deferredCoverTimer) {
+        window.ClearTimeout(deferredCoverTimer);
+        deferredCoverTimer = null;
+    }
+
     if (carousel.images && carousel.images.length > 0) {
         carousel.images.forEach(img => {
             if (img && typeof img.Dispose === "function") img.Dispose();
         });
     }
-    // 封面开关控制
-    if (!PANEL_CFG.showCover) return;
 
     carousel.images = [];
     carousel.index = 0;
-    // 封面类型: 0=front, 1=back, 2=disc; 4=artist (可选)
-    const tryTypes = [0, 1, 2];
-    if (PANEL_CFG.showArtistCover) {tryTypes.push(4)};
+    carousel.rawTypes = [];
+    carousel.fallbackMetadb = null;
 
+    if (!PANEL_CFG.showCover) {
+        manageCycleTimer();
+        return;
+    }
+
+    const tryTypes = [0, 1, 2];
+    if (PANEL_CFG.showArtistCover) {
+        tryTypes.push(4);
+    }
+
+    carousel.fallbackMetadb = metadb;
     const targetW = Math.max(1, coverRect.w);
     const targetH = Math.max(1, coverRect.h);
 
     for (const typeId of tryTypes) {
         let internalArt = utils.GetAlbumArtV2(metadb, typeId);
-        if (internalArt) {
+        if (!internalArt) continue;
+
+        const idx = carousel.images.length;
+        carousel.rawTypes.push(typeId);
+        carousel.images.push(null);
+
+        if (idx === 0) {
             const processed = _createRoundedImage(internalArt, targetW, targetH, PANEL_CFG.cornerRadius, PANEL_CFG.coverMode);
-            if (typeof internalArt.Dispose === "function") internalArt.Dispose();
-            internalArt = null;
-            if (processed) carousel.images.push(processed);
+            if (processed) carousel.images[0] = processed;
         }
+
+        if (typeof internalArt.Dispose === "function") internalArt.Dispose();
+        internalArt = null;
     }
+
+    if (carousel.images.length === 0) {
+        carousel.images = [null];
+        carousel.rawTypes = tryTypes.slice();
+        manageCycleTimer();
+
+        deferredCoverTimer = window.SetTimeout(() => {
+            // 把 fallback 处理延后到当前帧后，优先保证首帧文字和交互响应
+            deferredCoverTimer = null;
+            ensureCarouselImageReady(0, carousel, "fallback-deferred");
+            if (!carousel.images[0]) carousel.images = [];
+            manageCycleTimer();
+            window.RepaintRect(0, 0, panelW, coverH);
+        }, 0);
+        return;
+    }
+
+    if (!carousel.images[0]) {
+        ensureCarouselImageReady(0, carousel, "initial");
+    }
+
     manageCycleTimer();
 }
 
 // 图片轮播定时器
 function manageCycleTimer() {
-    _manageCarousel(carousel, coverH, IMG_CYCLE_MS, panelW);
+    const nextKey = [
+        PANEL_CFG.showCover ? 1 : 0,
+        carousel.images && carousel.images.length > 1 ? 1 : 0,
+        coverH,
+        panelW,
+    ].join("|");
+    if (nextKey === lastCarouselTimerKey) return;
+    lastCarouselTimerKey = nextKey;
+    _manageCarousel(carousel, coverH, IMG_CYCLE_MS, panelW, ensureCarouselImageReady);
 }
 
 // 来源图标缓存更新 (使用 SourceIconCache)
@@ -619,7 +732,7 @@ function on_mouse_leave() {
 function on_mouse_lbtn_up(x, y) {
     // 封面点击 -> 切换下一张图 (仅在开启封面显示时有效)
     if (PANEL_CFG.showCover && y < coverH && carousel.images.length > 1) {
-        _carouselNext(carousel, coverH, IMG_CYCLE_MS, panelW);
+        _carouselNext(carousel, coverH, IMG_CYCLE_MS, panelW, ensureCarouselImageReady);
         return;
     }
 
@@ -676,6 +789,10 @@ function on_font_changed() {
 
 // 脚本资源清理
 function on_script_unload() {
+    if (deferredCoverTimer) {
+        window.ClearTimeout(deferredCoverTimer);
+        deferredCoverTimer = null;
+    }
     if (carousel.timer) {
         window.ClearInterval(carousel.timer);
         carousel.timer = null;

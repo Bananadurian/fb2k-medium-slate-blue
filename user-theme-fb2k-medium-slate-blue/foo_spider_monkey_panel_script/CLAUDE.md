@@ -224,6 +224,8 @@ Manual memory management for standard objects (`TitleFormat`, etc.) is no longer
 
 **Modern SMP:** GDI objects (`gdi.Image`, `gdi.Font`, `GdiBitmap`) also do NOT need `.Dispose()`. GC handles everything.
 
+**Note for this repository:** examples may still use guarded `.Dispose()` for legacy/js-panel3 compatibility and existing code continuity.
+
 **js-panel3 compatibility:** If backward compatibility is required, use guarded Dispose for GDI objects only:
 ```javascript
 if (obj && typeof obj.Dispose === "function") obj.Dispose();
@@ -443,8 +445,8 @@ class Button {
 |--------|-----------|-------------|
 | `_initTooltip(gdiFont, fontSize, maxWidth?)` | `(GdiFont, number, number?) → function(string)` | Factory: creates a tooltip once, returns a `tooltip(value)` setter with text dedup. Usage: `let tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);` |
 | `_drawScrollbar(gr, viewH, contentH, scrollY, maxScrollY, panelW, headerH, color)` | `(GdiGraphics, ...) → void` | Draws a rounded vertical scrollbar at the right edge of the panel |
-| `_manageCarousel(carouselState, coverH, cycleMs?, panelW?)` | `({images,index,timer}, number, number?, number?) → void` | Creates/destroys a SetInterval timer for cover image cycling. Only active when `carouselState.images.length > 1` |
-| `_carouselNext(carouselState, coverH, cycleMs?, panelW?)` | `(...) → void` | Advances carousel to next image and repaints |
+| `_manageCarousel(carouselState, coverH, cycleMs?, panelW?, beforeAdvance?)` | `({images,index,timer}, number, number?, number?, Function?) → void` | Creates/destroys a SetInterval timer for cover image cycling. Only active when `carouselState.images.length > 1`. If `beforeAdvance(nextIndex, carouselState, reason)` returns `false`, index update is cancelled. |
+| `_carouselNext(carouselState, coverH, cycleMs?, panelW?, beforeAdvance?)` | `(...) → void` | Advances carousel to next image and repaints. If `beforeAdvance(nextIndex, carouselState, reason)` returns `false`, manual switch is cancelled. |
 | `_drawTabIndicator(gr, activeBtn, headerH, panelW, margin, accentColor, dimColor)` | `(GdiGraphics, ...) → void` | Draws a 2px accent line under the active tab button plus a 1px divider |
 | `_drawEmptyState(gr, text, font, color, panelW, panelH)` | `(GdiGraphics, ...) → void` | Draws centered placeholder/error text using `BTN_STYLE_FLAGS` |
 | `_drawPageIndicator(gr, currentIndex, totalCount, x, y, w, h, font, fgColor?, bgColor?)` | `(GdiGraphics, number, number, number, number, number, number, GdiFont, number?, number?) → void` | Draws a semi-transparent rounded page counter (e.g. "2 / 5") on cover carousels. `fgColor` defaults to `0xFFFFFFFF`, `bgColor` defaults to `0x99000000` |
