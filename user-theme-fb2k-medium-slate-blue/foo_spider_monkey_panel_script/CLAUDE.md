@@ -102,7 +102,86 @@ File IO and async resources.
   - `window.DefineScript(name, config)` — register panel.
   - `window.SetInterval(func, delay)` / `window.ClearInterval(timerID)` — timers (also available globally).
 
-#### 1.4.6. `console`
+#### 1.4.6. `window` — JSplitter Extensions
+
+- **Panel access:**
+  - `window.GetPanel(caption)` — get first panel by caption text.
+  - `window.GetPanelByIndex(index)` — get panel by layout index.
+- **Button API:**
+  - `window.CreateButton(x, y, images, hover_images)` — create JSplitter button.
+  - `window.RadioButtons(buttons)` — bind buttons as mutually exclusive radio group.
+  - `window.GetButton(id)` — get button by `Button.ID`.
+  - `window.RemoveButton(button)` — remove button.
+  - `window.HandOnButtons` — global hand cursor toggle for buttons.
+- **foobar2000 main window geometry:**
+  - `window.FoobarWindowX`, `window.FoobarWindowY`, `window.FoobarWindowWidth`, `window.FoobarWindowHeight` — get/set main window position and size.
+- **Mouse tracking on panels (must enable in JSplitter settings):**
+  - `window.TrackMouseEnterLeaveOnPanels = true;`
+  - `window.TrackMouseMoveOnPanels = true;`
+
+JSplitter panel object (`GetPanel`/`GetPanelByIndex` return value):
+- **Properties:** `Name` (RO), `Text`, `Hidden`, `Locked`, `ShowCaption`, `SupportPseudoTransparency`, `X`, `Y`, `Width`, `Height`, `TopMost`, `EraseBackground`.
+- **Methods:** `Show(show = true)`, `Move(x, y, width, height, repaintParent = false)`.
+
+JSplitter button behavior notes:
+- `window.RadioButtons(buttons)` requires each button to have at least 2 states (`images` length >= 2), otherwise binding fails.
+- If button `Width` or `Height` is set to `0`, size is auto-derived from the largest source image in the sequence.
+- Click handling supports two paths: per-button callback (`btn.Click = function() {}`) and global callback (`on_button_click(id)`).
+- Buttons created by script are script-owned runtime objects and are always destroyed when the script unloads.
+
+Template: basic button + click callback
+```javascript
+let path = fb.FoobarPath + "themes\\lur\\black\\bio.png";
+let hoverPath = fb.FoobarPath + "themes\\lur\\black\\bio_on.png";
+
+let btn = window.CreateButton(0, 0, path, hoverPath);
+btn.Click = function() {
+    // do_something();
+};
+```
+
+Template: radio buttons + global click routing
+```javascript
+let a = window.CreateButton(0, 0, [path1, path1On], null);
+let b = window.CreateButton(30, 0, [path2, path2On], null);
+window.RadioButtons([a, b]);
+
+function on_button_click(id) {
+    switch (id) {
+        case a.ID:
+            // handle A
+            break;
+        case b.ID:
+            // handle B
+            break;
+    }
+}
+```
+
+Template: multi-state button (state cycle)
+```javascript
+let modeBtn = window.CreateButton(
+    0,
+    0,
+    [mode0Img, mode1Img, mode2Img],
+    [mode0HoverImg, mode1HoverImg, mode2HoverImg]
+);
+
+modeBtn.Click = function() {
+    // 0 -> 1 -> 2 -> 0
+    modeBtn.State = (modeBtn.State + 1) % 3;
+
+    if (modeBtn.State === 0) {
+        // handle mode 0
+    } else if (modeBtn.State === 1) {
+        // handle mode 1
+    } else {
+        // handle mode 2
+    }
+};
+```
+
+#### 1.4.7. `console`
 
 - `console.log(message)` — log to foobar2000 Console.
 
@@ -206,7 +285,16 @@ Tooltip object (`window.CreateTooltip(fontName, fontSize)`).
 - `on_drag_enter()`, `on_drag_over()`, `on_drag_leave()`, `on_drag_drop()`.
 - Modify `action.Effect` to control allowed drop types.
 
+### 3.7. JSplitter Panel Mouse Callbacks
+
+Only available when JSplitter tracking options are enabled (`window.TrackMouseEnterLeaveOnPanels` / `window.TrackMouseMoveOnPanels`).
+
+- `on_panel_mouse_enter(name)` — mouse entered target panel (`name` = panel name).
+- `on_panel_mouse_leave(name)` — mouse left target panel (`name` = panel name).
+- `on_panel_mouse_move(name, x, y, mask)` — mouse moved over target panel (panel-local `x`, `y`).
+
 ## 4. Critical API Rules
+
 
 ### 4.1. Removal of `.toArray()`
 
