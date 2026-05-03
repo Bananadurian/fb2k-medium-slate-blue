@@ -379,7 +379,7 @@ gr.DrawImage(...);
 
 ## 6. Project Structure & File Map
 
-This project contains 7 SMP panel scripts for a foobar2000 theme ("medium-slate-blue"). Each script is a self-contained panel that registers via `window.DefineScript()`.
+This project contains 8 SMP panel scripts for a foobar2000 theme ("medium-slate-blue"). Each script is a self-contained panel that registers via `window.DefineScript()`.
 
 ### 6.1. Active Scripts
 
@@ -392,6 +392,7 @@ This project contains 7 SMP panel scripts for a foobar2000 theme ("medium-slate-
 | `control_buttons.js` | Control Buttons | Utility buttons: recent tracks, favorites, search, queue, replaygain, output device, volume slider+mute, main menu. Uses Button + VolumeControl classes. |
 | `panel_title.js` | Panel Title | Playlist name display with icon, chevron, and action button. |
 | `cover_panel.js` | Cover Panel | Cover art display: rounded corners, color extraction for gradient background, sync loading + LRU cache (5 entries). |
+| `tab_stack.js` | Tab Stack | JSplitter 图标 Tab 单选切换控制器（配置驱动动态数量）. |
 
 ### 6.2. Directory Layout
 
@@ -418,7 +419,7 @@ Every script uses the JSDoc header format:
 
 ## 7. Shared Library System & Panel Patterns
 
-All 7 SMP panels share code through the `include()` mechanism. The 4 library files form a dependency chain; each panel includes only what it needs.
+All 8 SMP panels share code through the `include()` mechanism. The 4 library files form a dependency chain; each panel includes only what it needs.
 
 ```
 lib/utils.js  (独立 — 无 lib 依赖)
@@ -667,6 +668,20 @@ Key principles:
 - Use `window.RepaintRect()` (partial repaint) instead of full `window.Repaint()` whenever possible.
 - Interactive elements must have `x, y, w, h, isHover` properties at minimum.
 - Star rating panels (info+rating.js) need special handling: `activeElement instanceof StarElement` checks for transitioning between stars within the rating area without resetting `hoverRating`.
+
+### 7.2.1. Tooltip State Machine Rules
+
+For standard panel-owned elements (custom objects rendered in `on_paint`), tooltip handling follows the same state machine:
+- Compute `target` by hit-test in `on_mouse_move`.
+- If `target` unchanged, return early.
+- On change: old target deactivate → new target activate.
+- Call `tooltip(target.tooltip || "")` only when target exists, otherwise `tooltip("")`.
+- In `on_mouse_leave`, clear tooltip and reset hover state.
+
+JSplitter runtime buttons created by `window.CreateButton(...)` are a special case:
+- Their hover/click handling is owned by JSplitter.
+- Script-level `on_mouse_move/on_mouse_leave` callbacks can be intermittent while hovering runtime buttons.
+- Do not assume standard tooltip state machine is always stable for runtime buttons; validate behavior in real panel runtime before adopting it.
 
 ### 7.3. Scroll Text Rendering
 

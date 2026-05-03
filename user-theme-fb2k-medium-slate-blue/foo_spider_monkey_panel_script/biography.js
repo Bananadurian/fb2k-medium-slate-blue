@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file biography.js
  * @author XYSRe
  * @created 2025-12-23
@@ -137,8 +137,8 @@ let viewH = 0;
 
 // 固定 UI 元素定义
 const elements = {
-    profileBtn:     { displayText: "Profile", x: 0, y: 0, w: 0, h: 0, isHover: false, tooltip: "艺人简介" },
-    discographyBtn: { displayText: "Discography", x: 0, y: 0, w: 0, h: 0, isHover: false, tooltip: "本地专辑" }
+    profileBtn:     { displayText: "Profile", x: 0, y: 0, w: 0, h: 0, isHover: false, tooltip: "" },
+    discographyBtn: { displayText: "Discography", x: 0, y: 0, w: 0, h: 0, isHover: false, tooltip: "" }
 };
 
 
@@ -251,12 +251,12 @@ function on_paint(gr) {
     gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
 
     if (!artistData) {
-        _drawEmptyState(gr, errorText, THEME.FONT.BODY, COL.FG, window.Width, window.Height);
+        _drawEmptyState(gr, errorText, THEME.FONT.TITLE, COL.FG, window.Width, window.Height);
         return;
     }
 
     // 2. 绘制滚动文本 (在封面/头部之前，溢出部分会被后续遮盖)
-    _drawScrollText(gr, currentText, THEME.FONT.BODY, COL.FG, MARGIN, headerHeight - scrollY, viewW, fullTextH, MULTI_LINE_FLAGS, COL.BG, window.Width, headerHeight);
+    _drawScrollText(gr, currentText, THEME.FONT.BOLD, COL.FG, MARGIN, headerHeight - scrollY, viewW, fullTextH, MULTI_LINE_FLAGS, COL.BG, window.Width, headerHeight);
 
     // 3. 绘制封面区
     if (PANEL_CFG.showCover && carousel.images.length > 0) {
@@ -418,7 +418,7 @@ function reloadArtistData(metadb) {
     if (cacheEntry.jsonError) {
         errorText = cacheEntry.jsonError;
     } else {
-        errorText = artistData ? "" : "暂无艺人资料: " + safeName;
+        errorText = artistData ? "" : "No Biography\n" + safeName;
     }
 
     if (window.Width > 0) {

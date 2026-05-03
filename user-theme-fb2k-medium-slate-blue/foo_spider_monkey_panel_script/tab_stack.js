@@ -1,8 +1,8 @@
-/**
- * @file tap_stack.js
+﻿/**
+ * @file tab_stack.js
  * @author XYSRe
  * @created 2026-05-02
- * @updated 2026-05-02
+ * @updated 2026-05-03
  * @version 1.1.0
  * @description JSplitter 图标 Tab 单选切换控制器（配置驱动动态数量）
  */
@@ -12,7 +12,7 @@
 include("lib/utils.js");
 include("lib/theme.js");
 
-window.DefineScript("tap_stack", {
+window.DefineScript("tab_stack", {
     author: "XYSRe",
     version: "1.1.0",
     options: { grab_focus: THEME.CFG.GRAB_FOCUS },
@@ -26,27 +26,27 @@ window.DefineScript("tap_stack", {
 const TAB_CONFIGS = [
     {
         index: 0,
-        caption: "",
-        iconNormal: IMGS_LUCIDE_DIR + "queue.png",
-        iconHover: IMGS_LUCIDE_DIR + "queue_hover.png",
+        caption: "Album",
+        iconNormal: IMGS_LUCIDE_DIR + "disc-album.png",
+        iconHover: IMGS_LUCIDE_DIR + "disc-album_hover.png",
     },
     {
         index: 1,
-        caption: "",
-        iconNormal: IMGS_LUCIDE_DIR + "search.png",
-        iconHover: IMGS_LUCIDE_DIR + "search_hover.png",
+        caption: "Biography",
+        iconNormal: IMGS_LUCIDE_DIR + "users-round.png",
+        iconHover: IMGS_LUCIDE_DIR + "users-round_hover.png",
     },
     {
         index: 2,
-        caption: "",
-        iconNormal: IMGS_LUCIDE_DIR + "menu.png",
-        iconHover: IMGS_LUCIDE_DIR + "menu_hover.png",
+        caption: "ESlyric",
+        iconNormal: IMGS_LUCIDE_DIR + "disc-3.png",
+        iconHover: IMGS_LUCIDE_DIR + "disc-3_hover.png",
     },
 ];
 
 // 统一 tab 栏布局常量：顶部固定高度，内容区占用剩余空间
-const TAB_BAR_PADDING = _scale(6);
-const TAB_BUTTON_SIZE = _scale(15);
+const TAB_BAR_PADDING = _scale(2);
+const TAB_BUTTON_SIZE = _scale(12);
 const TAB_BUTTON_GAP = _scale(8);
 const TAB_BAR_HEIGHT = TAB_BUTTON_SIZE + TAB_BAR_PADDING * 2;
 
@@ -66,11 +66,23 @@ let lastHeight = -1;
 function resolvePanel(cfg) {
     // caption 优先，方便后续改布局时保持索引不敏感
     if (cfg.caption) {
-        return window.GetPanel(cfg.caption);
+        try {
+            const panelByCaption = window.GetPanel(cfg.caption);
+            if (panelByCaption) return panelByCaption;
+        } catch (e) {
+            console.log("tab_stack: GetPanel failed for caption \"" + cfg.caption + "\": " + e);
+        }
     }
+
     if (typeof cfg.index === "number") {
-        return window.GetPanelByIndex(cfg.index);
+        try {
+            const panelByIndex = window.GetPanelByIndex(cfg.index);
+            if (panelByIndex) return panelByIndex;
+        } catch (e) {
+            console.log("tab_stack: GetPanelByIndex failed for index " + cfg.index + ": " + e);
+        }
     }
+
     return null;
 }
 
@@ -111,6 +123,10 @@ function layoutButtons() {
         const x = startX + i * (TAB_BUTTON_SIZE + TAB_BUTTON_GAP);
         tabs[i].button.Move(x, y);
         tabs[i].button.Resize(TAB_BUTTON_SIZE, TAB_BUTTON_SIZE);
+        tabs[i].x = x;
+        tabs[i].y = y;
+        tabs[i].w = TAB_BUTTON_SIZE;
+        tabs[i].h = TAB_BUTTON_SIZE;
     }
 }
 
@@ -119,6 +135,8 @@ function layoutPanels() {
     if (window.Width <= 0 || window.Height <= 0) return;
 
     const contentY = TAB_BAR_HEIGHT;
+    // const contentY = 10;
+
     const contentH = Math.max(0, window.Height - contentY);
 
     for (let i = 0; i < tabs.length; i++) {
@@ -137,11 +155,11 @@ function rebuildTabs() {
         const cfg = TAB_CONFIGS[i];
         const panel = resolvePanel(cfg);
         if (!panel) {
-            console.log("tap_stack: skipped tab, target panel not found at config index " + i);
+            console.log("tab_stack: skipped tab, target panel not found at config index " + i);
             continue;
         }
         if (!isValidIconConfig(cfg)) {
-            console.log("tap_stack: skipped tab, icon files invalid at config index " + i);
+            console.log("tab_stack: skipped tab, icon files invalid at config index " + i);
             continue;
         }
 
@@ -197,13 +215,16 @@ function applyActive(nextIndex) {
 
     // 常规切换路径：仅更新前后两个 tab
     const prevTab = tabs[activeIndex];
+
+    // 先显示新 panel，避免切换瞬间出现内容区全空导致闪速
+    nextTab.panel.Show(true);
+    nextTab.button.State = 1;
+
     if (prevTab) {
         prevTab.panel.Show(false);
         prevTab.button.State = 0;
     }
 
-    nextTab.panel.Show(true);
-    nextTab.button.State = 1;
     activeIndex = nextIndex;
 }
 
