@@ -101,7 +101,7 @@ function on_paint(gr) {
   gr.GdiDrawText(
     displayText,
     THEME.FONT.LABEL,
-    COL.FG,
+    COL.SEL_FG,
     layout.startX + layout.textH + _scale(5),
     layout.contentY,
     layout.textW,

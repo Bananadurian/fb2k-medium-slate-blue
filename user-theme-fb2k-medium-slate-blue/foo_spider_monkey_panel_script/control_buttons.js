@@ -66,6 +66,13 @@ const DEFAULT_MARGIN = _scale(6);
 // ============================================================================
 
 
+/**
+ * @typedef {"recent"|"favorite"} QueryType
+ */
+
+/**
+ * 音量条组件：处理拖拽、滚轮与进度绘制。
+ */
 class VolumeControl {
     constructor() {
         this.x = 0; this.y = 0; this.w = 0; this.h = 0;
@@ -79,6 +86,10 @@ class VolumeControl {
         window.RepaintRect(this.x, this.y, this.w, this.h);
     }
 
+    /**
+     * @param {GdiGraphics} gr
+     * @returns {void}
+     */
     paint(gr) {
         if (this.w <= 0 || this.h <= 0) return;
         const arc = Math.max(1, _scale(1));
@@ -95,11 +106,21 @@ class VolumeControl {
         gr.SetSmoothingMode(0); 
     }
 
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @returns {boolean}
+     */
     containsPoint(x, y) {
         const m = this.drag ? 200 : 0; // 拖拽时扩大热区范围，避免鼠标移出滑块
         return x >= this.x - m && x <= this.x + this.w + m && y >= this.y - m && y <= this.y + this.h + m * 2;
     }
 
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @returns {boolean}
+     */
     on_mouse_move(x, y) {
         this.currentTip = "";
         const isOver = this.containsPoint(x, y);
@@ -126,6 +147,11 @@ class VolumeControl {
         return isOver;
     }
 
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @returns {boolean}
+     */
     on_mouse_lbtn_down(x, y) {
         if (this.containsPoint(x, y)) {
             this.drag = true;
@@ -135,6 +161,11 @@ class VolumeControl {
         return false;
     }
 
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @returns {boolean}
+     */
     on_mouse_lbtn_up(x, y) {
         if (this.drag) {
             this.drag = false;
@@ -143,6 +174,10 @@ class VolumeControl {
         return false;
     }
 
+    /**
+     * @param {number} step
+     * @returns {boolean|void}
+     */
     on_mouse_wheel(step) {
         if (this.hover) {
             if (step > 0) fb.VolumeUp();
@@ -178,6 +213,10 @@ const libraryQueryConfigs = {
     }
 };
 
+/**
+ * @param {QueryType} type
+ * @returns {void}
+ */
 function runCustomQuery(type) {
     const config = (type === "recent") 
         ? { tf: libraryQueryConfigs.recent, plName: "🕤️ 最近播放" }
@@ -197,6 +236,11 @@ function runCustomQuery(type) {
     plman.ActivePlaylist = plIndex;
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {void}
+ */
 function showMainMenu(x, y) {
     let menu = window.CreatePopupMenu();
     const add = (name, id) => {
@@ -226,6 +270,11 @@ function showMainMenu(x, y) {
     
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {void}
+ */
 function showDevicesMenu(x, y) {
     const menu = window.CreatePopupMenu();
     let devices;
@@ -256,12 +305,20 @@ const replayGainConfigs = [
 ];
 
 // replaygain = rg
+/**
+ * 根据当前 ReplayGain 模式更新按钮图标与提示。
+ * @returns {void}
+ */
 function updateRgState() {
     const mode = fb.ReplaygainMode; 
     const cfg = replayGainConfigs[mode] || replayGainConfigs[0];
     if (buttons.replaygain) buttons.replaygain.updateState(cfg.img, images.rg_hover, cfg.text);
 }
 
+/**
+ * 根据当前输出设备更新设备按钮状态。
+ * @returns {void}
+ */
 function updateDeviceState() {
     let deviceArr;
     try { deviceArr = JSON.parse(fb.GetOutputDevices()); } catch (e) { console.log("Device list error: " + e); return; }
@@ -296,6 +353,10 @@ function updateDeviceState() {
     }
 }
 
+/**
+ * 根据静音状态更新音量按钮图标与提示。
+ * @returns {void}
+ */
 function updateVolumeState() {
     const isMuted = (fb.Volume === -100);
     const img = isMuted ? images.mute : images.vol;
@@ -405,6 +466,11 @@ function on_paint(gr) {
 // 6. 全局回调 (Event Handlers)
 // ============================================================================
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {void}
+ */
 function on_mouse_move(x, y) {
     // 1. 优先处理音量条
     const isVolumeActive = volumeBar.on_mouse_move(x, y);
@@ -452,6 +518,9 @@ function on_mouse_move(x, y) {
     }
 }
 
+/**
+ * @returns {void}
+ */
 function on_mouse_leave() {
     if (currentHoverBtn) {
         currentHoverBtn.deactivate();
@@ -465,10 +534,20 @@ function on_mouse_leave() {
     _setCursor(CURSOR_ARROW);
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {void}
+ */
 function on_mouse_lbtn_down(x, y) {
     volumeBar.on_mouse_lbtn_down(x, y);
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {void}
+ */
 function on_mouse_lbtn_up(x, y) {
     if (volumeBar.on_mouse_lbtn_up(x, y)) return;
     if (currentHoverBtn) {
@@ -476,6 +555,11 @@ function on_mouse_lbtn_up(x, y) {
     }
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {boolean}
+ */
 function on_mouse_rbtn_down(x, y) {
     // 这里屏蔽默认的右键菜单
     if (currentHoverBtn) {
@@ -484,33 +568,56 @@ function on_mouse_rbtn_down(x, y) {
     return true; 
 }
 
+/**
+ * @param {number} step
+ * @returns {void}
+ */
 function on_mouse_wheel(step) {
     volumeBar.on_mouse_wheel(step);
 }
 
+/**
+ * @param {number} val
+ * @returns {void}
+ */
 function on_volume_change(val) {
     updateVolumeState(); 
     volumeBar.repaint();
 }
 
+/**
+ * @returns {void}
+ */
 function on_output_device_changed() {
     updateDeviceState();
 }
 
+/**
+ * @returns {void}
+ */
 function on_replaygain_mode_changed() {
     updateRgState();
 }
 
+/**
+ * @returns {void}
+ */
 function on_colours_changed() {
     _refreshThemeColors();
     window.Repaint();
 }
 
+/**
+ * @returns {void}
+ */
 function on_font_changed() {
     _refreshThemeFonts();
     window.Repaint();
 }
 
+/**
+ * @returns {void}
+ */
 function on_script_unload() {
     _disposeImageDict(images);
 }

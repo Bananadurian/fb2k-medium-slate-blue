@@ -13,7 +13,7 @@ You are an expert developer specializing in creating scripts for the **foobar200
 
 Modern SMP engine manages garbage collection automatically.
 
-- **No manual Dispose:** Do NOT call `.Dispose()` on GDI objects (`gdi.Image`, `gdi.Font`, `GdiBitmap`) or standard objects (`TitleFormat`). The engine handles cleanup.
+- **No manual Dispose (modern SMP default):** Do NOT call `.Dispose()` on GDI objects (`gdi.Image`, `gdi.Font`, `GdiBitmap`) or standard objects (`TitleFormat`) in pure modern SMP code; let GC handle cleanup.
 - **Compatibility note:** If the script must also run on legacy js-panel3, GDI objects may use the guarded pattern: `if (obj && typeof obj.Dispose === "function") obj.Dispose();`. Pure modern SMP does not require this.
 - **No `.toArray()`:** Collections (`FbMetadbHandleList` etc.) are directly indexable and support `for...of`. Calling `.toArray()` will crash.
 - **Strict Mode:** Every file starts with `"use strict";`.
@@ -375,7 +375,7 @@ gr.DrawImage(...);
 
 ### 5.3. Async
 
-- All `xxxAsyncV2` methods return `Promise`. Always use `.then().catch()`. Do not use legacy global callbacks.
+- All `xxxAsyncV2` methods return `Promise`. Handle errors explicitly (`.then().catch()` or `async/await` with `try/catch`); avoid legacy global callbacks.
 
 ## 6. Project Structure & File Map
 
@@ -718,7 +718,7 @@ Internally uses: `barH = Math.max(_scale(20), (viewH / contentH) * viewH)`, `bar
 
 ### 7.5. Resource Cleanup
 
-Every script MUST implement `on_script_unload()`:
+Scripts should implement `on_script_unload()` when they own resources that require explicit cleanup:
 
 ```javascript
 function on_script_unload() {
