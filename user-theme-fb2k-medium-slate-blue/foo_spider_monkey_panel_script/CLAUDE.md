@@ -513,21 +513,24 @@ Composite styles:
 | `CURSOR_HAND` | `32649` | Win32 IDC_HAND |
 | `_setCursor(id)` | `(number) → void` | Set cursor with dedup (skips redundant calls) |
 
-**`Button` class** — Interactive icon button with hover state and optional right-click:
+**`Button` class** — Interactive icon button with hover/active state and optional right-click:
 
 ```javascript
 class Button {
-    constructor(config)  // { imgNormal, imgHover?, func?, fnRightClick?, tipText? }
-    updateState(imgNormal, imgHover, tipText, func)  // dynamic state change
+    constructor(config)  // { imgNormal, imgHover?, imgActivate?, func?, fnRightClick?, tipText? }
+    updateState(imgNormal, imgHover, tipText, func, imgActivate?)  // dynamic state change
+    setState(state)       // BUTTON_STATE_NORMAL / HOVER / ACTIVE
+    setActive(value)      // toggle active state
     paint(gr)             // draws imgCurrent at (x, y, w, h)
-    containsPoint(x, y)           // hit-test using inclusive boundaries
-    activate()            // isHover=true, switches to imgHover, repaints
-    deactivate()          // isHover=false, switches to imgNormal, repaints
-    onLbtnUp(x, y)     // calls fnClick if hit, returns boolean
-    onRbtnDown(x, y)   // calls fnRightClick if hit, returns boolean
+    containsPoint(x, y)   // hit-test using inclusive boundaries
+    activate()            // set hover=true (keeps active visual priority)
+    deactivate()          // set hover=false (keeps active visual priority)
+    onLbtnUp(x, y)        // calls fnClick if hit, returns boolean
+    onRbtnDown(x, y)      // calls fnRightClick if hit, returns boolean
     repaint()             // window.RepaintRect(this.x, this.y, this.w, this.h)
 }
 ```
+
 
 **Other interaction utilities:**
 
@@ -643,7 +646,7 @@ function on_mouse_move(x, y) {
     if (target) {
         target.isHover = true;
         window.RepaintRect(target.x, target.y, target.w, target.h);
-        tooltip(target.tooltip || "");
+        tooltip(target.tipText || "");
         _setCursor(CURSOR_HAND);
     } else {
         tooltip("");
@@ -675,7 +678,7 @@ For standard panel-owned elements (custom objects rendered in `on_paint`), toolt
 - Compute `target` by hit-test in `on_mouse_move`.
 - If `target` unchanged, return early.
 - On change: old target deactivate → new target activate.
-- Call `tooltip(target.tooltip || "")` only when target exists, otherwise `tooltip("")`.
+- Call `tooltip(target.tipText || "")` only when target exists, otherwise `tooltip("")`.
 - In `on_mouse_leave`, clear tooltip and reset hover state.
 
 JSplitter runtime buttons created by `window.CreateButton(...)` are a special case:
@@ -783,6 +786,14 @@ Use `MF_STRING` (from `lib/data.js`) as the default menu item flag. No `.Dispose
 const HAS_PLAYCOUNT = utils.CheckComponent("foo_playcount", true);
 ```
 Rating stars are only interactive when this component is present.
+
+### 7.10. `tab_stack.js` Conventions
+
+Current `tab_stack.js` behavior is config-driven and relies on panel-owned `Button` instances:
+
+- `TAB_CONFIGS` uses unified button image fields: `imgNormal`, `imgHover`, `imgActivate`, plus `tipText`.
+- `resolvePanel(cfg)` resolves target panel by `caption` first (`window.GetPanel`), then falls back to `index` (`window.GetPanelByIndex`).
+- `applyActive(nextIndex)` switches tab with flicker-safe order: show next panel first, then hide previous panel, while syncing button active states.
 
 ## 8. Interaction Guidelines
 

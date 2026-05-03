@@ -11,6 +11,7 @@
 
 include("lib/utils.js");
 include("lib/theme.js");
+include("lib/interaction.js");
 
 window.DefineScript("tab_stack", {
     author: "XYSRe",
@@ -21,26 +22,32 @@ window.DefineScript("tab_stack", {
 // ============================================================================
 // 1. Tab 配置（纯图标模式）
 // - caption 与 index 二选一：caption 优先
-// - iconNormal/iconHover 必须都存在，缺失则该项跳过
+// - imgNormal/imgHover 必须存在，imgActivate 可选（Button 内部会回退）
 // ============================================================================
 const TAB_CONFIGS = [
     {
         index: 0,
         caption: "Album",
-        iconNormal: IMGS_LUCIDE_DIR + "disc-album.png",
-        iconHover: IMGS_LUCIDE_DIR + "disc-album_hover.png",
+        imgNormal: _loadImage(IMGS_LUCIDE_DIR + "disc-2.png"),
+        imgHover: _loadImage(IMGS_LUCIDE_DIR + "disc-2_hover.png"),
+        imgActivate: _loadImage(IMGS_LUCIDE_DIR + "disc-2_activate.png"),
+        tipText: "Album",
     },
     {
         index: 1,
         caption: "Biography",
-        iconNormal: IMGS_LUCIDE_DIR + "users-round.png",
-        iconHover: IMGS_LUCIDE_DIR + "users-round_hover.png",
+        imgNormal: _loadImage(IMGS_LUCIDE_DIR + "circle-user-round.png"),
+        imgHover: _loadImage(IMGS_LUCIDE_DIR + "circle-user-round_hover.png"),
+        imgActivate: _loadImage(IMGS_LUCIDE_DIR + "circle-user-round_activate.png"),
+        tipText: "Biography",
     },
     {
         index: 2,
         caption: "ESlyric",
-        iconNormal: IMGS_LUCIDE_DIR + "disc-3.png",
-        iconHover: IMGS_LUCIDE_DIR + "disc-3_hover.png",
+        imgNormal: _loadImage(IMGS_LUCIDE_DIR + "disc-3.png"),
+        imgHover: _loadImage(IMGS_LUCIDE_DIR + "disc-3_hover.png"),
+        imgActivate: _loadImage(IMGS_LUCIDE_DIR + "disc-3_activate.png"),
+        tipText: "ESlyric",
     },
 ];
 
@@ -55,12 +62,14 @@ const ALIGN_CENTER = "center";
 const ALIGN_RIGHT = "right";
 const TAB_ALIGNMENT = ALIGN_CENTER; // left | center | right
 
+const tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
+
 // 运行时状态：tabs/button 映射、当前激活索引、尺寸缓存
 let tabs = [];
-let idToIndex = {};
 let activeIndex = -1;
 let lastWidth = -1;
 let lastHeight = -1;
+let currentHoverBtn = null;
 
 /** @param {{caption?: string, index?: number}} cfg */
 function resolvePanel(cfg) {
@@ -86,20 +95,17 @@ function resolvePanel(cfg) {
     return null;
 }
 
-/** @param {{iconNormal?: string, iconHover?: string}} cfg */
+/** @param {{imgNormal?: GdiBitmap, imgHover?: GdiBitmap, imgActivate?: GdiBitmap}} cfg */
 function isValidIconConfig(cfg) {
-    return !!cfg.iconNormal && !!cfg.iconHover && utils.IsFile(cfg.iconNormal) && utils.IsFile(cfg.iconHover);
+    return !!cfg.imgNormal && !!cfg.imgHover;
 }
 
 // 删除并重置所有运行时创建的按钮与映射 / Dispose runtime buttons and mappings
 function destroyButtons() {
-    for (let i = 0; i < tabs.length; i++) {
-        if (tabs[i].button) {
-            window.RemoveButton(tabs[i].button);
-        }
-    }
     tabs = [];
-    idToIndex = {};
+    currentHoverBtn = null;
+    tooltip("");
+    _setCursor(CURSOR_ARROW);
 }
 
 // 按左/中/右对齐策略计算并更新 tab 按钮位置 / Layout tab buttons by alignment
@@ -121,12 +127,10 @@ function layoutButtons() {
 
     for (let i = 0; i < tabs.length; i++) {
         const x = startX + i * (TAB_BUTTON_SIZE + TAB_BUTTON_GAP);
-        tabs[i].button.Move(x, y);
-        tabs[i].button.Resize(TAB_BUTTON_SIZE, TAB_BUTTON_SIZE);
-        tabs[i].x = x;
-        tabs[i].y = y;
-        tabs[i].w = TAB_BUTTON_SIZE;
-        tabs[i].h = TAB_BUTTON_SIZE;
+        tabs[i].button.x = x;
+        tabs[i].button.y = y;
+        tabs[i].button.w = TAB_BUTTON_SIZE;
+        tabs[i].button.h = TAB_BUTTON_SIZE;
     }
 }
 
@@ -135,8 +139,6 @@ function layoutPanels() {
     if (window.Width <= 0 || window.Height <= 0) return;
 
     const contentY = TAB_BAR_HEIGHT;
-    // const contentY = 10;
-
     const contentH = Math.max(0, window.Height - contentY);
 
     for (let i = 0; i < tabs.length; i++) {
@@ -159,74 +161,63 @@ function rebuildTabs() {
             continue;
         }
         if (!isValidIconConfig(cfg)) {
-            console.log("tab_stack: skipped tab, icon files invalid at config index " + i);
+            console.log("tab_stack: skipped tab, icon images invalid at config index " + i);
             continue;
         }
 
-        const btn = window.CreateButton(
-            0,
-            0,
-            [cfg.iconNormal, cfg.iconHover],
-            [cfg.iconHover, cfg.iconHover],
-        );
-        btn.HandOnHover = true;
-
         const tabIndex = tabs.length;
-        tabs.push({ panel, button: btn });
-        idToIndex[btn.ID] = tabIndex;
+        const button = new Button({
+            imgNormal: cfg.imgNormal,
+            imgHover: cfg.imgHover,
+            imgActivate: cfg.imgActivate,
+            tipText: cfg.tipText || cfg.caption || "",
+            func: () => applyActive(tabIndex),
+        });
+
+        tabs.push({ panel, button });
     }
 
-    if (tabs.length) {
-        // 有效 tab 存在时才开启全局手型，避免空配置时残留手型状态
-        window.HandOnButtons = true;
-
-        layoutButtons();
-        layoutPanels();
-        applyActive(0);
-    } else {
-        window.HandOnButtons = false;
+    if (!tabs.length) {
         activeIndex = -1;
+        return;
     }
+
+    layoutButtons();
+    layoutPanels();
+    applyActive(0);
 }
 
 /** @param {number} nextIndex */
 function applyActive(nextIndex) {
     if (nextIndex < 0 || nextIndex >= tabs.length) return;
-    if (nextIndex === activeIndex) {
-        // 防止 JSplitter 按钮内部状态切换导致当前激活按钮显示漂移
-        if (tabs[nextIndex].button.State !== 1) {
-            tabs[nextIndex].button.State = 1;
-        }
-        return;
-    }
+    if (nextIndex === activeIndex) return;
 
     const nextTab = tabs[nextIndex];
     if (!nextTab) return;
 
     if (activeIndex < 0 || activeIndex >= tabs.length) {
-        // 初始化路径：全量对齐一次状态
         for (let i = 0; i < tabs.length; i++) {
-            tabs[i].panel.Show(i === nextIndex);
-            tabs[i].button.State = i === nextIndex ? 1 : 0;
+            const isActive = i === nextIndex;
+            tabs[i].panel.Show(isActive);
+            tabs[i].button.setActive(isActive);
         }
         activeIndex = nextIndex;
         return;
     }
 
-    // 常规切换路径：仅更新前后两个 tab
     const prevTab = tabs[activeIndex];
 
-    // 先显示新 panel，避免切换瞬间出现内容区全空导致闪速
     nextTab.panel.Show(true);
-    nextTab.button.State = 1;
+    nextTab.button.setActive(true);
 
     if (prevTab) {
         prevTab.panel.Show(false);
-        prevTab.button.State = 0;
+        prevTab.button.setActive(false);
     }
 
     activeIndex = nextIndex;
 }
+
 
 
 // 初始化入口：首次构建 tab 集合 / Init entry: first tab build
@@ -253,16 +244,55 @@ function on_size() {
 function on_paint(gr) {
     gr.FillSolidRect(0, 0, window.Width, TAB_BAR_HEIGHT, THEME.COL.BG);
     gr.DrawLine(0, TAB_BAR_HEIGHT - 1, window.Width, TAB_BAR_HEIGHT - 1, 1, THEME.COL.FRAME);
+    for (let i = 0; i < tabs.length; i++) {
+        tabs[i].button.paint(gr);
+    }
 }
 
-/** @param {number} id */
-function on_button_click(id) {
-    const nextIndex = idToIndex[id];
-    if (nextIndex === undefined) return;
-    applyActive(nextIndex);
+
+function on_mouse_move(x, y) {
+    let newHoverBtn = null;
+
+    for (let i = 0; i < tabs.length; i++) {
+        if (tabs[i].button.containsPoint(x, y)) {
+            newHoverBtn = tabs[i].button;
+            break;
+        }
+    }
+
+    if (newHoverBtn === currentHoverBtn) return;
+
+    if (currentHoverBtn) {
+        currentHoverBtn.deactivate();
+    }
+
+    if (newHoverBtn) {
+        newHoverBtn.activate();
+        tooltip(newHoverBtn.tipText || "");
+        _setCursor(CURSOR_HAND);
+    } else {
+        tooltip("");
+        _setCursor(CURSOR_ARROW);
+    }
+
+    currentHoverBtn = newHoverBtn;
 }
 
-// 脚本卸载时释放运行时按钮资源 / Cleanup runtime button resources on unload
+function on_mouse_leave() {
+    if (currentHoverBtn) {
+        currentHoverBtn.deactivate();
+        currentHoverBtn = null;
+    }
+    tooltip("");
+    _setCursor(CURSOR_ARROW);
+}
+
+function on_mouse_lbtn_up(x, y) {
+    if (currentHoverBtn) {
+        currentHoverBtn.onLbtnUp(x, y);
+    }
+}
+
 function on_script_unload() {
     destroyButtons();
 }
