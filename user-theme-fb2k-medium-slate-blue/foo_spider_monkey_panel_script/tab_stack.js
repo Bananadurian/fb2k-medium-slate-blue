@@ -24,6 +24,22 @@ window.DefineScript("tab_stack", {
 // - caption 与 index 二选一：caption 优先
 // - imgNormal/imgHover 必须存在，imgActivate 可选（Button 内部会回退）
 // ============================================================================
+/**
+ * @typedef {Object} TabConfig
+ * @property {number} [index] - JSplitter 面板索引（caption 未命中时回退）
+ * @property {string} [caption] - JSplitter 面板标题（优先解析）
+ * @property {GdiBitmap|null} imgNormal - 默认图标
+ * @property {GdiBitmap|null} imgHover - 悬停图标
+ * @property {GdiBitmap|null} [imgActivate] - 激活图标（可选）
+ * @property {string} [tipText] - Tooltip 文案
+ */
+
+/**
+ * @typedef {Object} TabRuntimeItem
+ * @property {*} panel - JSplitter panel 对象
+ * @property {Button} button - 对应交互按钮
+ */
+
 const TAB_CONFIGS = [
     {
         index: 0,
@@ -65,13 +81,18 @@ const TAB_ALIGNMENT = ALIGN_CENTER; // left | center | right
 const tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
 
 // 运行时状态：tabs/button 映射、当前激活索引、尺寸缓存
+/** @type {TabRuntimeItem[]} */
 let tabs = [];
 let activeIndex = -1;
 let lastWidth = -1;
 let lastHeight = -1;
 let currentHoverBtn = null;
 
-/** @param {{caption?: string, index?: number}} cfg */
+/**
+ * 解析目标面板：caption 优先，失败后回退 index。
+ * @param {{caption?: string, index?: number}} cfg
+ * @returns {*|null}
+ */
 function resolvePanel(cfg) {
     // caption 优先，方便后续改布局时保持索引不敏感
     if (cfg.caption) {
@@ -95,7 +116,11 @@ function resolvePanel(cfg) {
     return null;
 }
 
-/** @param {{imgNormal?: GdiBitmap, imgHover?: GdiBitmap, imgActivate?: GdiBitmap}} cfg */
+/**
+ * 校验 tab 图标配置是否满足最小可绘制条件。
+ * @param {TabConfig} cfg
+ * @returns {boolean}
+ */
 function isValidIconConfig(cfg) {
     return !!cfg.imgNormal && !!cfg.imgHover;
 }
@@ -250,6 +275,11 @@ function on_paint(gr) {
 }
 
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {void}
+ */
 function on_mouse_move(x, y) {
     let newHoverBtn = null;
 
@@ -278,6 +308,9 @@ function on_mouse_move(x, y) {
     currentHoverBtn = newHoverBtn;
 }
 
+/**
+ * @returns {void}
+ */
 function on_mouse_leave() {
     if (currentHoverBtn) {
         currentHoverBtn.deactivate();
@@ -287,12 +320,20 @@ function on_mouse_leave() {
     _setCursor(CURSOR_ARROW);
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {void}
+ */
 function on_mouse_lbtn_up(x, y) {
     if (currentHoverBtn) {
         currentHoverBtn.onLbtnUp(x, y);
     }
 }
 
+/**
+ * @returns {void}
+ */
 function on_script_unload() {
     destroyButtons();
 }

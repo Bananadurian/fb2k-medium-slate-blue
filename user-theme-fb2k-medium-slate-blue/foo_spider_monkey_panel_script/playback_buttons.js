@@ -90,6 +90,9 @@ const ORDER_CONFIG = {
     default: { img: images.order_default, hover: images.order_default_hover, tip: "其他模式" }
 };
 
+/**
+ * @returns {void}
+ */
 function initUi() {
     buttons.stop = new Button({ imgNormal: images.stop, imgHover: images.stop_hover, func: () => fb.Stop(), tipText: "Stop" });
     buttons.prev = new Button({ imgNormal: images.previous, imgHover: images.previous_hover, func: () => fb.Prev(), tipText: "上一曲" });
@@ -100,10 +103,13 @@ function initUi() {
     buttons.replay = new Button({ imgNormal: images.replay, imgHover: images.replay_hover, func: () => fb.Play(), tipText: "重放" });
     buttons.rewind = new Button({ imgNormal: images.rewind, imgHover: images.rewind_hover, func: () => fb.RunMainMenuCommand("Playback/Seek/Back by 5 seconds"), tipText: "Seek -5s" });
     buttons.forward = new Button({ imgNormal: images.forward, imgHover: images.forward_hover, func: () => fb.RunMainMenuCommand("Playback/Seek/Ahead by 5 seconds"), tipText: "Seek +5s" });
-    buttons.random = new Button({ imgNormal: images.random, imgHover: images.random_hover, func: () => fb.Random(), tipText: "Random" });            
+    buttons.random = new Button({ imgNormal: images.random, imgHover: images.random_hover, func: () => fb.Random(), tipText: "Random" });
     updateAllStates();
 }
 
+/**
+ * @returns {void}
+ */
 function updatePlayPauseButton() {
     if (fb.IsPlaying && !fb.IsPaused) {
         buttons.play.updateState(images.pause, images.pause_hover, "暂停");
@@ -112,6 +118,9 @@ function updatePlayPauseButton() {
     }
 }
 
+/**
+ * @returns {void}
+ */
 function updateStopState() {
     if (fb.StopAfterCurrent) {
         buttons.stop.updateState(images.stop_after, images.stop_hover, "立即停止 (右键: 取消稍后停止)", () => fb.Stop());
@@ -120,18 +129,27 @@ function updateStopState() {
     }
 }
 
+/**
+ * @returns {void}
+ */
 function updateOrderState() {
     const orderId = plman.PlaybackOrder;
     const cfg = ORDER_CONFIG[orderId] || ORDER_CONFIG.default;
     buttons.order.updateState(cfg.img, cfg.hover, cfg.tip);
 }
 
+/**
+ * @returns {void}
+ */
 function updateAllStates() {
     updatePlayPauseButton();
     updateStopState();
     updateOrderState();
 }
 
+/**
+ * @returns {void}
+ */
 function togglePlaybackOrder() {
     const cycle = [0, 1, 2, 4]; // 跳过模式 3 (随机播放), 仅循环 Default/Repeat/Shuffle
     const pos = cycle.indexOf(plman.PlaybackOrder);
@@ -139,6 +157,11 @@ function togglePlaybackOrder() {
     plman.PlaybackOrder = cycle[nextIndex];
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {void}
+ */
 function showOrderMenu(x, y) {
     const menu = window.CreatePopupMenu();
     const modes = [
@@ -172,6 +195,9 @@ function showOrderMenu(x, y) {
 
 initUi();
 
+/**
+ * @returns {void}
+ */
 function on_size() {
     if (window.Width <= 0 || window.Height <= 0) return;
 
@@ -184,7 +210,7 @@ function on_size() {
 
     buttons.replay.x = currentX; buttons.replay.y = midY;
     buttons.replay.w = ICON_W;   buttons.replay.h = ICON_H;
-    currentX += ICON_W + MARGIN;    
+    currentX += ICON_W + MARGIN;
 
     buttons.stop.x = currentX; buttons.stop.y = midY;
     buttons.stop.w = ICON_W;   buttons.stop.h = ICON_H;
@@ -192,7 +218,7 @@ function on_size() {
 
     buttons.rewind.x = currentX; buttons.rewind.y = midY;
     buttons.rewind.w = ICON_W;   buttons.rewind.h = ICON_H;
-    currentX += ICON_W + MARGIN;        
+    currentX += ICON_W + MARGIN;
 
     buttons.prev.x = currentX; buttons.prev.y = largeY;
     buttons.prev.w = ICON_W * 1.5;   buttons.prev.h = ICON_H * 1.5;
@@ -208,16 +234,20 @@ function on_size() {
 
     buttons.forward.x = currentX; buttons.forward.y = midY;
     buttons.forward.w = ICON_W;   buttons.forward.h = ICON_H;
-    currentX += ICON_W + MARGIN;        
+    currentX += ICON_W + MARGIN;
 
     buttons.order.x = currentX; buttons.order.y = midY;
     buttons.order.w = ICON_W;   buttons.order.h = ICON_H;
-    currentX += ICON_W + MARGIN; 
+    currentX += ICON_W + MARGIN;
 
     buttons.random.x = currentX; buttons.random.y = midY;
     buttons.random.w = ICON_W;   buttons.random.h = ICON_H;
 }
 
+/**
+ * @param {GdiGraphics} gr
+ * @returns {void}
+ */
 function on_paint(gr) {
     gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
     for (let key in buttons) {
@@ -226,6 +256,11 @@ function on_paint(gr) {
 }
 
 // UI 状态机
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {void}
+ */
 function on_mouse_move(x, y) {
     let newHoverBtn = null;
 
@@ -233,7 +268,7 @@ function on_mouse_move(x, y) {
     for (let key in buttons) {
         if (buttons[key].containsPoint(x, y)) {
             newHoverBtn = buttons[key];
-            break; 
+            break;
         }
     }
 
@@ -257,6 +292,9 @@ function on_mouse_move(x, y) {
     }
 }
 
+/**
+ * @returns {void}
+ */
 function on_mouse_leave() {
     if (currentHoverBtn) {
         currentHoverBtn.deactivate();
@@ -266,22 +304,37 @@ function on_mouse_leave() {
     _setCursor(CURSOR_ARROW);
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {void}
+ */
 function on_mouse_lbtn_up(x, y) {
     if (currentHoverBtn) {
         currentHoverBtn.onLbtnUp(x, y);
     }
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {void}
+ */
 function on_mouse_lbtn_dblclk(x, y) {
     if (!currentHoverBtn) {
         fb.RunMainMenuCommand("View/Show now playing in playlist");
     }
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {boolean}
+ */
 function on_mouse_rbtn_up(x, y) {
     if (buttons.stop.containsPoint(x, y)) {
         fb.StopAfterCurrent = !fb.StopAfterCurrent;
-        updateStopState(); 
+        updateStopState();
         return true;
     }
     if (buttons.order.containsPoint(x, y)) {
@@ -291,6 +344,11 @@ function on_mouse_rbtn_up(x, y) {
     return false;
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {boolean}
+ */
 function on_mouse_rbtn_down(x, y) {
     // 屏蔽默认右键菜单
     for (let key in buttons) {
@@ -299,24 +357,41 @@ function on_mouse_rbtn_down(x, y) {
     return false;
 }
 
+/** @returns {void} */
 function on_playback_starting() { updatePlayPauseButton(); }
+/** @returns {void} */
 function on_playback_new_track() { updatePlayPauseButton(); }
+/**
+ * @param {number} reason
+ * @returns {void}
+ */
 function on_playback_stop(reason) {
     if (reason !== 2) { updatePlayPauseButton(); updateStopState(); }
 }
+/** @returns {void} */
 function on_playback_pause() { updatePlayPauseButton(); }
+/** @returns {void} */
 function on_playback_order_changed() { updateOrderState(); }
 
+/**
+ * @returns {void}
+ */
 function on_colours_changed() {
     _refreshThemeColors();
     window.Repaint();
 }
 
+/**
+ * @returns {void}
+ */
 function on_font_changed() {
     _refreshThemeFonts();
     window.Repaint();
 }
 
+/**
+ * @returns {void}
+ */
 function on_script_unload() {
     _disposeImageDict(images);
 }
