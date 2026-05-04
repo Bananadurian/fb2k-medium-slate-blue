@@ -24,7 +24,7 @@
 
 - 自定义tab面板
   - *tab切换面板闪速问题解决（是CUI显示了窗口标题名字导致的，隐藏即可）*
-  - 按钮使用 自定义按钮实现而不是JSPlitter图个提供的，解决tooltio问题
+  - *按钮使用 自定义按钮实现而不是JSPlitter图个提供的，解决tooltio问题*
 
 - 编码问题：
   - biography.js 421行的中文，存在显示乱码的情况，动态数据（safeName）是 Unicode 正常，源码常量（“暂无艺人资料: ”）在当前文件编码下被错误解码。
@@ -36,3 +36,5 @@
   - album（规范，直接就可以映射）
 
 - 移除SMP，改为JSPlitter
+
+- @panel_title.js 分拆为 @title_playlist.js、@title_library.js，优化函数！

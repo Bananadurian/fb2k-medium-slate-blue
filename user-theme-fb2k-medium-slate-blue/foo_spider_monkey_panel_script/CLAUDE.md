@@ -379,7 +379,7 @@ gr.DrawImage(...);
 
 ## 6. Project Structure & File Map
 
-This project contains 8 SMP panel scripts for a foobar2000 theme ("medium-slate-blue"). Each script is a self-contained panel that registers via `window.DefineScript()`.
+This project contains 9 SMP panel scripts for a foobar2000 theme ("medium-slate-blue"). Each script is a self-contained panel that registers via `window.DefineScript()`.
 
 ### 6.1. Active Scripts
 
@@ -390,7 +390,8 @@ This project contains 8 SMP panel scripts for a foobar2000 theme ("medium-slate-
 | `biography.js` | Biography | Artist biography: cover carousel, genres, born/country, external links, tab-switchable profile/discography. |
 | `playback_buttons.js` | Playback Buttons | Transport controls: play/pause, stop, prev/next, seek, playback order, random. Uses Button class. |
 | `control_buttons.js` | Control Buttons | Utility buttons: recent tracks, favorites, search, queue, replaygain, output device, volume slider+mute, main menu. Uses Button + VolumeControl classes. |
-| `panel_title.js` | Panel Title | Playlist name display with icon, chevron, and action button. |
+| `title_playlist.js` | Title Playlist | 播放列表标题栏: 图标、播放列表名称、通过资料库新建播放列表按钮。 |
+| `title_library.js` | Title Library | 资料库标题栏: 图标、资料库名称、资料库搜索按钮。 |
 | `cover_panel.js` | Cover Panel | Cover art display: rounded corners, color extraction for gradient background, sync loading + LRU cache (5 entries). |
 | `tab_stack.js` | Tab Stack | JSplitter 图标 Tab 单选切换控制器（配置驱动动态数量）. |
 
@@ -419,7 +420,7 @@ Every script uses the JSDoc header format:
 
 ## 7. Shared Library System & Panel Patterns
 
-All 8 SMP panels share code through the `include()` mechanism. The 4 library files form a dependency chain; each panel includes only what it needs.
+All 9 SMP panels share code through the `include()` mechanism. The 4 library files form a dependency chain; each panel includes only what it needs.
 
 ```
 lib/utils.js  (独立 — 无 lib 依赖)
@@ -432,7 +433,7 @@ lib/utils.js  (独立 — 无 lib 依赖)
 
 #### 7.1.1. `lib/utils.js` — Core Utilities
 
-**No dependencies.** Included by all 7 panels.
+**No dependencies.** Included by all 9 panels.
 
 | Export | Signature | Description |
 |--------|-----------|-------------|
@@ -505,7 +506,7 @@ Composite styles:
 
 #### 7.1.3. `lib/interaction.js` — UI Interaction Components
 
-**Requires `lib/utils.js`.** Included by 6 of 7 panels (all except `cover_panel.js`).
+**Requires `lib/utils.js`.** Included by 8 of 9 panels (all except `cover_panel.js`).
 
 | Export | Signature | Description |
 |--------|-----------|-------------|
@@ -548,7 +549,7 @@ class Button {
 
 #### 7.1.4. `lib/theme.js` — Theme Configuration
 
-**Requires `lib/utils.js`.** Included by 6 of 7 panels (all except `cover_panel.js`). Centralizes all CUI color/font/path lookups.
+**Requires `lib/utils.js`.** Included by 8 of 9 panels (all except `cover_panel.js`). Centralizes all CUI color/font/path lookups.
 
 **`THEME` object:**
 
@@ -738,7 +739,8 @@ function on_script_unload() {
 | info+rating.js | Yes | Yes (STAR_ICONS) | Yes | — |
 | album_info.js | Yes | Yes (LINK_ICONS) | Yes | Yes |
 | biography.js | Yes | Yes (LINK_ICONS) | — | Yes |
-| panel_title.js | Yes | Yes (images) | — | — |
+| title_playlist.js | Yes | Yes (images) | — | — |
+| title_library.js | Yes | Yes (images) | — | — |
 | playback_buttons.js | — | Yes (images) | — | — |
 | control_buttons.js | — | Yes (images) | — | — |
 | cover_panel.js | — | — | — | — |

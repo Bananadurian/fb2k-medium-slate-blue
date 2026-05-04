@@ -1,10 +1,10 @@
 /**
- * @file panel_title.js
+ * @file title_library.js
  * @author XYSRe
  * @created 2025-12-16
  * @updated 2026-04-29
  * @version 2.0.0
- * @description 播放列表标题栏: 图标、播放列表名称、新建按钮。
+ * @description 资料库标题栏: 图标、资料库名称、资料库搜索按钮。
  */
 
 "use strict";
@@ -13,7 +13,7 @@ include("lib/utils.js");
 include("lib/interaction.js");
 include("lib/theme.js");
 
-window.DefineScript("Panel Title", {
+window.DefineScript("Title Library", {
   author: "XYSRe",
   version: "2.0.0",
   options: { grab_focus: THEME.CFG.GRAB_FOCUS },
@@ -26,13 +26,12 @@ window.DefineScript("Panel Title", {
 const COL = THEME.COL;
 let tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
 
-// 播放列表模式图标: list-music + chevron + plus
-// 资料库模式图标: list-music + chevron + folder-search (替换 plus/plus_hover)
+// 资料库图标
 const images = {
   icon: _loadImage(IMGS_LUCIDE_DIR + "list-music.png"),
   chevron: _loadImage(IMGS_LUCIDE_DIR + "chevron-down.png"),
-  button: _loadImage(IMGS_LUCIDE_DIR + "plus.png"),
-  button_hover: _loadImage(IMGS_LUCIDE_DIR + "plus_hover.png"),
+  button: _loadImage(IMGS_LUCIDE_DIR + "folder-search.png"),
+  button_hover: _loadImage(IMGS_LUCIDE_DIR + "folder-search_hover.png"),
 };
 
 // ============================================================================
@@ -55,7 +54,7 @@ const button = {
   h: 0,
   img: images.button,
   imgHover: images.button_hover,
-  tooltip: "新增播放列表",
+  tooltip: "资料库搜索",
   isHover: false,
   func: () => fb.RunMainMenuCommand("Library/Search"),
 };
@@ -230,7 +229,7 @@ function on_mouse_lbtn_up(x, y) {
 // ============================================================================
 
 function updateText() {
-  displayText = `播放列表 (${plman.PlaylistCount})`;
+  displayText = "资料库";
 }
 
 // 统一布局计算函数
