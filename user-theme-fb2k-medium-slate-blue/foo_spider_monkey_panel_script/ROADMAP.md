@@ -37,4 +37,4 @@
 
 - 移除SMP，改为JSPlitter
 
-- @panel_title.js 分拆为 @title_playlist.js、@title_library.js，优化函数！
+- *@panel_title.js 分拆为 @title_playlist.js、@title_library.js，优化函数，提取公共函数。*

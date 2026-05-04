@@ -397,7 +397,7 @@ This project contains 9 SMP panel scripts for a foobar2000 theme ("medium-slate-
 
 ### 6.2. Directory Layout
 
-- `lib/` — Shared libraries: `utils.js`, `data.js`, `interaction.js`, `theme.js`
+- `lib/` — Shared libraries: `utils.js`, `data.js`, `interaction.js`, `theme.js`, `title_bar_shared.js`
 - `old/` — Deprecated/archived scripts (gitignored)
 - `simple/` — Simple example scripts (gitignored)
 - `test1.js`, `test2.js` — Test/dev copies (gitignored)
@@ -420,13 +420,14 @@ Every script uses the JSDoc header format:
 
 ## 7. Shared Library System & Panel Patterns
 
-All 9 SMP panels share code through the `include()` mechanism. The 4 library files form a dependency chain; each panel includes only what it needs.
+All 9 SMP panels share code through the `include()` mechanism. The 5 library files form a dependency chain; each panel includes only what it needs.
 
 ```
 lib/utils.js  (独立 — 无 lib 依赖)
-  ├── lib/theme.js       — 依赖 _scale(), _rgb()
-  ├── lib/data.js        — 依赖 _rgb(), _getDimColor()
-  └── lib/interaction.js — 依赖 _scale(), _measureString()
+  ├── lib/theme.js            — 依赖 _scale(), _rgb()
+  ├── lib/data.js             — 依赖 _rgb(), _getDimColor()
+  ├── lib/interaction.js      — 依赖 _scale(), _measureString()
+  └── lib/title_bar_shared.js — 依赖 utils/interaction/theme，封装标题栏通用控制器
 ```
 
 ### 7.1. Library Reference
@@ -618,6 +619,25 @@ const PANEL_CFG = { dataPath: "D:\\...", showCover: true, coverAspectRatio: 3/4,
 const PANEL_CFG = { cornerRadius: _scale(20), margin: _scale(40), useCoverColor: true, useGradient: false, gradientAngle: 90, coverMode: "cover" };
 ```
 
+#### 7.1.5. `lib/title_bar_shared.js` — Title Bar Shared Controller
+
+**Requires `lib/utils.js`, `lib/interaction.js`, `lib/theme.js`.** Included by `title_playlist.js` and `title_library.js`.
+
+| Export | Signature | Description |
+|--------|-----------|-------------|
+| `createTitleBarController(cfg)` | `({buttonIconFilename, buttonHoverIconFilename, buttonTooltip, getDisplayText, onButtonClick?}) → controller` | Creates a shared title-bar controller for script callbacks |
+
+`controller` exposes callback handlers:
+- `on_size()`, `on_paint(gr)`, `on_playlists_changed()`
+- `on_colours_changed()`, `on_font_changed()`, `on_script_unload()`
+- `on_mouse_move(x, y)`, `on_mouse_leave()`, `on_mouse_lbtn_up(x, y)`
+
+Design notes:
+- `onButtonClick` is dynamically injected by caller scripts; shared layer only invokes it.
+- `onButtonClick` is optional in config; shared layer guards invocation with `typeof fn === "function"`.
+- Current bindings in both title scripts use `() => fb.RunMainMenuCommand("Library/Search")`.
+- `title_library.js` currently keeps `on_playlists_changed` as no-op (fixed text), while `title_playlist.js` delegates to controller for count refresh.
+
 ### 7.2. UI State Machine Pattern (Critical)
 
 Almost every panel uses a **single active element state machine** for hover interactions.
@@ -796,6 +816,16 @@ Current `tab_stack.js` behavior is config-driven and relies on panel-owned `Butt
 - `TAB_CONFIGS` uses unified button image fields: `imgNormal`, `imgHover`, `imgActivate`, plus `tipText`.
 - `resolvePanel(cfg)` resolves target panel by `caption` first (`window.GetPanel`), then falls back to `index` (`window.GetPanelByIndex`).
 - `applyActive(nextIndex)` switches tab with flicker-safe order: show next panel first, then hide previous panel, while syncing button active states.
+
+### 7.11. `title_playlist.js` / `title_library.js` Conventions
+
+Current title scripts are thin wrappers over `lib/title_bar_shared.js`:
+
+- Both scripts include `lib/title_bar_shared.js` and instantiate `createTitleBarController(cfg)`.
+- Data differences stay in script-local config (`buttonIconFilename`, `buttonHoverIconFilename`, `buttonTooltip`, `getDisplayText`).
+- `onButtonClick` is bound in caller scripts (dynamic injection). Current binding is `() => fb.RunMainMenuCommand("Library/Search")`.
+- `title_library.js` keeps `on_playlists_changed` as no-op for fixed label text; `title_playlist.js` keeps playlist-change delegation for count updates.
+- SMP callbacks (`on_size`, `on_paint`, `on_playlists_changed`, mouse callbacks, unload callback) are one-line delegation to controller.
 
 ## 8. Interaction Guidelines
 
