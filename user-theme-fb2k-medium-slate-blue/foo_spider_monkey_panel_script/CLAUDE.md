@@ -392,7 +392,7 @@ This project contains 9 SMP panel scripts for a foobar2000 theme ("medium-slate-
 | `control_buttons.js` | Control Buttons | Utility buttons: recent tracks, favorites, search, queue, replaygain, output device, volume slider+mute, main menu. Uses Button + VolumeControl classes. |
 | `title_playlist.js` | Title Playlist | 播放列表标题栏: 图标、播放列表名称、通过资料库新建播放列表按钮。 |
 | `title_library.js` | Title Library | 资料库标题栏: 图标、资料库名称、资料库搜索按钮。 |
-| `cover_panel.js` | Cover Panel | Cover art display: rounded corners, shared background controller (theme/cover-color/gradient/mask), sync loading + LRU cache. |
+| `cover_panel.js` | Cover Panel | Cover art display: rounded corners, shared background controller (theme/cover-color/cover-image/gradient/mask), sync loading + LRU cache. |
 | `tab_stack.js` | Tab Stack | JSplitter 图标 Tab 单选切换控制器（配置驱动动态数量）. |
 
 ### 6.2. Directory Layout
@@ -427,7 +427,7 @@ lib/utils.js  (独立 — 无 lib 依赖)
   ├── lib/theme.js            — 依赖 _scale(), _rgb()
   ├── lib/data.js             — 依赖 _rgb(), _getDimColor()
   ├── lib/interaction.js      — 依赖 _scale(), _measureString()
-  ├── lib/background.js       — 依赖 utils/data，封装背景色策略与遮罩层绘制
+  ├── lib/background.js       — 依赖 utils/data，封装背景色策略、封面背景图与遮罩层绘制
   └── lib/title_bar_shared.js — 依赖 utils/interaction/theme，封装标题栏通用控制器
 ```
 
@@ -622,9 +622,10 @@ const PANEL_CFG = {
     margin: _scale(40),
     coverMode: "fit",
     background: {
-        mode: "cover-color",
+        mode: "cover-image", // theme | cover-color | cover-image
         gradient: { enabled: true, angle: 90 },
-        mask: { enabled: false, color: _rgb(0, 0, 0), alpha: 0 },
+        image: { scaleMode: "cover", blurRadius: 50, cacheSize: 3 },
+        mask: { enabled: false, color: _rgb(255, 255, 255), alpha: 20 },
     },
 };
 ```
@@ -635,18 +636,21 @@ const PANEL_CFG = {
 
 | Export | Signature | Description |
 |--------|-----------|-------------|
-| `createPanelBackgroundController(cfg)` | `({mode?, gradient?, mask?, cacheSize?, keyTf?}) → controller` | Creates a panel background controller with theme/cover-color strategy and optional mask overlay |
+| `createPanelBackgroundController(cfg)` | `({mode?, gradient?, image?, mask?, cacheSize?, keyTf?}) → controller` | Creates a panel background controller with theme/cover-color/cover-image strategy and optional mask overlay |
 
 `controller` exposes:
 - `setThemeColor(color)`, `resetToThemeColor()`
 - `updateFromMetadb(metadb, rawImg)`
+- `updateBackgroundImage(metadb, rawImg, w, h)`
 - `paint(gr, x, y, w, h)`
 - `clearCache()`
 
 Design notes:
-- `mode: "theme" | "cover-color"` controls whether background always follows theme color or extracts cover colors.
+- `mode: "theme" | "cover-color" | "cover-image"` controls whether background follows theme color, extracted cover colors, or preprocessed cover background image.
+- `cover-image` mode supports `image.scaleMode: "cover" | "fit"` and `image.blurRadius`; blur is applied via `GdiBitmap.StackBlur(radius)` during preprocessing.
 - Cover color extraction is cached by album key (`keyTf`) using `LRUCache`; `cover_panel.js` also stores background colors in its cover cache for fallback consistency.
-- `paint()` stays lightweight: only `FillGradRect`/`FillSolidRect` + optional mask `FillSolidRect`.
+- Background image bitmaps are cached by track + size + mode + blur config, with eviction disposal.
+- `paint()` stays lightweight: only `DrawImage`/`FillGradRect`/`FillSolidRect` + optional mask `FillSolidRect`.
 - Mask uses `{ enabled, color, alpha }`; `alpha=0` keeps historical visuals unchanged.
 
 #### 7.1.6. `lib/title_bar_shared.js` — Title Bar Shared Controller
@@ -852,19 +856,27 @@ Current `tab_stack.js` behavior is config-driven and relies on panel-owned `Butt
 `cover_panel.js` now delegates background rendering to `lib/background.js`:
 
 - Include `lib/background.js` and create controller via `createPanelBackgroundController(...)`.
-- Keep heavy work out of `on_paint`: cover-color extraction runs in data update callbacks, not paint callback.
+- Keep heavy work out of `on_paint`: cover-color extraction, background image scaling, and StackBlur all run in data/size callbacks.
 - Paint order is fixed:
   1) `background.paint(gr, 0, 0, panelW, panelH)`
   2) cover image (if any) or fallback text
 - `on_colours_changed()` should refresh theme color through controller (`setThemeColor` + `resetToThemeColor`).
-- `on_script_unload()` should clear both cover cache and background color cache.
+- `cover-image` mode should rebuild background bitmap on `on_size()` using cached source cover (`rawImg`) for current track.
+- `on_script_unload()` should clear both cover cache and background controller caches.
 
 `PANEL_CFG.background` fields:
-- `mode`: `"theme" | "cover-color"`
+- `mode`: `"theme" | "cover-color" | "cover-image"`
 - `gradient`: `{ enabled: boolean, angle: number }`
+- `image`: `{ scaleMode: "cover" | "fit", blurRadius: number, cacheSize?: number }`
 - `mask`: `{ enabled: boolean, color: number, alpha: number }`
 
-Default compatibility profile keeps historical look:
+Current runtime default (cover_panel.js current values):
+- `mode: "cover-image"`
+- `image.scaleMode: "cover"`
+- `image.blurRadius: 50`
+- `mask.enabled: false`, `mask.color: _rgb(255, 255, 255)`, `mask.alpha: 20`
+
+Default compatibility profile keeps historical look (legacy compatibility profile):
 - `mode: "cover-color"`
 - `gradient.enabled: true`
 - `gradient.angle: 90`
