@@ -647,6 +647,7 @@ const PANEL_CFG = {
 
 Design notes:
 - `mode: "theme" | "cover-color" | "cover-image"` controls whether background follows theme color, extracted cover colors, or preprocessed cover background image.
+- `gradient` participates in `theme` / `cover-color` rendering; in `theme` mode it is usually visually close to solid because `color1` and `color2` are both reset to theme color; in `cover-image` mode gradient does not participate in base fill.
 - `cover-image` mode supports `image.scaleMode: "cover" | "fit"` and `image.blurRadius`; blur is applied via `GdiBitmap.StackBlur(radius)` during preprocessing.
 - Cover color extraction is cached by album key (`keyTf`) using `LRUCache`; `cover_panel.js` also stores background colors in its cover cache for fallback consistency.
 - Background image bitmaps are cached by track + size + mode + blur config, with eviction disposal.
@@ -866,7 +867,7 @@ Current `tab_stack.js` behavior is config-driven and relies on panel-owned `Butt
 
 `PANEL_CFG.background` fields:
 - `mode`: `"theme" | "cover-color" | "cover-image"`
-- `gradient`: `{ enabled: boolean, angle: number }`
+- `gradient`: `{ enabled: boolean, angle: number }` (`theme` / `cover-color` participate; `theme` is often visually close to solid because `c1/c2` are same color; `cover-image` does not use gradient base fill)
 - `image`: `{ scaleMode: "cover" | "fit", blurRadius: number, cacheSize?: number }`
 - `mask`: `{ enabled: boolean, color: number, alpha: number }`
 

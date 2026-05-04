@@ -18,6 +18,43 @@ include("lib/background.js");
 // 1. 面板配置
 // ==========================================
 
+/**
+ * @typedef {Object} CoverPanelBackgroundGradientConfig
+ * @property {boolean} enabled - 是否启用渐变背景
+ * @property {number} angle - 渐变角度，推荐取值区间 [0, 360]
+ */
+
+/**
+ * @typedef {Object} CoverPanelBackgroundImageConfig
+ * @property {"cover"|"fit"} scaleMode - 背景图铺放方式
+ * @property {number} blurRadius - 模糊半径，取值区间 [0, 200]
+ * @property {number} cacheSize - 背景图缓存条目数，最小值 1
+ */
+
+/**
+ * @typedef {Object} CoverPanelBackgroundMaskConfig
+ * @property {boolean} enabled - 是否叠加遮罩层
+ * @property {number} color - 遮罩 RGB 颜色（忽略 alpha 通道）
+ * @property {number} alpha - 遮罩透明度，取值区间 [0, 255]
+ */
+
+/**
+ * @typedef {Object} CoverPanelBackgroundConfig
+ * @property {"theme"|"cover-color"|"cover-image"} mode - 背景模式
+ * @property {CoverPanelBackgroundGradientConfig} gradient - 渐变配置（theme/cover-color 会参与；theme 下通常因 c1/c2 同色而视觉近似纯色）
+ * @property {CoverPanelBackgroundImageConfig} image - 封面背景图配置（仅在 cover-image 模式生效）
+ * @property {CoverPanelBackgroundMaskConfig} mask - 遮罩配置（所有 mode 都生效）
+ */
+
+/**
+ * @typedef {Object} CoverPanelConfig
+ * @property {number} cornerRadius - 圆角半径，推荐 >= 0
+ * @property {number} margin - 外边距，推荐 >= 0
+ * @property {"cover"|"fit"} coverMode - 前景封面绘制模式
+ * @property {CoverPanelBackgroundConfig} background - 背景配置
+ */
+
+/** @type {CoverPanelConfig} */
 const PANEL_CFG = {
   cornerRadius: _scale(20), // 封面圆角半径
   margin: _scale(40), // 封面周围的全局边距 (Padding)
@@ -26,18 +63,18 @@ const PANEL_CFG = {
   background: {
     mode: "cover-image", // theme | cover-color | cover-image
     gradient: {
-      enabled: true, // true: 渐变; false: 单色
-      angle: 90, // 90=从上到下, 0=从左到右
+      enabled: true, // theme/cover-color 模式参与；theme 下通常视觉近似纯色
+      angle: 90, // 渐变角度 [0, 360], 仅在参与渐变绘制的模式生效
     },
     image: {
-      scaleMode: "cover", // cover=裁剪填充, fit=完整显示
-      blurRadius:50, // 0=不模糊
-      cacheSize: 3,
+      scaleMode: "cover", // cover=裁剪填充, fit=完整显示（仅 cover-image 模式生效）
+      blurRadius: 50, // 模糊半径 [0, 200], 0=不模糊（仅 cover-image 模式生效）
+      cacheSize: 3, // 背景图缓存条目数, 最小值 1（仅 cover-image 模式生效）
     },
     mask: {
-      enabled: false,
-      color: _rgb(255, 255, 255),
-      alpha: 20,
+      enabled: false, // 所有 mode 都生效
+      color: _rgb(255, 255, 255), // 遮罩 RGB 颜色（所有 mode 都生效）
+      alpha: 20, // 遮罩透明度 [0, 255]（所有 mode 都生效）
     },
   },
 };
@@ -222,6 +259,7 @@ function updatePanelData(metadb) {
   window.Repaint();
 }
 
+/** @returns {void} */
 function on_size() {
   if (window.Width <= 0 || window.Height <= 0) return;
   panelW = window.Width;
@@ -230,6 +268,7 @@ function on_size() {
   rebuildBackgroundForCurrentTrack();
 }
 
+/** @param {GdiGraphics} gr @returns {void} */
 function on_paint(gr) {
   background.paint(gr, 0, 0, panelW, panelH);
 
@@ -262,16 +301,22 @@ function on_paint(gr) {
   }
 }
 
+/** @param {FbMetadbHandle} metadb @returns {void} */
 function on_playback_new_track(metadb) {
   updatePanelData(metadb);
 }
 
+/**
+ * @param {number} reason - 停止原因，2 表示切歌中
+ * @returns {void}
+ */
 function on_playback_stop(reason) {
   if (reason !== 2) {
     updatePanelData(null);
   }
 }
 
+/** @returns {void} */
 function on_playlist_items_selection_change() {
   let selection = fb.GetSelection();
   if (selection) {
@@ -281,6 +326,7 @@ function on_playlist_items_selection_change() {
   }
 }
 
+/** @returns {void} */
 function on_colours_changed() {
   _refreshThemeColors();
   background.setThemeColor(THEME.COL.BG);
@@ -288,6 +334,7 @@ function on_colours_changed() {
   window.Repaint();
 }
 
+/** @returns {void} */
 function on_font_changed() {
   _refreshThemeFonts();
   window.Repaint();
@@ -297,6 +344,7 @@ function on_font_changed() {
 // 5. 启动初始化 (Initialization)
 // ==========================================
 
+/** @returns {void} */
 function on_script_unload() {
   coverCache.clear();
   background.clearCache();
