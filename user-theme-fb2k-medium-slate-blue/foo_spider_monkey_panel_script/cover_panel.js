@@ -2,9 +2,9 @@
  * @file cover_panel.js
  * @author XYSRe
  * @created 2025-12-16
- * @updated 2026-04-29
- * @version 2.0.0
- * @description 封面显示面板: 圆角渲染、颜色提取渐变背景、同步封面加载 + LRU 缓存。
+ * @updated 2026-05-04
+ * @version 2.1.0
+ * @description 封面显示面板: 圆角渲染、背景控制器（主题色/封面提色/遮罩）、同步封面加载 + LRU 缓存。
  */
 
 "use strict";
@@ -12,6 +12,7 @@
 include("lib/utils.js");
 include("lib/data.js");
 include("lib/theme.js");
+include("lib/background.js");
 
 // ==========================================
 // 1. 面板配置
@@ -20,31 +21,36 @@ include("lib/theme.js");
 const PANEL_CFG = {
   cornerRadius: _scale(20), // 封面圆角半径
   margin: _scale(40), // 封面周围的全局边距 (Padding)
-
-  // --- 颜色与背景选项 ---
-  useCoverColor: true, // true: 提取封面颜色, false: 强制使用 CUI 全局背景色
-  useGradient: true, // (仅在 useCoverColor 为 true 时有效) true: 渐变色, false: 单色
-  gradientAngle: 90, // 渐变角度 (90=从上到下, 0=从左到右)
   coverMode: "fit", // cover=裁剪填充, fit=完整显示
+
+  background: {
+    mode: "cover-color", // cover-color: 提取封面色; theme: 强制主题背景
+    gradient: {
+      enabled: true, // true: 渐变; false: 单色
+      angle: 90, // 90=从上到下, 0=从左到右
+    },
+    mask: {
+      enabled: false,
+      color: _rgb(255, 255, 255),
+      alpha: 10,
+    },
+  },
 };
 
 // ==========================================
 // 2. 全局状态 (Global State)
 // ==========================================
 
-let themeBgColor = THEME.COL.BG; // CUI 背景色兜底 (ColourType.background)
-
-let imgRounded = null; // 圆角封面图像 (可能指向 coverCache 缓存)
-let bgColor1 = themeBgColor; // 背景主色 (封面提取或 themeBgColor 兜底)
-let bgColor2 = themeBgColor; // 背景次色 (渐变用，单色时同 bgColor1)
 const font = THEME.FONT.TITLE;
 let panelW = window.Width,
   panelH = window.Height;
+let currentImgRounded = null;
+
 // 封面绘制的预计算布局 (on_size / 切歌时更新，on_paint 直接使用)
 const coverRect = { x: 0, y: 0, w: 0, h: 0 };
 
 // 封面缓存：LRU，上限 min(5, THEME.CFG.CACHE_SIZE)
-// Key = "%album artist% - %album%"，Value = { imgRounded, bgColor1, bgColor2 }
+// Key = "%album artist% - %album%"，Value = { imgRounded, bgColors }
 const coverKeyTf = fb.TitleFormat("%album artist% - %album%");
 const coverCache = new LRUCache(Math.min(5, THEME.CFG.CACHE_SIZE), (entry) => {
   if (entry && entry.imgRounded && typeof entry.imgRounded.Dispose === "function") {
@@ -52,11 +58,21 @@ const coverCache = new LRUCache(Math.min(5, THEME.CFG.CACHE_SIZE), (entry) => {
   }
 });
 
+const background = createPanelBackgroundController({
+  mode: PANEL_CFG.background.mode,
+  gradient: PANEL_CFG.background.gradient,
+  mask: PANEL_CFG.background.mask,
+  cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
+  keyTf: coverKeyTf,
+});
+background.setThemeColor(THEME.COL.BG);
+background.resetToThemeColor();
+
 // ==========================================
 // 3. 业务逻辑 (Business Logic)
 // ==========================================
 
-// _rgb / _createRoundedImage / _extractImageColors 来自 lib/utils.js
+// _createRoundedImage / _extractImageColors 来自 lib/utils.js
 
 /**
  * 预计算封面绘制矩形 (存入 coverRect): cover=填满可用区, fit=完整显示
@@ -87,15 +103,15 @@ function recalculateLayout(img) {
 
 /**
  * 加载音轨封面数据并刷新面板
- * 缓存命中 → 直接复用 imgRounded + colors
- * 缓存未命中 → GetAlbumArtV2 → 颜色提取 → _createRoundedImage → 写入缓存
+ * 缓存命中 → 复用 imgRounded，背景色优先从背景控制器缓存恢复
+ * 缓存未命中 → GetAlbumArtV2 → 背景提色 → _createRoundedImage → 写入缓存
  * @param {FbMetadbHandle|null} metadb
  */
 function updatePanelData(metadb) {
   if (!metadb) {
-    imgRounded = null;
-    bgColor1 = themeBgColor;
-    bgColor2 = themeBgColor;
+    currentImgRounded = null;
+    recalculateLayout(null);
+    background.resetToThemeColor();
     window.Repaint();
     return;
   }
@@ -104,88 +120,67 @@ function updatePanelData(metadb) {
   const cached = coverCache.get(key);
 
   if (cached !== undefined) {
-    imgRounded = cached.imgRounded || null;
-    bgColor1 = cached.bgColor1;
-    bgColor2 = cached.bgColor2;
-    recalculateLayout(imgRounded);
+    currentImgRounded = cached.imgRounded || null;
+    if (cached.bgColors) {
+      background.applyColors(cached.bgColors);
+    } else {
+      background.updateFromMetadb(metadb, null);
+    }
+    recalculateLayout(currentImgRounded);
     window.Repaint();
     return;
   }
 
   const rawImg = utils.GetAlbumArtV2(metadb, 0);
-  imgRounded = null;
 
   if (rawImg) {
-    if (PANEL_CFG.useCoverColor) {
-      const colors = _extractImageColors(
-        rawImg,
-        PANEL_CFG.useGradient,
-        themeBgColor,
-      );
-      bgColor1 = colors.c1;
-      bgColor2 = colors.c2;
-    } else {
-      bgColor1 = themeBgColor;
-      bgColor2 = themeBgColor;
-    }
+    background.updateFromMetadb(metadb, rawImg);
 
     recalculateLayout(rawImg);
-    imgRounded = _createRoundedImage(
+    currentImgRounded = _createRoundedImage(
       rawImg,
       coverRect.w,
       coverRect.h,
       PANEL_CFG.cornerRadius,
       PANEL_CFG.coverMode,
     );
+
     coverCache.set(key, {
-      imgRounded: imgRounded,
-      bgColor1: bgColor1,
-      bgColor2: bgColor2,
+      imgRounded: currentImgRounded || null,
+      bgColors: background.getColors(),
     });
 
     if (typeof rawImg.Dispose === "function") rawImg.Dispose();
   } else {
-    bgColor1 = themeBgColor;
-    bgColor2 = themeBgColor;
+    currentImgRounded = null;
+    recalculateLayout(null);
+    background.resetToThemeColor();
   }
 
   window.Repaint();
 }
 
-// ==========================================
-// 4. 系统回调 (System Callbacks)
-// ==========================================
-
 function on_size() {
   if (window.Width <= 0 || window.Height <= 0) return;
   panelW = window.Width;
   panelH = window.Height;
-  recalculateLayout(imgRounded);
+  recalculateLayout(currentImgRounded);
 }
 
 function on_paint(gr) {
-  gr.FillGradRect(
-    0,
-    0,
-    panelW,
-    panelH,
-    PANEL_CFG.gradientAngle,
-    bgColor1,
-    bgColor2,
-    1.0,
-  );
+  background.paint(gr, 0, 0, panelW, panelH);
 
-  if (imgRounded) {
+  if (currentImgRounded) {
     gr.DrawImage(
-      imgRounded,
+      currentImgRounded,
       coverRect.x,
       coverRect.y,
       coverRect.w,
       coverRect.h,
       0,
       0,
-      imgRounded.Width,
-      imgRounded.Height,
+      currentImgRounded.Width,
+      currentImgRounded.Height,
     );
   } else {
     const text = fb.IsPlaying ? "No Cover Found" : "Stopped";
@@ -225,9 +220,8 @@ function on_playlist_items_selection_change() {
 
 function on_colours_changed() {
   _refreshThemeColors();
-  themeBgColor = THEME.COL.BG;
-  bgColor1 = themeBgColor;
-  bgColor2 = themeBgColor;
+  background.setThemeColor(THEME.COL.BG);
+  background.resetToThemeColor();
   window.Repaint();
 }
 
@@ -242,7 +236,8 @@ function on_font_changed() {
 
 function on_script_unload() {
   coverCache.clear();
-  imgRounded = null;
+  background.clearCache();
+  currentImgRounded = null;
 }
 
 let currentTrack = fb.GetNowPlaying();

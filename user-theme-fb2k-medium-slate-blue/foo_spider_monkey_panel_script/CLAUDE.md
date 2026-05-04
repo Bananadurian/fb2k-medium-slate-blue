@@ -392,12 +392,12 @@ This project contains 9 SMP panel scripts for a foobar2000 theme ("medium-slate-
 | `control_buttons.js` | Control Buttons | Utility buttons: recent tracks, favorites, search, queue, replaygain, output device, volume slider+mute, main menu. Uses Button + VolumeControl classes. |
 | `title_playlist.js` | Title Playlist | 播放列表标题栏: 图标、播放列表名称、通过资料库新建播放列表按钮。 |
 | `title_library.js` | Title Library | 资料库标题栏: 图标、资料库名称、资料库搜索按钮。 |
-| `cover_panel.js` | Cover Panel | Cover art display: rounded corners, color extraction for gradient background, sync loading + LRU cache (5 entries). |
+| `cover_panel.js` | Cover Panel | Cover art display: rounded corners, shared background controller (theme/cover-color/gradient/mask), sync loading + LRU cache. |
 | `tab_stack.js` | Tab Stack | JSplitter 图标 Tab 单选切换控制器（配置驱动动态数量）. |
 
 ### 6.2. Directory Layout
 
-- `lib/` — Shared libraries: `utils.js`, `data.js`, `interaction.js`, `theme.js`, `title_bar_shared.js`
+- `lib/` — Shared libraries: `utils.js`, `data.js`, `interaction.js`, `theme.js`, `background.js`, `title_bar_shared.js`
 - `old/` — Deprecated/archived scripts (gitignored)
 - `simple/` — Simple example scripts (gitignored)
 - `test1.js`, `test2.js` — Test/dev copies (gitignored)
@@ -420,13 +420,14 @@ Every script uses the JSDoc header format:
 
 ## 7. Shared Library System & Panel Patterns
 
-All 9 SMP panels share code through the `include()` mechanism. The 5 library files form a dependency chain; each panel includes only what it needs.
+All 9 SMP panels share code through the `include()` mechanism. The 6 library files form a dependency chain; each panel includes only what it needs.
 
 ```
 lib/utils.js  (独立 — 无 lib 依赖)
   ├── lib/theme.js            — 依赖 _scale(), _rgb()
   ├── lib/data.js             — 依赖 _rgb(), _getDimColor()
   ├── lib/interaction.js      — 依赖 _scale(), _measureString()
+  ├── lib/background.js       — 依赖 utils/data，封装背景色策略与遮罩层绘制
   └── lib/title_bar_shared.js — 依赖 utils/interaction/theme，封装标题栏通用控制器
 ```
 
@@ -550,7 +551,7 @@ class Button {
 
 #### 7.1.4. `lib/theme.js` — Theme Configuration
 
-**Requires `lib/utils.js`.** Included by 8 of 9 panels (all except `cover_panel.js`). Centralizes all CUI color/font/path lookups.
+**Requires `lib/utils.js`.** Included by all 9 panels. Centralizes all CUI color/font/path lookups.
 
 **`THEME` object:**
 
@@ -616,10 +617,39 @@ const PANEL_CFG = { showCover: true, coverAspectRatio: 1/1, showArtistCover: fal
 // biography.js
 const PANEL_CFG = { dataPath: "D:\\...", showCover: true, coverAspectRatio: 3/4, coverMode: "fit", cornerRadius: 0, coverMargin: 0 };
 // cover_panel.js
-const PANEL_CFG = { cornerRadius: _scale(20), margin: _scale(40), useCoverColor: true, useGradient: false, gradientAngle: 90, coverMode: "cover" };
+const PANEL_CFG = {
+    cornerRadius: _scale(20),
+    margin: _scale(40),
+    coverMode: "fit",
+    background: {
+        mode: "cover-color",
+        gradient: { enabled: true, angle: 90 },
+        mask: { enabled: false, color: _rgb(0, 0, 0), alpha: 0 },
+    },
+};
 ```
 
-#### 7.1.5. `lib/title_bar_shared.js` — Title Bar Shared Controller
+#### 7.1.5. `lib/background.js` — Panel Background Controller
+
+**Requires `lib/utils.js`, `lib/data.js`.** Included by `cover_panel.js`.
+
+| Export | Signature | Description |
+|--------|-----------|-------------|
+| `createPanelBackgroundController(cfg)` | `({mode?, gradient?, mask?, cacheSize?, keyTf?}) → controller` | Creates a panel background controller with theme/cover-color strategy and optional mask overlay |
+
+`controller` exposes:
+- `setThemeColor(color)`, `resetToThemeColor()`
+- `updateFromMetadb(metadb, rawImg)`
+- `paint(gr, x, y, w, h)`
+- `clearCache()`
+
+Design notes:
+- `mode: "theme" | "cover-color"` controls whether background always follows theme color or extracts cover colors.
+- Cover color extraction is cached by album key (`keyTf`) using `LRUCache`; `cover_panel.js` also stores background colors in its cover cache for fallback consistency.
+- `paint()` stays lightweight: only `FillGradRect`/`FillSolidRect` + optional mask `FillSolidRect`.
+- Mask uses `{ enabled, color, alpha }`; `alpha=0` keeps historical visuals unchanged.
+
+#### 7.1.6. `lib/title_bar_shared.js` — Title Bar Shared Controller
 
 **Requires `lib/utils.js`, `lib/interaction.js`, `lib/theme.js`.** Included by `title_playlist.js` and `title_library.js`.
 
@@ -817,7 +847,30 @@ Current `tab_stack.js` behavior is config-driven and relies on panel-owned `Butt
 - `resolvePanel(cfg)` resolves target panel by `caption` first (`window.GetPanel`), then falls back to `index` (`window.GetPanelByIndex`).
 - `applyActive(nextIndex)` switches tab with flicker-safe order: show next panel first, then hide previous panel, while syncing button active states.
 
-### 7.11. `title_playlist.js` / `title_library.js` Conventions
+### 7.11. `cover_panel.js` Background Controller Conventions
+
+`cover_panel.js` now delegates background rendering to `lib/background.js`:
+
+- Include `lib/background.js` and create controller via `createPanelBackgroundController(...)`.
+- Keep heavy work out of `on_paint`: cover-color extraction runs in data update callbacks, not paint callback.
+- Paint order is fixed:
+  1) `background.paint(gr, 0, 0, panelW, panelH)`
+  2) cover image (if any) or fallback text
+- `on_colours_changed()` should refresh theme color through controller (`setThemeColor` + `resetToThemeColor`).
+- `on_script_unload()` should clear both cover cache and background color cache.
+
+`PANEL_CFG.background` fields:
+- `mode`: `"theme" | "cover-color"`
+- `gradient`: `{ enabled: boolean, angle: number }`
+- `mask`: `{ enabled: boolean, color: number, alpha: number }`
+
+Default compatibility profile keeps historical look:
+- `mode: "cover-color"`
+- `gradient.enabled: true`
+- `gradient.angle: 90`
+- `mask.enabled: false`, `mask.alpha: 0`
+
+### 7.12. `title_playlist.js` / `title_library.js` Conventions
 
 Current title scripts are thin wrappers over `lib/title_bar_shared.js`:
 

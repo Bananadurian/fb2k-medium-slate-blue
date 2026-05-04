@@ -12,7 +12,10 @@
 
 - *离屏幕渲染字体ClearType出问题，导致白色背景下字体很模糊。*
 
-- 彩色背景（通用函数？gr 传入图片、背景色、可控制是否遮罩一个颜色 透明度）
+- 背景（通用函数？gr 传入图片、背景色、可控制是否遮罩一个颜色 透明度）
+    - 默认主题背景
+    - 渐变色背景，提取封面，支持遮罩一个透明图层，控制颜色
+    - 封面背景，支持模糊背景模糊 GdiBitmap.StackBlur(radius)实现
 
 - *圆角封面*
   - *专辑封面*
@@ -38,3 +41,5 @@
 - 移除SMP，改为JSPlitter
 
 - *@panel_title.js 分拆为 @title_playlist.js、@title_library.js，优化函数，提取公共函数。*
+
+- 检查控制器createTitleBarController、createPanelBackgroundController是否会内存泄露！
