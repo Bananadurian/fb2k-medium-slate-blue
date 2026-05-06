@@ -39,13 +39,23 @@ function _rgb(r, g, b) {
 
 /**
  * 生成带透明度的 ARGB 颜色整数
+ * 支持两种调用方式：
+ * 1) _argb(a, r, g, b)
+ * 2) _argb(a, color)  // color 可传 0xRRGGBB / 0xAARRGGBB
  * @param {number} a - Alpha (0-255, 0=全透明, 255=不透明)
- * @param {number} r - Red (0-255)
- * @param {number} g - Green (0-255)
- * @param {number} b - Blue (0-255)
+ * @param {number} r - Red (0-255) 或 color 整数
+ * @param {number} [g] - Green (0-255)
+ * @param {number} [b] - Blue (0-255)
  * @returns {number} 颜色整数
  */
 function _argb(a, r, g, b) {
+    if (typeof g !== "number" || typeof b !== "number") {
+        const color = r >>> 0;
+        const rr = (color >> 16) & 0xff;
+        const gg = (color >> 8) & 0xff;
+        const bb = color & 0xff;
+        return ((a & 0xff) << 24) | (rr << 16) | (gg << 8) | bb;
+    }
     return ((a & 0xff) << 24) | (r << 16) | (g << 8) | b;
 }
 
@@ -247,20 +257,25 @@ function _createRoundedImage(img, targetW, targetH, radius, mode) {
  * @param {GdiBitmap} img - 源图片
  * @param {boolean} useGradient - true=提取双色渐变, false=单色
  * @param {number} fallbackColor - 兜底色
+ * @param {number} [gradientSpan=2] - 渐变跨度（useGradient=true 时生效，最小 2）
  * @returns {{ c1: number, c2: number }}
  */
-function _extractImageColors(img, useGradient, fallbackColor) {
+function _extractImageColors(img, useGradient, fallbackColor, gradientSpan) {
     let result = { c1: fallbackColor, c2: fallbackColor };
     if (!img) return result;
 
+    const safeSpan = Math.max(2, Math.floor(Number(gradientSpan) || 2));
+    const sampleCount = useGradient ? safeSpan : 1;
+
     try {
-        let colorsJson = img.GetColourSchemeJSON(2);
+        let colorsJson = img.GetColourSchemeJSON(sampleCount);
         let colors = JSON.parse(colorsJson);
 
         if (colors && colors.length > 0) {
             result.c1 = colors[0].col;
-            if (useGradient && colors.length >= 2) {
-                result.c2 = colors[1].col;
+            if (useGradient) {
+                const c2Index = Math.min(safeSpan - 1, colors.length - 1);
+                result.c2 = colors[c2Index].col;
             } else {
                 result.c2 = colors[0].col;
             }

@@ -9,6 +9,8 @@
 
 "use strict";
 
+window.DrawMode = 1;
+
 include("lib/utils.js");
 include("lib/data.js");
 include("lib/interaction.js");

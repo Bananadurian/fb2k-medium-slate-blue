@@ -29,7 +29,9 @@
 - 自定义tab面板
   - *tab切换面板闪速问题解决（是CUI显示了窗口标题名字导致的，隐藏即可）*
   - *按钮使用 自定义按钮实现而不是JSPlitter图个提供的，解决tooltio问题*
-  - tab样式优化
+  - *tab样式优化*
+  - *tab支持文字样式*
+  - *支持下划线tab*
 
 - 编码问题：
   - *biography.js 421行的中文，存在显示乱码的情况，动态数据（safeName）是 Unicode 正常，源码常量（“暂无艺人资料: ”）在当前文件编码下被错误解码。*
@@ -40,8 +42,10 @@
   - biography（国家目前使用了中文， 不规范，只能模糊匹配，模糊匹配之后 再映射 到规范，然后通过规范直接映射？）
   - album（规范，直接就可以映射）
 
-- 移除SMP，改为JSPlitter
+- *移除SMP，改为JSPlitter*
 
 - *@panel_title.js 分拆为 @title_playlist.js、@title_library.js，优化函数，提取公共函数。*
 
 - 检查控制器createTitleBarController、createPanelBackgroundController是否会内存泄露！
+
+- 添加window.DrawMode，优化卡丁面板！

@@ -15,6 +15,7 @@
  * @typedef {Object} PanelBackgroundGradientConfig
  * @property {boolean} [enabled=false] - 是否启用渐变背景（theme/cover-color 会参与；cover-image 不参与底色绘制）
  * @property {number} [angle=90] - 渐变角度，取值区间 [0, 360]（仅在参与渐变绘制的模式下生效）
+ * @property {number} [span=2] - 渐变跨度（仅在 cover-color 且 enabled=true 时生效，最小值 2）
  */
 
 /**
@@ -87,6 +88,7 @@ function createPanelBackgroundController(cfg) {
 
     const gradientEnabled = !!gradientCfg.enabled;
     const gradientAngle = _clamp(Math.round(gradientCfg.angle || 90), 0, 360);
+    const gradientSpan = Math.max(2, Math.floor(Number(gradientCfg.span) || 2));
 
     const imageScaleMode = imageCfg.scaleMode === "fit" ? "fit" : "cover";
     const blurRadius = _clamp(Math.round(imageCfg.blurRadius || 0), 0, 200);
@@ -183,7 +185,7 @@ function createPanelBackgroundController(cfg) {
             return;
         }
 
-        const colors = _extractImageColors(rawImg, gradientEnabled, themeColor);
+        const colors = _extractImageColors(rawImg, gradientEnabled, themeColor, gradientSpan);
         applyColors(colors.c1, colors.c2);
         colorCache.set(key, { c1: color1, c2: color2 });
     }
@@ -313,5 +315,134 @@ function createPanelBackgroundController(cfg) {
         getColors,
         paint,
         clearCache,
+    };
+}
+
+/**
+ * @param {{
+ *   background: PanelBackgroundControllerConfig,
+ *   getPreferredMetadb: function(): (FbMetadbHandle|null),
+ *   getTargetSize: function(): {w:number, h:number},
+ *   getAlbumArt?: function(FbMetadbHandle): (GdiBitmap|null)
+ * }} opts
+ */
+function createPanelBackgroundAutoController(opts) {
+    const safeOpts = opts || {};
+    const backgroundCfg = safeOpts.background || {};
+    const mode =
+        backgroundCfg.mode === "theme" || backgroundCfg.mode === "cover-image"
+            ? backgroundCfg.mode
+            : "cover-color";
+
+    const controller = createPanelBackgroundController(backgroundCfg);
+    const getPreferredMetadb =
+        typeof safeOpts.getPreferredMetadb === "function"
+            ? safeOpts.getPreferredMetadb
+            : function () { return null; };
+    const getTargetSize =
+        typeof safeOpts.getTargetSize === "function"
+            ? safeOpts.getTargetSize
+            : function () { return { w: 0, h: 0 }; };
+    const getAlbumArt =
+        typeof safeOpts.getAlbumArt === "function"
+            ? safeOpts.getAlbumArt
+            : function (metadb) {
+                return utils && typeof utils.GetAlbumArtV2 === "function"
+                    ? utils.GetAlbumArtV2(metadb, 0)
+                    : null;
+            };
+
+    let currentMetadb = null;
+    // 记录最近一次 sync 使用的原始封面，供 cover-image 模式 resize 复用。
+    let lastSyncedRawImg = null;
+
+    function getSize() {
+        const size = getTargetSize() || { w: 0, h: 0 };
+        return {
+            w: Math.max(0, Math.floor(size.w || 0)),
+            h: Math.max(0, Math.floor(size.h || 0)),
+        };
+    }
+
+    /**
+     * 同步背景状态：
+     * - sync()：沿用旧行为，自动解析 metadb 并按需取图
+     * - sync(metadb, rawImg)：优先复用调用方已拿到的 rawImg，避免重复 GetAlbumArtV2
+     * @param {FbMetadbHandle|null} [metadb]
+     * @param {GdiBitmap|null} [rawImg]
+     */
+    function sync(metadb, rawImg) {
+        currentMetadb = typeof metadb === "undefined"
+            ? getPreferredMetadb() || null
+            : metadb || null;
+
+        if (mode === "theme") {
+            lastSyncedRawImg = null;
+            controller.resetToThemeColor();
+            return;
+        }
+
+        const size = getSize();
+
+        if (!currentMetadb) {
+            lastSyncedRawImg = null;
+            controller.updateBackgroundImage(null, null, size.w, size.h);
+            controller.resetToThemeColor();
+            return;
+        }
+
+        const sourceImg = typeof rawImg === "undefined"
+            ? getAlbumArt(currentMetadb)
+            : rawImg;
+        lastSyncedRawImg = sourceImg || null;
+
+        if (mode === "cover-image") {
+            if (sourceImg) {
+                controller.updateBackgroundImage(currentMetadb, sourceImg, size.w, size.h);
+            } else {
+                controller.updateBackgroundImage(null, null, size.w, size.h);
+                controller.resetToThemeColor();
+            }
+            return;
+        }
+
+        controller.updateFromMetadb(currentMetadb, sourceImg || null);
+    }
+
+    function onResize() {
+        if (mode !== "cover-image") return;
+
+        const size = getSize();
+        if (!currentMetadb) {
+            controller.updateBackgroundImage(null, null, size.w, size.h);
+            return;
+        }
+
+        const rawImg = lastSyncedRawImg || getAlbumArt(currentMetadb);
+        if (rawImg) {
+            lastSyncedRawImg = rawImg;
+            controller.updateBackgroundImage(currentMetadb, rawImg, size.w, size.h);
+        } else {
+            lastSyncedRawImg = null;
+            controller.updateBackgroundImage(null, null, size.w, size.h);
+            controller.resetToThemeColor();
+        }
+    }
+
+    function clearCache() {
+        controller.clearCache();
+        currentMetadb = null;
+        lastSyncedRawImg = null;
+    }
+
+    return {
+        paint: controller.paint,
+        setThemeColor: controller.setThemeColor,
+        sync,
+        onResize,
+        clearCache,
+        getController: function () {
+            return controller;
+        },
     };
 }

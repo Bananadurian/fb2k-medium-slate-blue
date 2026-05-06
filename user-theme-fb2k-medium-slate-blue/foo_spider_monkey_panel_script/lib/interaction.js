@@ -236,9 +236,379 @@ class Button {
     }
 }
 
+/**
+ * @typedef {Object} TextTabStateStyle
+ * @property {number} bgColor - 背景颜色（支持 alpha）
+ * @property {number} textColor - 文字颜色
+ * @property {GdiFont} font - 文字字体
+ */
+
+/**
+ * @typedef {Object} TextTabMetrics
+ * @property {number} paddingX - 左右内边距
+ * @property {number} paddingY - 上下内边距
+ * @property {number} height - 控件高度
+ * @property {number} radius - 背景圆角半径
+ */
+
+/**
+ * @typedef {Object} TextTabStyleConfig
+ * @property {TextTabMetrics} metrics - 尺寸与圆角配置
+ * @property {{normal: TextTabStateStyle, hover: TextTabStateStyle, select: TextTabStateStyle}} states - 三态样式
+ */
+
+/**
+ * @typedef {Object} TextTabConfig
+ * @property {string} label - 文本内容
+ * @property {TextTabStyleConfig} [style] - 样式配置（可选，缺省使用内置默认样式）
+ * @property {Partial<TextTabStyleConfig>} [styleOverrides] - 样式局部覆盖（字段级合并）
+ * @property {ButtonClickHandler} [func] - 左键点击回调
+ * @property {string} [tipText] - Tooltip 文案
+ * @property {number} [textFlags] - GdiDrawText 对齐标记
+ * @property {"rect"|"underline"} [bgStyle] - 背景样式，缺省 "rect"
+ */
+
+const TEXT_TAB_MIN_HEIGHT = _scale(20);
+
+/**
+ * @returns {TextTabStyleConfig}
+ */
+function _createDefaultTextTabStyle() {
+    function withAlpha(alpha) {
+        return _argb(alpha, THEME.COL.SEL_BG);
+    }
+
+    return {
+        metrics: {
+            paddingX: _scale(6),
+            paddingY: _scale(2),
+            height: TEXT_TAB_MIN_HEIGHT,
+            radius: _scale(6),
+        },
+        states: {
+            normal: {
+                bgColor: withAlpha(0),
+                textColor: THEME.COL.FG,
+                font: THEME.FONT.LABEL,
+            },
+            hover: {
+                bgColor: withAlpha(102),
+                textColor: THEME.COL.SEL_FG,
+                font: THEME.FONT.LABEL,
+            },
+            select: {
+                bgColor: withAlpha(204),
+                textColor: THEME.COL.SEL_FG,
+                font: THEME.FONT.LABEL,
+            },
+        },
+    };
+}
+
+/**
+ * @param {TextTabStyleConfig} base
+ * @param {Partial<TextTabStyleConfig>} [override]
+ * @returns {TextTabStyleConfig}
+ */
+function _mergeTextTabStyle(base, override) {
+    if (!override) return base;
+
+    const merged = {
+        metrics: {
+            paddingX: base.metrics.paddingX,
+            paddingY: base.metrics.paddingY,
+            height: base.metrics.height,
+            radius: base.metrics.radius,
+        },
+        states: {
+            normal: {
+                bgColor: base.states.normal.bgColor,
+                textColor: base.states.normal.textColor,
+                font: base.states.normal.font,
+            },
+            hover: {
+                bgColor: base.states.hover.bgColor,
+                textColor: base.states.hover.textColor,
+                font: base.states.hover.font,
+            },
+            select: {
+                bgColor: base.states.select.bgColor,
+                textColor: base.states.select.textColor,
+                font: base.states.select.font,
+            },
+        },
+    };
+
+    if (override.metrics) {
+        if (typeof override.metrics.paddingX === "number") merged.metrics.paddingX = override.metrics.paddingX;
+        if (typeof override.metrics.paddingY === "number") merged.metrics.paddingY = override.metrics.paddingY;
+        if (typeof override.metrics.height === "number") merged.metrics.height = override.metrics.height;
+        if (typeof override.metrics.radius === "number") merged.metrics.radius = override.metrics.radius;
+    }
+
+    if (override.states) {
+        const stateKeys = ["normal", "hover", "select"];
+        for (let i = 0; i < stateKeys.length; i++) {
+            const key = stateKeys[i];
+            const src = override.states[key];
+            if (!src) continue;
+            if (typeof src.bgColor === "number") merged.states[key].bgColor = src.bgColor;
+            if (typeof src.textColor === "number") merged.states[key].textColor = src.textColor;
+            if (src.font) merged.states[key].font = src.font;
+        }
+    }
+
+    return merged;
+}
+const TEXT_TAB_DEFAULT_FLAGS =
+    (typeof DT_CENTER === "number" ? DT_CENTER : 0x00000001) |
+    (typeof DT_VCENTER === "number" ? DT_VCENTER : 0x00000004) |
+    (typeof DT_SINGLELINE === "number" ? DT_SINGLELINE : 0x00000020) |
+    (typeof DT_NOPREFIX === "number" ? DT_NOPREFIX : 0x00000800);
+
+/**
+ * 可交互文字选项卡。
+ * 支持 normal / hover / active 三态，绘制圆角背景与文字。
+ */
+class TextTab {
+    /**
+     * @param {TextTabConfig} config - 文字 Tab 初始化配置
+     */
+    constructor(config) {
+        this.x = 0; this.y = 0; this.w = 0; this.h = 0;
+        this.label = config.label || "";
+        this.fnClick = config.func || null;
+        this.tipText = config.tipText || "";
+        this.textFlags = typeof config.textFlags === "number" ? config.textFlags : TEXT_TAB_DEFAULT_FLAGS;
+        this.bgStyle = config.bgStyle === "underline" ? "underline" : "rect";
+        this.isHover = false;
+        this.isActive = false;
+        this.State = BUTTON_STATE_NORMAL;
+
+        this.styleSource = config.style || null;
+        this.styleOverrides = config.styleOverrides || null;
+        this.style = null;
+        this._preferredSizeCacheKey = null;
+        this._preferredSizeCacheValue = null;
+        this._preferredSizeCacheFontSignature = "";
+        this._lastRect = null;
+        this.refreshStyle(undefined, true);
+    }
+
+    /**
+     * @param {Partial<TextTabStyleConfig>} [styleOverrides]
+     * @param {boolean} [silent]
+     * @returns {void}
+     */
+    refreshStyle(styleOverrides, silent) {
+        if (styleOverrides !== undefined) {
+            this.styleOverrides = styleOverrides;
+        }
+
+        let style = _createDefaultTextTabStyle();
+        if (this.styleSource) {
+            style = _mergeTextTabStyle(style, this.styleSource);
+        }
+        if (this.styleOverrides) {
+            style = _mergeTextTabStyle(style, this.styleOverrides);
+        }
+        this.style = style;
+        this._preferredSizeCacheKey = null;
+        this._preferredSizeCacheValue = null;
+        this._preferredSizeCacheFontSignature = "";
+
+        if (!silent) this.repaint();
+    }
+
+    /**
+     * 获取当前文本标签推荐尺寸。
+     * @param {number} [maxWidth]
+     * @returns {{w:number, h:number}}
+     */
+    getPreferredSize(maxWidth) {
+        if (!this.style || !this.style.metrics || !this.style.states) {
+            return { w: TEXT_TAB_MIN_HEIGHT, h: TEXT_TAB_MIN_HEIGHT };
+        }
+
+        const widthLimit = Math.max(1, typeof maxWidth === "number" ? maxWidth : window.Width);
+
+        const metrics = this.style.metrics;
+        const states = this.style.states;
+
+        const normalFont = states.normal && states.normal.font ? states.normal.font : THEME.FONT.BODY;
+        const hoverFont = states.hover && states.hover.font ? states.hover.font : normalFont;
+        const selectFont = states.select && states.select.font ? states.select.font : normalFont;
+
+        const fontSignature =
+            String(normalFont && normalFont.Name) + "|" + String(normalFont && normalFont.Size) + "|" + String(normalFont && normalFont.Style) + "|" +
+            String(hoverFont && hoverFont.Name) + "|" + String(hoverFont && hoverFont.Size) + "|" + String(hoverFont && hoverFont.Style) + "|" +
+            String(selectFont && selectFont.Name) + "|" + String(selectFont && selectFont.Size) + "|" + String(selectFont && selectFont.Style);
+
+        const cacheKey =
+            String(widthLimit) + "|" +
+            this.label + "|" +
+            String(this.textFlags) + "|" +
+            String(metrics.paddingX) + "|" +
+            String(metrics.paddingY) + "|" +
+            String(metrics.height);
+
+        if (
+            this._preferredSizeCacheKey === cacheKey &&
+            this._preferredSizeCacheFontSignature === fontSignature &&
+            this._preferredSizeCacheValue
+        ) {
+            return this._preferredSizeCacheValue;
+        }
+
+        const measuredByFont = [];
+
+        function getMeasured(font, label, limit, flags) {
+            for (let i = 0; i < measuredByFont.length; i++) {
+                if (measuredByFont[i].font === font) return measuredByFont[i].size;
+            }
+            const size = _measureString(label, font, limit, flags);
+            measuredByFont.push({ font, size });
+            return size;
+        }
+
+        const normalSize = getMeasured(normalFont, this.label, widthLimit, this.textFlags);
+        const hoverSize = getMeasured(hoverFont, this.label, widthLimit, this.textFlags);
+        const selectSize = getMeasured(selectFont, this.label, widthLimit, this.textFlags);
+
+        const textW = Math.max(normalSize.Width, hoverSize.Width, selectSize.Width);
+        const textH = Math.max(normalSize.Height, hoverSize.Height, selectSize.Height);
+        const minH = typeof metrics.height === "number" ? metrics.height : TEXT_TAB_MIN_HEIGHT;
+        const minW = minH;
+        const size = {
+            w: Math.max(minW, Math.ceil(textW) + metrics.paddingX * 2),
+            h: Math.max(minH, Math.ceil(textH) + metrics.paddingY * 2),
+        };
+
+        this._preferredSizeCacheKey = cacheKey;
+        this._preferredSizeCacheFontSignature = fontSignature;
+        this._preferredSizeCacheValue = size;
+        return size;
+    }
+
+    /**
+     * 局部重绘当前控件区域。
+     * 采用旧/新矩形并集 + DPI 外扩，避免抗锯齿与文本边缘像素导致的残影。
+     * @returns {void}
+     */
+    repaint() {
+        const newRect = { x: this.x, y: this.y, w: this.w, h: this.h };
+        const bleed = Math.max(1, _scale(1));
+
+        if (!this._lastRect) {
+            window.RepaintRect(newRect.x - bleed, newRect.y - bleed, newRect.w + bleed * 2, newRect.h + bleed * 2);
+            this._lastRect = newRect;
+            return;
+        }
+
+        const left = Math.min(this._lastRect.x, newRect.x) - bleed;
+        const top = Math.min(this._lastRect.y, newRect.y) - bleed;
+        const right = Math.max(this._lastRect.x + this._lastRect.w, newRect.x + newRect.w) + bleed;
+        const bottom = Math.max(this._lastRect.y + this._lastRect.h, newRect.y + newRect.h) + bleed;
+
+        window.RepaintRect(left, top, right - left, bottom - top);
+        this._lastRect = newRect;
+    }
+
+    /**
+     * 绘制文字 Tab。
+     * @param {GdiGraphics} gr
+     * @returns {void}
+     */
+    paint(gr) {
+        if (!this.style || !this.style.metrics || !this.style.states) return;
+
+        let stateStyle = this.style.states.normal;
+        if (this.isActive) {
+            stateStyle = this.style.states.select || stateStyle;
+            this.State = BUTTON_STATE_ACTIVE;
+        } else if (this.isHover) {
+            stateStyle = this.style.states.hover || stateStyle;
+            this.State = BUTTON_STATE_HOVER;
+        } else {
+            this.State = BUTTON_STATE_NORMAL;
+        }
+
+        if (!stateStyle) return;
+
+        const radius = this.style.metrics.radius || 0;
+        gr.SetSmoothingMode(4);
+        if (this.bgStyle === "underline") {
+            const lineH = _scale(2);
+            const insetX = _scale(5);
+            gr.FillRoundRect(this.x + insetX, this.y + this.h - lineH, this.w - insetX * 2, lineH, _scale(1), _scale(1), stateStyle.bgColor);
+        } else {
+            gr.FillRoundRect(this.x, this.y, this.w, this.h, radius, radius, stateStyle.bgColor);
+        }
+        gr.SetSmoothingMode(0);
+        gr.GdiDrawText(this.label, stateStyle.font, stateStyle.textColor, this.x, this.y, this.w, this.h, this.textFlags);
+    }
+
+    /**
+     * 命中检测 (使用 >= 和 <= 消除 1px 间隙导致的闪烁)。
+     * @param {number} x
+     * @param {number} y
+     * @returns {boolean}
+     */
+    containsPoint(x, y) {
+        return x >= this.x && x <= this.x + this.w && y >= this.y && y <= this.y + this.h;
+    }
+
+    /**
+     * 设置激活态。
+     * @param {boolean} value - true 激活，false 取消激活
+     * @returns {void}
+     */
+    setActive(value) {
+        const nextActive = !!value;
+        if (this.isActive === nextActive) return;
+        this.isActive = nextActive;
+        this.repaint();
+    }
+
+    /**
+     * 进入 hover 态。
+     * @returns {void}
+     */
+    activate() {
+        if (this.isHover) return;
+        this.isHover = true;
+        if (!this.isActive) this.repaint();
+    }
+
+    /**
+     * 退出 hover 态。
+     * @returns {void}
+     */
+    deactivate() {
+        if (!this.isHover) return;
+        this.isHover = false;
+        if (!this.isActive) this.repaint();
+    }
+
+    /**
+     * 处理左键抬起。
+     * @param {number} x
+     * @param {number} y
+     * @returns {boolean} - 命中且执行点击回调时返回 true
+     */
+    onLbtnUp(x, y) {
+        if (this.containsPoint(x, y) && this.fnClick) {
+            this.fnClick(x, y);
+            return true;
+        }
+        return false;
+    }
+}
+
 // ============================================================================
 // 3. 滚动条绘制
 // ============================================================================
+
 
 /**
  * 绘制垂直滚动条

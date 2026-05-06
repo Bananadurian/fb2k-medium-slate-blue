@@ -2,12 +2,14 @@
  * @file cover_panel.js
  * @author XYSRe
  * @created 2025-12-16
- * @updated 2026-05-04
- * @version 2.2.0
+ * @updated 2026-05-06
+ * @version 2.3.0
  * @description 封面显示面板: 圆角渲染、背景控制器（主题色/封面提色/封面背景图）、同步封面加载 + LRU 缓存。
  */
 
 "use strict";
+
+window.DrawMode = 1;
 
 include("lib/utils.js");
 include("lib/data.js");
@@ -22,6 +24,7 @@ include("lib/background.js");
  * @typedef {Object} CoverPanelBackgroundGradientConfig
  * @property {boolean} enabled - 是否启用渐变背景
  * @property {number} angle - 渐变角度，推荐取值区间 [0, 360]
+ * @property {number} [span=2] - 渐变跨度（仅在 cover-color 且 enabled=true 时生效，最小值 2）
  */
 
 /**
@@ -56,25 +59,46 @@ include("lib/background.js");
 
 /** @type {CoverPanelConfig} */
 const PANEL_CFG = {
-  cornerRadius: _scale(20), // 封面圆角半径
-  margin: _scale(40), // 封面周围的全局边距 (Padding)
-  coverMode: "fit", // cover=裁剪填充, fit=完整显示
+  // 前景封面圆角半径（像素）；推荐 >= 0。
+  cornerRadius: _scale(20),
+  // 前景封面可用区域边距（像素）；推荐 >= 0。
+  margin: _scale(40),
+  // 前景封面绘制模式：
+  // - "fit": 完整显示，可能留边
+  // - "cover": 填满可用区域，可能裁切
+  coverMode: "fit",
 
   background: {
-    mode: "cover-image", // theme | cover-color | cover-image
+    // 背景模式：
+    // - "theme": 仅使用主题背景色
+    // - "cover-color": 使用封面提色（无封面回退主题色）
+    // - "cover-image": 使用封面图作为背景（无封面回退主题色）
+    mode: "cover-color",
     gradient: {
-      enabled: true, // theme/cover-color 模式参与；theme 下通常视觉近似纯色
-      angle: 90, // 渐变角度 [0, 360], 仅在参与渐变绘制的模式生效
+      // 渐变仅在 theme / cover-color 参与底色绘制时生效；cover-image 下不参与底图绘制。
+      enabled: true,
+      // 渐变角度，推荐 [0, 360]。
+      angle: 90,
+      // 渐变跨度：2=第1色与第2色，5=第1色与第5色（不足则回退最后可用色）。
+      span: 10,
     },
     image: {
-      scaleMode: "cover", // cover=裁剪填充, fit=完整显示（仅 cover-image 模式生效）
-      blurRadius: 50, // 模糊半径 [0, 200], 0=不模糊（仅 cover-image 模式生效）
-      cacheSize: 3, // 背景图缓存条目数, 最小值 1（仅 cover-image 模式生效）
+      // 仅在 mode="cover-image" 生效：
+      // - "cover": 铺满区域，可能裁切
+      // - "fit": 完整显示，可能留边
+      scaleMode: "cover",
+      // 仅在 mode="cover-image" 生效，范围 [0, 200]，越大越模糊。
+      blurRadius: 100,
+      // 仅在 mode="cover-image" 生效，最小 1；越大占用越多内存但重建更少。
+      cacheSize: 3,
     },
     mask: {
-      enabled: false, // 所有 mode 都生效
-      color: _rgb(255, 255, 255), // 遮罩 RGB 颜色（所有 mode 都生效）
-      alpha: 20, // 遮罩透明度 [0, 255]（所有 mode 都生效）
+      // 遮罩在所有 mode 都生效。
+      enabled: false,
+      // 遮罩 RGB 颜色（alpha 由下方 alpha 控制）。
+      color: _rgb(255, 255, 255),
+      // 遮罩透明度，范围 [0, 255]；0=透明，255=不透明。
+      alpha: 20,
     },
   },
 };
@@ -90,11 +114,8 @@ let currentImgRounded = null;
 let currentMetadb = null;
 let currentTrackKey = "";
 
-// 封面绘制的预计算布局 (on_size / 切歌时更新，on_paint 直接使用)
 const coverRect = { x: 0, y: 0, w: 0, h: 0 };
 
-// 封面缓存：LRU，上限 min(5, THEME.CFG.CACHE_SIZE)
-// Key = "%album artist% - %album%"，Value = { imgRounded, bgColors, rawImg }
 const coverKeyTf = fb.TitleFormat("%album artist% - %album%");
 const coverCache = new LRUCache(Math.min(5, THEME.CFG.CACHE_SIZE), (entry) => {
   if (entry && entry.imgRounded && typeof entry.imgRounded.Dispose === "function") {
@@ -110,22 +131,38 @@ const coverCache = new LRUCache(Math.min(5, THEME.CFG.CACHE_SIZE), (entry) => {
   }
 });
 
-const background = createPanelBackgroundController({
-  mode: PANEL_CFG.background.mode,
-  gradient: PANEL_CFG.background.gradient,
-  image: PANEL_CFG.background.image,
-  mask: PANEL_CFG.background.mask,
-  cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
-  keyTf: coverKeyTf,
+const backgroundAuto = createPanelBackgroundAutoController({
+  background: {
+    mode: PANEL_CFG.background.mode,
+    gradient: PANEL_CFG.background.gradient,
+    image: PANEL_CFG.background.image,
+    mask: PANEL_CFG.background.mask,
+    cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
+    keyTf: coverKeyTf,
+  },
+  getPreferredMetadb: function () {
+    return currentMetadb;
+  },
+  getTargetSize: function () {
+    return { w: panelW, h: panelH };
+  },
+  getAlbumArt: function (metadb) {
+    if (!metadb) return null;
+    const key = coverKeyTf.EvalWithMetadb(metadb) || metadb.Path;
+    const cached = coverCache.get(key);
+    if (cached) {
+      if (cached.rawImg) return cached.rawImg;
+      if (cached.artMissing) return null;
+    }
+    return utils.GetAlbumArtV2(metadb, 0);
+  },
 });
-background.setThemeColor(THEME.COL.BG);
-background.resetToThemeColor();
+backgroundAuto.setThemeColor(THEME.COL.BG);
+backgroundAuto.sync();
 
 // ==========================================
 // 3. 业务逻辑 (Business Logic)
 // ==========================================
-
-// _createRoundedImage / _extractImageColors 来自 lib/utils.js
 
 /** @returns {boolean} */
 function isCoverImageMode() {
@@ -133,8 +170,7 @@ function isCoverImageMode() {
 }
 
 /**
- * 预计算封面绘制矩形 (存入 coverRect): cover=填满可用区, fit=完整显示
- * @param {GdiBitmap|null} img - 封面图像, null 时清零
+ * @param {GdiBitmap|null} img
  */
 function recalculateLayout(img) {
   if (!img) {
@@ -160,28 +196,6 @@ function recalculateLayout(img) {
 }
 
 /**
- * 从当前缓存重建 cover-image 背景位图（尺寸变化时使用）
- * @returns {void}
- */
-function rebuildBackgroundForCurrentTrack() {
-  if (!isCoverImageMode()) return;
-  if (!currentTrackKey || !currentMetadb) {
-    background.updateBackgroundImage(null, null, panelW, panelH);
-    return;
-  }
-
-  const cached = coverCache.get(currentTrackKey);
-  if (cached && cached.rawImg) {
-    background.updateBackgroundImage(currentMetadb, cached.rawImg, panelW, panelH);
-  } else {
-    background.updateBackgroundImage(null, null, panelW, panelH);
-  }
-}
-
-/**
- * 加载音轨封面数据并刷新面板
- * 缓存命中 → 复用 imgRounded，并按模式恢复背景
- * 缓存未命中 → GetAlbumArtV2 → 背景预处理 + _createRoundedImage → 写入缓存
  * @param {FbMetadbHandle|null} metadb
  */
 function updatePanelData(metadb) {
@@ -190,15 +204,25 @@ function updatePanelData(metadb) {
     currentTrackKey = "";
     currentImgRounded = null;
     recalculateLayout(null);
-    background.updateBackgroundImage(null, null, panelW, panelH);
-    background.resetToThemeColor();
+    backgroundAuto.sync();
     window.Repaint();
     return;
   }
 
-  currentMetadb = metadb;
-
   const key = coverKeyTf.EvalWithMetadb(metadb) || metadb.Path;
+  // 同轨且已有圆角图时直接返回，避免重复同步与重绘。
+  if (key === currentTrackKey && currentMetadb && currentImgRounded) {
+    return;
+  }
+
+  const sameTrack = key === currentTrackKey && currentMetadb;
+  const sameTrackCached = coverCache.get(key);
+  // 同轨且已知无封面时直接返回，避免重复触发无效同步与重绘。
+  if (sameTrack && sameTrackCached && sameTrackCached.artMissing) {
+    return;
+  }
+
+  currentMetadb = metadb;
   currentTrackKey = key;
   const cached = coverCache.get(key);
 
@@ -207,14 +231,14 @@ function updatePanelData(metadb) {
 
     if (isCoverImageMode()) {
       if (cached.rawImg) {
-        background.updateBackgroundImage(metadb, cached.rawImg, panelW, panelH);
+        backgroundAuto.sync(metadb, cached.rawImg);
       } else {
-        background.updateBackgroundImage(null, null, panelW, panelH);
+        backgroundAuto.sync();
       }
     } else if (cached.bgColors) {
-      background.applyColors(cached.bgColors);
+      backgroundAuto.getController().applyColors(cached.bgColors);
     } else {
-      background.updateFromMetadb(metadb, cached.rawImg || null);
+      backgroundAuto.sync();
     }
 
     recalculateLayout(currentImgRounded);
@@ -225,10 +249,8 @@ function updatePanelData(metadb) {
   const rawImg = utils.GetAlbumArtV2(metadb, 0);
 
   if (rawImg) {
-    if (isCoverImageMode()) {
-      background.updateBackgroundImage(metadb, rawImg, panelW, panelH);
-    } else {
-      background.updateFromMetadb(metadb, rawImg);
+    if (!isCoverImageMode()) {
+      backgroundAuto.getController().updateFromMetadb(metadb, rawImg);
     }
 
     recalculateLayout(rawImg);
@@ -242,9 +264,14 @@ function updatePanelData(metadb) {
 
     coverCache.set(key, {
       imgRounded: currentImgRounded || null,
-      bgColors: background.getColors(),
+      bgColors: backgroundAuto.getController().getColors(),
       rawImg: isCoverImageMode() ? rawImg : null,
+      artMissing: false,
     });
+
+    if (isCoverImageMode()) {
+      backgroundAuto.sync(metadb, rawImg);
+    }
 
     if (!isCoverImageMode() && typeof rawImg.Dispose === "function") {
       rawImg.Dispose();
@@ -252,8 +279,13 @@ function updatePanelData(metadb) {
   } else {
     currentImgRounded = null;
     recalculateLayout(null);
-    background.updateBackgroundImage(null, null, panelW, panelH);
-    background.resetToThemeColor();
+    coverCache.set(key, {
+      imgRounded: null,
+      bgColors: backgroundAuto.getController().getColors(),
+      rawImg: null,
+      artMissing: true,
+    });
+    backgroundAuto.sync();
   }
 
   window.Repaint();
@@ -265,12 +297,12 @@ function on_size() {
   panelW = window.Width;
   panelH = window.Height;
   recalculateLayout(currentImgRounded);
-  rebuildBackgroundForCurrentTrack();
+  backgroundAuto.onResize();
 }
 
 /** @param {GdiGraphics} gr @returns {void} */
 function on_paint(gr) {
-  background.paint(gr, 0, 0, panelW, panelH);
+  backgroundAuto.paint(gr, 0, 0, panelW, panelH);
 
   if (currentImgRounded) {
     gr.DrawImage(
@@ -307,7 +339,7 @@ function on_playback_new_track(metadb) {
 }
 
 /**
- * @param {number} reason - 停止原因，2 表示切歌中
+ * @param {number} reason
  * @returns {void}
  */
 function on_playback_stop(reason) {
@@ -329,8 +361,8 @@ function on_playlist_items_selection_change() {
 /** @returns {void} */
 function on_colours_changed() {
   _refreshThemeColors();
-  background.setThemeColor(THEME.COL.BG);
-  background.resetToThemeColor();
+  backgroundAuto.setThemeColor(THEME.COL.BG);
+  backgroundAuto.getController().resetToThemeColor();
   window.Repaint();
 }
 
@@ -347,7 +379,7 @@ function on_font_changed() {
 /** @returns {void} */
 function on_script_unload() {
   coverCache.clear();
-  background.clearCache();
+  backgroundAuto.clearCache();
   currentImgRounded = null;
   currentMetadb = null;
   currentTrackKey = "";
