@@ -44,8 +44,8 @@ function createTitleBarController(cfg) {
     const tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
 
     const images = {
-        icon: _loadImage(IMGS_LUCIDE_DIR + "list-music.png"),
-        chevron: _loadImage(IMGS_LUCIDE_DIR + "chevron-down.png"),
+        icon: _loadImage(IMGS_LUCIDE_DIR + cfg.icon),
+        // chevron: _loadImage(IMGS_LUCIDE_DIR + "chevron-down.png"),
         button: _loadImage(IMGS_LUCIDE_DIR + cfg.buttonIconFilename),
         button_hover: _loadImage(IMGS_LUCIDE_DIR + cfg.buttonHoverIconFilename),
     };
@@ -138,20 +138,20 @@ function createTitleBarController(cfg) {
             layout.textH,
             0,
         );
-
-        if (images.chevron) {
-            gr.DrawImage(
-                images.chevron,
-                layout.startX + layout.textH + layout.textW + _scale(6),
-                layout.contentY,
-                layout.textH,
-                layout.textH,
-                0,
-                0,
-                images.chevron.Width,
-                images.chevron.Height,
-            );
-        }
+        // 文字傍边那个展开符号，由于无法操作，取消该指示图标
+        // if (images.chevron) {
+        //     gr.DrawImage(
+        //         images.chevron,
+        //         layout.startX + layout.textH + layout.textW + _scale(6),
+        //         layout.contentY,
+        //         layout.textH,
+        //         layout.textH,
+        //         0,
+        //         0,
+        //         images.chevron.Width,
+        //         images.chevron.Height,
+        //     );
+        // }
 
         const current_btn_img = button.isHover ? button.imgHover : button.img;
         if (current_btn_img) {

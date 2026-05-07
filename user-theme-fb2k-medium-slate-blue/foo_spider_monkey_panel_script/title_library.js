@@ -22,10 +22,11 @@ window.DefineScript("Title Library", {
 
 /** @type {TitleBarController} */
 const controller = createTitleBarController({
+  icon: "library.png",
   buttonIconFilename: "folder-search.png",
   buttonHoverIconFilename: "folder-search_hover.png",
-  buttonTooltip: "资料库搜索",
-  getDisplayText: () => "资料库",
+  buttonTooltip: "音乐库搜索",
+  getDisplayText: () => "音乐库",
   onButtonClick: () => fb.RunMainMenuCommand("Library/Search"),
 });
 

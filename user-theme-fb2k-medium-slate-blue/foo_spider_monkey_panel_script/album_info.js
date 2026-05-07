@@ -214,6 +214,7 @@ function reloadAlbumData(metadb) {
             } else {
                 window.RepaintRect(0, coverH, window.Width, window.Height - coverH);
             }
+            // window.Repaint();
         }
         return;
     }
@@ -507,8 +508,8 @@ function on_size() {
 }
 
 function on_paint(gr) {
-    gr.SetSmoothingMode(0); 
-    gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
+    gr.SetSmoothingMode(0);
+    if (!window.IsTransparent) gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
 
     if (!albumData) {
         _drawEmptyState(gr, errorText, THEME.FONT.BODY, COL.FG, window.Width, window.Height);
@@ -818,7 +819,9 @@ function on_playlist_items_selection_change() {
         albumData = null;
         errorText = "请选择或播放歌曲...";
         window.Repaint();
+        // return
     }
+    // window.Repaint();
 }
 
 function on_colours_changed() {

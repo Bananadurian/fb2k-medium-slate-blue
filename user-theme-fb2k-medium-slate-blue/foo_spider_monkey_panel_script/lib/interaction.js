@@ -801,7 +801,7 @@ function _drawPageIndicator(gr, currentIndex, totalCount, x, y, w, h, font, fgCo
 function _drawScrollText(gr, text, font, color, x, y, w, h, flags, bgColor, panelW, headerH) {
     if (!text) return;
     gr.GdiDrawText(text, font, color, x, y, w, h, flags);
-    gr.FillSolidRect(0, 0, panelW, headerH, bgColor);
+    if (!window.IsTransparent) gr.FillSolidRect(0, 0, panelW, headerH, bgColor);
 }
 
 // ============================================================================

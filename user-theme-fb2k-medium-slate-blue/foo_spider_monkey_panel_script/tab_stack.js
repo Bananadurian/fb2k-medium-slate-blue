@@ -40,28 +40,30 @@ const TAB_BAR_BG_CFG = {
     // - "theme": 使用主题背景色
     // - "cover-color": 使用封面提色（无封面回退主题色）
     // - "cover-image": 使用封面图背景（无封面回退主题色）
-    mode: "theme",
+    mode: "cover-color",
     gradient: {
         // 渐变仅在 theme / cover-color 参与底色绘制时生效；cover-image 下不参与底图绘制。
-        enabled: false,
+        enabled: true,
         // 渐变角度，推荐 [0, 360]。
         angle: 90,
+        // 渐变跨度：2=第1色与第2色，5=第1色与第5色（不足则回退最后可用色）。
+        span: 10,        
     },
     image: {
         // 仅在 mode="cover-image" 生效：cover=铺满可能裁切；fit=完整显示可能留边。
         scaleMode: "cover",
         // 仅在 mode="cover-image" 生效，范围 [0, 200]，越大越模糊。
-        blurRadius: 50,
+        blurRadius: 150,
         // 仅在 mode="cover-image" 生效，最小 1；越大占用越多内存但重建更少。
         cacheSize: 3,
     },
     mask: {
         // 遮罩在所有 mode 都生效。
-        enabled: false,
+        enabled: true,
         // 遮罩 RGB 颜色（alpha 由下方 alpha 控制）。
         color: _rgb(0, 0, 0),
         // 遮罩透明度，范围 [0, 255]；0=透明，255=不透明。
-        alpha: 125,
+        alpha: 120,
     },
     // auto controller 颜色缓存条目数，最小 1。
     cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
@@ -77,13 +79,14 @@ const tabBarBackground = createPanelBackgroundAutoController({
         keyTf: fb.TitleFormat("%album artist% - %album%"),
     },
     getPreferredMetadb: function () {
-        const selection = fb.GetSelection();
-        if (selection) return selection;
+        // const selection = fb.GetSelection();
+        // const selection = fb.GetFocusItem();
+        // if (selection) return selection;
         if (fb.IsPlaying) return fb.GetNowPlaying();
         return null;
     },
     getTargetSize: function () {
-        return { w: window.Width, h: getTabBarHeight() };
+        return { w: window.Width, h: getBgPaintHeight() };
     },
     getAlbumArt: function (metadb) {
         return utils.GetAlbumArtV2(metadb, 0);
@@ -240,6 +243,9 @@ function recalcLayoutMetrics() {
 function getTabBarHeight() {
     return tabBarHeightCache;
 }
+function getBgPaintHeight() {
+    return window.IsTransparent ? window.Height : getTabBarHeight();
+}
 
 function layoutButtons() {
     if (!tabs.length || window.Width <= 0 || window.Height <= 0) return;
@@ -391,8 +397,7 @@ function on_size() {
     layoutButtons();
     layoutPanels();
     tabBarBackground.onResize();
-    const tabBarHeight = getTabBarHeight();
-    window.RepaintRect(0, 0, window.Width, tabBarHeight);
+    window.RepaintRect(0, 0, window.Width, getBgPaintHeight());
 }
 
 /**
@@ -400,8 +405,7 @@ function on_size() {
  * @returns {void}
  */
 function on_paint(gr) {
-    const tabBarHeight = getTabBarHeight();
-    tabBarBackground.paint(gr, 0, 0, window.Width, tabBarHeight);
+    tabBarBackground.paint(gr, 0, 0, window.Width, getBgPaintHeight());
     // tabBarBackground.paint(gr, 0, 0, window.Width, window.Height);
     // gr.DrawLine(0, tabBarHeight - 1, window.Width, tabBarHeight - 1, 1, THEME.COL.FRAME);
 
@@ -485,7 +489,7 @@ function on_colours_changed() {
         }
     }
     tabBarBackground.sync();
-    window.RepaintRect(0, 0, window.Width, getTabBarHeight());
+    window.RepaintRect(0, 0, window.Width, getBgPaintHeight());
 }
 
 function on_font_changed() {
@@ -498,24 +502,24 @@ function on_font_changed() {
     layoutButtons();
     layoutPanels();
     tabBarBackground.onResize();
-    window.RepaintRect(0, 0, window.Width, getTabBarHeight());
+    window.RepaintRect(0, 0, window.Width, getBgPaintHeight());
 }
 
 function on_playback_new_track(metadb) {
     tabBarBackground.sync();
-    window.RepaintRect(0, 0, window.Width, getTabBarHeight());
+    window.RepaintRect(0, 0, window.Width, getBgPaintHeight());
 }
 
 function on_playback_stop(reason) {
     if (reason !== 2) {
         tabBarBackground.sync();
-        window.RepaintRect(0, 0, window.Width, getTabBarHeight());
+        window.RepaintRect(0, 0, window.Width, getBgPaintHeight());
     }
 }
 
 function on_playlist_items_selection_change() {
     tabBarBackground.sync();
-    window.RepaintRect(0, 0, window.Width, getTabBarHeight());
+    window.RepaintRect(0, 0, window.Width, getBgPaintHeight());
 }
 
 /**

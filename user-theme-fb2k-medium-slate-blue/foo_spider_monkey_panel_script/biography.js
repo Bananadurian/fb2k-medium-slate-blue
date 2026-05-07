@@ -250,7 +250,7 @@ function scheduleDeferredRefresh(seq) {
 function on_paint(gr) {
     // 1. 绘制背景 (关闭抗锯齿以保持矩形边缘锐利)
     gr.SetSmoothingMode(0);
-    gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
+    if (!window.IsTransparent) gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
 
     if (!artistData) {
         _drawEmptyState(gr, errorText, THEME.FONT.TITLE, COL.FG, window.Width, window.Height);
@@ -986,6 +986,7 @@ function on_playlist_items_selection_change() {
             window.Repaint();
         }
     }
+    // console.log("=========" + window.IsTransparent)
 }
 
 function on_colours_changed() {

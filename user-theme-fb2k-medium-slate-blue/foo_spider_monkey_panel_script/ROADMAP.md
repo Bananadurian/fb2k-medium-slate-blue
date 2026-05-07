@@ -49,3 +49,13 @@
 - 检查控制器createTitleBarController、createPanelBackgroundController是否会内存泄露！
 
 - 添加window.DrawMode，优化卡丁面板！
+
+- Pseudo Transparent: window.IsTransparent 伪透明模式
+  - *艺人面板*
+  - 专辑面板：已添加，但是在选中其它曲目的时候背景会出问题，原因未知
+
+- 统一管理播放状态？
+
+- 添加一个通用背景panel
+
+- 播放控制栏使用封面颜色

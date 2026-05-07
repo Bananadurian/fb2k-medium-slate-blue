@@ -28,6 +28,7 @@ Repaint, color/font retrieval, cursor, popup menu, tooltip, script definition, t
 - Panel APIs: `GetPanel`, `GetPanelByIndex`
 - Runtime button APIs: `CreateButton`, `RadioButtons`, `GetButton`, `RemoveButton`
 - Track panel mouse callbacks require JSplitter tracking enabled.
+- `window.IsTransparent` (boolean, read-only) — JSplitter 伪透明模式开关，由 `SupportPseudoTransparency` 配置项控制。为 true 时面板需跳过纯色背景填充（`FillSolidRect`），以透出下层内容。
 
 ## 3. Core Objects
 - `FbMetadbHandle` / `FbMetadbHandleList`

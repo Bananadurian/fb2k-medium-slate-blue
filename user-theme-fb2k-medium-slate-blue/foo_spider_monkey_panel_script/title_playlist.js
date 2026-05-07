@@ -22,6 +22,7 @@ window.DefineScript("Title Playlist", {
 
 /** @type {TitleBarController} */
 const controller = createTitleBarController({
+  icon: "list-music.png",
   buttonIconFilename: "plus.png",
   buttonHoverIconFilename: "plus_hover.png",
   buttonTooltip: "新增播放列表",
