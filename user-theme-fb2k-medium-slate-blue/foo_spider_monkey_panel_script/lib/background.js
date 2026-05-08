@@ -65,7 +65,7 @@ const BG_SOURCE_EXPLICIT_NO_ART = "explicit-no-art";
  * @property {function(): void} resetToThemeColor
  * @property {function(FbMetadbHandle|null, GdiBitmap|null): void} updateFromMetadb
  * @property {function(FbMetadbHandle|null, GdiBitmap|null, number, number): void} updateBackgroundImage
- * @property {function(FbMetadbHandle|null): boolean} hasColorCacheForMetadb
+ * @property {function(FbMetadbHandle|null): boolean} tryApplyCachedColorsByMetadb
  * @property {function(PanelBackgroundColors): void} applyColors
  * @property {function(): PanelBackgroundColors} getColors
  * @property {function(GdiGraphics, number, number, number, number): void} paint
@@ -143,6 +143,9 @@ function createPanelBackgroundController(cfg) {
 
     let bgImage = null;
     let bgImageKey = "";
+
+    let lastGradientFillKey = "";
+    let lastGradientFillImage = null;
 
     const maskEnabled = !!maskCfg.enabled;
     const maskAlpha = _clamp(Math.round(maskCfg.alpha || 0), 0, 255);
@@ -222,7 +225,7 @@ function createPanelBackgroundController(cfg) {
         );
     }
 
-    /** @param {number} color */
+    /** @param {number} color - 仅更新主题基色，不会立即触发重绘或重算 */
     function setThemeColor(color) {
         if (typeof color === "number") themeColor = color;
     }
@@ -235,14 +238,19 @@ function createPanelBackgroundController(cfg) {
      * @param {FbMetadbHandle|null} metadb
      * @returns {boolean}
      */
-    function hasColorCacheForMetadb(metadb) {
+    function tryApplyCachedColorsByMetadb(metadb) {
         if (!metadb) return false;
         const key = getTrackKey(metadb);
         if (!key) return false;
-        return !!colorCache.get(key);
+        const cached = colorCache.get(key);
+        if (!cached) return false;
+        applyColors(cached.c1, cached.c2);
+        return true;
     }
 
     /**
+     * 根据 metadb + rawImg 更新 cover-color/theme 颜色状态。
+     * key 为空时不使用 colorCache，避免空键碰撞导致跨曲目串色。
      * @param {FbMetadbHandle|null} metadb
      * @param {GdiBitmap|null} rawImg
      */
@@ -262,6 +270,16 @@ function createPanelBackgroundController(cfg) {
         }
 
         const key = getTrackKey(metadb);
+        if (!key) {
+            if (!rawImg) {
+                resetToThemeColor();
+                return;
+            }
+            const directColors = _extractImageColors(rawImg, gradientEnabled, themeColor, gradientSpan);
+            applyColors(directColors.c1, directColors.c2);
+            return;
+        }
+
         const cached = colorCache.get(key);
         if (cached) {
             applyColors(cached.c1, cached.c2);
@@ -277,6 +295,7 @@ function createPanelBackgroundController(cfg) {
         applyColors(colors.c1, colors.c2);
         colorCache.set(key, { c1: color1, c2: color2 });
     }
+
 
     /**
      * @param {FbMetadbHandle|null} metadb
@@ -351,14 +370,25 @@ function createPanelBackgroundController(cfg) {
     }
 
     /**
+     * 生成用于 round-rect+gradient 的填充位图。
+     * 热路径优先命中最近一次渲染签名，避免每帧重复 LRU 查询。
      * @param {number} width
      * @param {number} height
      * @returns {GdiBitmap|null}
      */
     function getGradientFillImage(width, height) {
         const key = buildGradientRenderKey(width, height);
+
+        if (lastGradientFillImage && lastGradientFillKey === key) {
+            return lastGradientFillImage;
+        }
+
         const cached = gradientFillCache.get(key);
-        if (cached) return cached;
+        if (cached) {
+            lastGradientFillKey = key;
+            lastGradientFillImage = cached;
+            return cached;
+        }
 
         const bmp = gdi.CreateImage(width, height);
         if (!bmp) return null;
@@ -375,6 +405,8 @@ function createPanelBackgroundController(cfg) {
         }
 
         gradientFillCache.set(key, bmp);
+        lastGradientFillKey = key;
+        lastGradientFillImage = bmp;
         return bmp;
     }
 
@@ -451,6 +483,8 @@ function createPanelBackgroundController(cfg) {
         gradientFillCache.clear();
         bgImage = null;
         bgImageKey = "";
+        lastGradientFillKey = "";
+        lastGradientFillImage = null;
     }
 
     return {
@@ -458,7 +492,7 @@ function createPanelBackgroundController(cfg) {
         resetToThemeColor,
         updateFromMetadb,
         updateBackgroundImage,
-        hasColorCacheForMetadb,
+        tryApplyCachedColorsByMetadb,
         applyColors: applyColorsByObject,
         getColors,
         paint,
@@ -500,11 +534,15 @@ function createPanelBackgroundAutoController(opts) {
                     : null;
             };
 
+    const syncKeyTf = backgroundCfg.keyTf || fb.TitleFormat("%album artist% - %album%");
+
     let currentMetadb = null;
     let lastSyncedRawImg = null;
     let lastSourceHint = BG_SOURCE_AUTO_FETCH;
     let lastSizeW = -1;
     let lastSizeH = -1;
+    let lastAutoFetchMissTrackKey = "";
+    let lastCoverImageRenderSig = "";
 
     function getSize() {
         const size = getTargetSize() || { w: 0, h: 0 };
@@ -512,6 +550,19 @@ function createPanelBackgroundAutoController(opts) {
             w: Math.max(0, Math.floor(size.w || 0)),
             h: Math.max(0, Math.floor(size.h || 0)),
         };
+    }
+
+    /**
+     * @param {FbMetadbHandle|null} metadb
+     * @returns {string}
+     */
+    function getSyncTrackKey(metadb) {
+        if (!metadb) return "";
+        const keyByTf =
+            syncKeyTf && typeof syncKeyTf.EvalWithMetadb === "function"
+                ? syncKeyTf.EvalWithMetadb(metadb)
+                : "";
+        return keyByTf || metadb.Path || "";
     }
 
     /**
@@ -539,6 +590,20 @@ function createPanelBackgroundAutoController(opts) {
     }
 
     /**
+     * @param {string} trackKey
+     * @param {number} w
+     * @param {number} h
+     * @param {string} sourceHint
+     * @param {boolean} hasRaw
+     * @returns {string}
+     */
+    function buildCoverImageRenderSig(trackKey, w, h, sourceHint, hasRaw) {
+        return (trackKey || "") + "|" + w + "x" + h + "|" + sourceHint + "|" + (hasRaw ? 1 : 0);
+    }
+
+    /**
+     * 根据 sourceHint 同步背景状态，并更新 resize 复用状态。
+     * 仅在 cover-image 分支计算尺寸，避免非图像模式的无效热路径开销。
      * @param {FbMetadbHandle|null} metadb
      * @param {string} sourceHint
      * @param {GdiBitmap|null} rawImg
@@ -548,19 +613,29 @@ function createPanelBackgroundAutoController(opts) {
         currentMetadb = metadb;
         lastSourceHint = sourceHint;
 
-        const size = getSize();
-        lastSizeW = size.w;
-        lastSizeH = size.h;
-
         if (mode === "theme") {
             lastSyncedRawImg = null;
+            lastAutoFetchMissTrackKey = "";
+            lastCoverImageRenderSig = "";
+            lastSizeW = -1;
+            lastSizeH = -1;
             controller.resetToThemeColor();
             return;
         }
 
         if (!currentMetadb) {
             lastSyncedRawImg = null;
-            controller.updateBackgroundImage(null, null, size.w, size.h);
+            lastAutoFetchMissTrackKey = "";
+            lastCoverImageRenderSig = "";
+            if (mode === "cover-image") {
+                const size = getSize();
+                lastSizeW = size.w;
+                lastSizeH = size.h;
+                controller.updateBackgroundImage(null, null, size.w, size.h);
+            } else {
+                lastSizeW = -1;
+                lastSizeH = -1;
+            }
             controller.resetToThemeColor();
             return;
         }
@@ -568,28 +643,63 @@ function createPanelBackgroundAutoController(opts) {
         if (
             mode === "cover-color" &&
             sourceHint === BG_SOURCE_AUTO_FETCH &&
-            controller.hasColorCacheForMetadb(currentMetadb)
+            controller.tryApplyCachedColorsByMetadb(currentMetadb)
         ) {
-            controller.updateFromMetadb(currentMetadb, null);
             lastSyncedRawImg = null;
+            lastAutoFetchMissTrackKey = "";
+            lastCoverImageRenderSig = "";
             return;
         }
 
         const sourceImg = resolveImageSource(currentMetadb, sourceHint, rawImg || null);
         lastSyncedRawImg = sourceImg || null;
 
+        let currentTrackKey = "";
+        if (sourceHint === BG_SOURCE_AUTO_FETCH || mode === "cover-image") {
+            currentTrackKey = getSyncTrackKey(currentMetadb);
+        }
+        if (sourceHint === BG_SOURCE_AUTO_FETCH) {
+            if (sourceImg && currentTrackKey) {
+                lastAutoFetchMissTrackKey = "";
+            } else if (!sourceImg && currentTrackKey) {
+                lastAutoFetchMissTrackKey = currentTrackKey;
+            }
+        } else {
+            lastAutoFetchMissTrackKey = "";
+        }
+
         if (mode === "cover-image") {
+            const size = getSize();
+            lastSizeW = size.w;
+            lastSizeH = size.h;
+
+            const nextSig = buildCoverImageRenderSig(
+                currentTrackKey,
+                size.w,
+                size.h,
+                sourceHint,
+                !!sourceImg,
+            );
+            if (nextSig === lastCoverImageRenderSig) {
+                return;
+            }
+
             if (sourceImg) {
                 controller.updateBackgroundImage(currentMetadb, sourceImg, size.w, size.h);
             } else {
                 controller.updateBackgroundImage(null, null, size.w, size.h);
                 controller.resetToThemeColor();
             }
+            lastCoverImageRenderSig = nextSig;
             return;
         }
 
+        lastCoverImageRenderSig = "";
+        lastSizeW = -1;
+        lastSizeH = -1;
         controller.updateFromMetadb(currentMetadb, sourceImg || null);
     }
+
 
     /**
      * @param {FbMetadbHandle|null} [metadb]
@@ -615,28 +725,31 @@ function createPanelBackgroundAutoController(opts) {
 
     /**
      * 兼容入口：
-     * - sync() / sync(metadb) -> auto fetch
-     * - sync(metadb, rawImg) -> with raw
-     * - sync(metadb, null) -> explicit no art
+     * - sync()：自动解析 preferred metadb 后走 auto-fetch
+     * - sync(metadb)：对指定 metadb 走 auto-fetch
+     * - sync(metadb, rawImg)：使用调用方提供的原图，不做 fallback 取图
+     * - sync(metadb, null)：显式无图路径，不做 fallback 取图
      * @param {FbMetadbHandle|null} [metadb]
      * @param {GdiBitmap|null} [rawImg]
      */
     function sync(metadb, rawImg) {
-        if (arguments.length >= 2) {
-            if (typeof rawImg === "undefined") {
-                syncAuto(metadb);
-                return;
-            }
-            if (rawImg) {
-                syncWithRaw(metadb || null, rawImg);
-            } else {
-                syncNoArt(metadb || null);
-            }
+        if (typeof rawImg === "undefined") {
+            syncAuto(metadb);
             return;
         }
-        syncAuto(metadb);
+        if (rawImg) {
+            syncWithRaw(metadb || null, rawImg);
+        } else {
+            syncNoArt(metadb || null);
+        }
     }
 
+    /**
+     * cover-image 模式尺寸变化回调：
+     * - 先复用 lastSyncedRawImg
+     * - auto-fetch 且同曲目已确认无图时，抑制重复取图
+     * - 通过 render signature 跳过同输入的重复 updateBackgroundImage 调用
+     */
     function onResize() {
         if (mode !== "cover-image") return;
 
@@ -646,14 +759,34 @@ function createPanelBackgroundAutoController(opts) {
         lastSizeH = size.h;
 
         if (!currentMetadb) {
+            const emptySig = buildCoverImageRenderSig("", size.w, size.h, lastSourceHint, false);
+            if (emptySig === lastCoverImageRenderSig) return;
             controller.updateBackgroundImage(null, null, size.w, size.h);
+            lastCoverImageRenderSig = emptySig;
             return;
         }
 
+        const currentTrackKey = getSyncTrackKey(currentMetadb);
         let rawImg = lastSyncedRawImg;
         if (!rawImg && lastSourceHint === BG_SOURCE_AUTO_FETCH) {
-            rawImg = resolveImageSource(currentMetadb, BG_SOURCE_AUTO_FETCH, null);
+            if (!(currentTrackKey && currentTrackKey === lastAutoFetchMissTrackKey)) {
+                rawImg = resolveImageSource(currentMetadb, BG_SOURCE_AUTO_FETCH, null);
+                if (rawImg && currentTrackKey) {
+                    lastAutoFetchMissTrackKey = "";
+                } else if (!rawImg && currentTrackKey) {
+                    lastAutoFetchMissTrackKey = currentTrackKey;
+                }
+            }
         }
+
+        const nextSig = buildCoverImageRenderSig(
+            currentTrackKey,
+            size.w,
+            size.h,
+            lastSourceHint,
+            !!rawImg,
+        );
+        if (nextSig === lastCoverImageRenderSig) return;
 
         if (rawImg) {
             lastSyncedRawImg = rawImg;
@@ -663,8 +796,15 @@ function createPanelBackgroundAutoController(opts) {
             controller.updateBackgroundImage(null, null, size.w, size.h);
             controller.resetToThemeColor();
         }
+
+        lastCoverImageRenderSig = nextSig;
     }
 
+
+
+    /**
+     * 清空内部缓存与同步状态，确保后续从干净状态重新同步。
+     */
     function clearCache() {
         controller.clearCache();
         currentMetadb = null;
@@ -672,6 +812,8 @@ function createPanelBackgroundAutoController(opts) {
         lastSourceHint = BG_SOURCE_AUTO_FETCH;
         lastSizeW = -1;
         lastSizeH = -1;
+        lastAutoFetchMissTrackKey = "";
+        lastCoverImageRenderSig = "";
     }
 
     return {
