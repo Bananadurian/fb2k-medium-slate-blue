@@ -33,29 +33,63 @@ Typical `on_script_unload` responsibilities:
 
 Rule: if bitmap lifecycle is cache-owned with eviction disposal, do not dispose same bitmap again elsewhere.
 
-## 5. Background Controller Pattern (`lib/background.js`, `cover_panel.js`, `tab_stack.js`)
-- Integration entry: prefer `createPanelBackgroundAutoController(...)`; keep `createPanelBackgroundController(...)` as low-level primitive.
-- Compatibility rule: `backgroundAuto.sync()` must remain usable for panels without pre-fetched cover bitmaps (e.g. `tab_stack.js`).
-- Reuse rule: when panel already has `rawImg` (e.g. `cover_panel.js`), pass it to background sync to avoid duplicate `GetAlbumArtV2`.
-- Resize rule (`cover-image`): prefer reusing last synced raw image before fallback fetching.
+## 5. Background Controller Pattern (`lib/background.js`, `cover_panel.js`, `tab_stack.js`, `bg_panel.js`)
+- Integration entry: prefer `createPanelBackgroundLayer(...)`.
+- Architecture layering:
+  - `createPanelBackgroundController(...)` as low-level rendering/cache primitive
+  - `createPanelBackgroundAutoController(...)` as source-hint + sync strategy adapter
+  - `createPanelBackgroundLayer(...)` as panel-facing paint/sync wrapper
+- Standard sync API:
+  - `sync()` / `sync(metadb)` for default auto-fetch path
+  - `syncWithRaw(metadb, rawImg)` to avoid duplicate fetch when caller already has art
+  - `syncNoArt(metadb)` when caller explicitly confirms no art
+- Compatibility rule: legacy `sync(metadb?, rawImg?)` remains callable during migration and internally bridges to the standard API.
+- Reuse rule: when panel already has `rawImg` (e.g. `cover_panel.js`), prefer `syncWithRaw(...)`.
 - Paint order: background first, then foreground cover/fallback text.
 - Keep extraction, scaling, blur out of `on_paint`.
 
-### 5.1 Cover-driven cache and fast-path recipe
-- Keep negative-cache sentinel (`artMissing`) for no-cover tracks.
+### 5.1 Source hint and fetch behavior (`lib/background.js`)
+- Internal source hints:
+  - `BG_SOURCE_AUTO_FETCH`
+  - `BG_SOURCE_PROVIDED_RAW`
+  - `BG_SOURCE_EXPLICIT_NO_ART`
+- Fetch behavior contract:
+  - Auto path may call `getAlbumArt(...)` when needed.
+  - Provided-raw path never fallback-fetches.
+  - Explicit-no-art path never fallback-fetches.
+
+### 5.2 Cover-driven cache and fast-path recipe
+- Keep negative-cache sentinel (`artMissing`) for no-cover tracks in caller-owned caches when applicable.
 - For same-track repeated callbacks, allow fast-return when display state is already settled.
+- In `cover-color` mode, prefer color cache hit before fetching art.
 - If cache owns bitmap disposal via eviction/clear callback, do not add secondary dispose path.
 
-### 5.2 Gradient span recipe (`_extractImageColors`)
-- Shared function: `lib/utils.js::_extractImageColors(img, useGradient, fallbackColor, gradientSpan)`.
-- Backward compatibility: omit `gradientSpan` == default span `2` (same behavior as previous first+second color).
-- Span rule: `gradientSpan` minimum `2`; non-number/invalid values fallback to `2`.
-- Selection rule (`useGradient=true`):
-  - `c1` = first color
-  - `c2` = color at index `span - 1` (e.g. span=5 => 1st + 5th)
-  - if not enough colors, fallback to last available color
-- Single-color rule (`useGradient=false`): `c2 = c1`.
-- Config path: `lib/background.js` reads `gradient.span`; panel-level config can expose `background.gradient.span` (e.g. `cover_panel.js`).
+### 5.3 Resize rule (`cover-image`)
+- On resize, prefer reusing last synced raw image.
+- If no reusable image exists, only auto-fetch when last sync strategy was auto-fetch.
+- Skip rebuild when target size is unchanged.
+
+### 5.4 Round-rect fill recipe
+- `cover-image + round-rect`: use preprocessed rounded bitmap path.
+- `gradient + round-rect`: use gradient fill bitmap + round mask path.
+- For round-rect/image/gradient combinations, keep cache keys shape-aware.
+
+### 5.5 Transparent stack timing recipe (`tab_stack.js` + transparent child panels)
+- Playback callback rule: in `on_playback_new_track(metadb)`, prefer explicit target sync (`sync(metadb)`) over implicit now-playing lookup to avoid timing races.
+- Selection callback rule: resolve one explicit sync target first (`nowPlaying || selection || null`), then sync once.
+- Paint coverage rule: when parent panel provides background for transparent children, ensure repaint area covers full visible stack area.
+- Child-panel fallback rule: if transparent child panels still show transient previous-frame residue on track switch, allow one deferred repaint (`SetTimeout(..., 0)`) in child callback as a minimal stabilizer.
+
+### 5.6 `bg_panel.js` validation recipe
+- `bg_panel.js` is the dedicated validation panel for new background APIs.
+- Right-click menu is intentionally removed; change `PANEL_CFG` manually for deterministic testing.
+- Recommended manual matrix:
+  - mode: `theme` / `cover-color` / `cover-image`
+  - shape: `rect` / `round-rect`
+  - fill: gradient on/off
+  - sync mode: `SYNC_MODE_AUTO` / `SYNC_MODE_WITH_RAW` / `SYNC_MODE_NO_ART`
+- Expected behavior:
+  - `SYNC_MODE_NO_ART` with `cover-image` should not show cover image (falls back to theme/base color).
 
 ## 6. Performance Tuning Checklist
 - Repaint scope: prefer `window.RepaintRect(x, y, w, h)` over full `window.Repaint()`.

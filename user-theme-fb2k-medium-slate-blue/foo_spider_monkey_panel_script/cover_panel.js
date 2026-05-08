@@ -42,11 +42,18 @@ include("lib/background.js");
  */
 
 /**
+ * @typedef {Object} CoverPanelBackgroundShapeConfig
+ * @property {"rect"|"round-rect"} type - 背景形状类型
+ * @property {number} radius - 圆角半径（像素，<=0 等同矩形）
+ */
+
+/**
  * @typedef {Object} CoverPanelBackgroundConfig
  * @property {"theme"|"cover-color"|"cover-image"} mode - 背景模式
  * @property {CoverPanelBackgroundGradientConfig} gradient - 渐变配置（theme/cover-color 会参与；theme 下通常因 c1/c2 同色而视觉近似纯色）
  * @property {CoverPanelBackgroundImageConfig} image - 封面背景图配置（仅在 cover-image 模式生效）
  * @property {CoverPanelBackgroundMaskConfig} mask - 遮罩配置（所有 mode 都生效）
+ * @property {CoverPanelBackgroundShapeConfig} shape - 背景形状配置
  */
 
 /**
@@ -92,6 +99,12 @@ const PANEL_CFG = {
       // 仅在 mode="cover-image" 生效，最小 1；越大占用越多内存但重建更少。
       cacheSize: 3,
     },
+    shape: {
+      // 背景形状："rect"=矩形；"round-rect"=圆角矩形。
+      type: "round-rect",
+      // 圆角半径（像素，<=0 等同矩形）。
+      radius: _scale(200),
+    },
     mask: {
       // 遮罩在所有 mode 都生效。
       enabled: false,
@@ -131,11 +144,12 @@ const coverCache = new LRUCache(Math.min(5, THEME.CFG.CACHE_SIZE), (entry) => {
   }
 });
 
-const backgroundAuto = createPanelBackgroundAutoController({
+const backgroundAuto = createPanelBackgroundLayer({
   background: {
     mode: PANEL_CFG.background.mode,
     gradient: PANEL_CFG.background.gradient,
     image: PANEL_CFG.background.image,
+    shape: PANEL_CFG.background.shape,
     mask: PANEL_CFG.background.mask,
     cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
     keyTf: coverKeyTf,
@@ -143,8 +157,8 @@ const backgroundAuto = createPanelBackgroundAutoController({
   getPreferredMetadb: function () {
     return currentMetadb;
   },
-  getTargetSize: function () {
-    return { w: panelW, h: panelH };
+  getTargetRect: function () {
+    return { x: 0, y: 0, w: panelW, h: panelH };
   },
   getAlbumArt: function (metadb) {
     if (!metadb) return null;
@@ -302,7 +316,7 @@ function on_size() {
 
 /** @param {GdiGraphics} gr @returns {void} */
 function on_paint(gr) {
-  backgroundAuto.paint(gr, 0, 0, panelW, panelH);
+  backgroundAuto.paint(gr);
 
   if (currentImgRounded) {
     gr.DrawImage(

@@ -69,7 +69,7 @@ const TAB_BAR_BG_CFG = {
     cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
 };
 
-const tabBarBackground = createPanelBackgroundAutoController({
+const tabBarBackground = createPanelBackgroundLayer({
     background: {
         mode: TAB_BAR_BG_CFG.mode,
         gradient: TAB_BAR_BG_CFG.gradient,
@@ -85,8 +85,8 @@ const tabBarBackground = createPanelBackgroundAutoController({
         if (fb.IsPlaying) return fb.GetNowPlaying();
         return null;
     },
-    getTargetSize: function () {
-        return { w: window.Width, h: getBgPaintHeight() };
+    getTargetRect: function () {
+        return { x: 0, y: 0, w: window.Width, h: getBgPaintHeight() };
     },
     getAlbumArt: function (metadb) {
         return utils.GetAlbumArtV2(metadb, 0);
@@ -405,7 +405,7 @@ function on_size() {
  * @returns {void}
  */
 function on_paint(gr) {
-    tabBarBackground.paint(gr, 0, 0, window.Width, getBgPaintHeight());
+    tabBarBackground.paint(gr);
     // tabBarBackground.paint(gr, 0, 0, window.Width, window.Height);
     // gr.DrawLine(0, tabBarHeight - 1, window.Width, tabBarHeight - 1, 1, THEME.COL.FRAME);
 

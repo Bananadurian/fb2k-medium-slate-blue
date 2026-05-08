@@ -63,13 +63,17 @@ Buttons created by `window.CreateButton(...)` are JSplitter-owned runtime object
 - Keep expensive work out of `on_paint`.
 - In `cover_panel`-style flows, cover extraction, image scaling, and blur preprocessing must run outside `on_paint`.
 
-### 5.1 Background controller collaboration rules (`lib/background.js`, `cover_panel.js`, `tab_stack.js`)
-- Prefer `createPanelBackgroundAutoController(...)` as panel integration entry; keep `createPanelBackgroundController(...)` as stable low-level primitive.
-- Keep `backgroundAuto.sync()` legacy-compatible for panels that do not provide `rawImg`.
-- When a panel already has `rawImg`, prefer passing it into background sync to avoid duplicate fetch.
+### 5.1 Background controller collaboration rules (`lib/background.js`, `cover_panel.js`, `tab_stack.js`, `bg_panel.js`)
+- Prefer `createPanelBackgroundLayer(...)` as panel integration entry; keep `createPanelBackgroundAutoController(...)` as strategy adapter and `createPanelBackgroundController(...)` as stable low-level primitive.
+- Standard sync API:
+  - `sync()` / `sync(metadb)` for default auto-fetch flows
+  - `syncWithRaw(metadb, rawImg)` when caller already has album art
+  - `syncNoArt(metadb)` when caller explicitly confirms no art
+- Keep compatibility: existing `sync(metadb?, rawImg?)` remains callable during migration.
 - Keep album-art fetching strategy in panel/controller layers, never in `on_paint`.
 - For gradient extraction, support span-based color selection (e.g. span=5 picks 1st and 5th color) through shared utils/config path.
 - Detailed recipes and fast-path patterns belong in `docs/claude/patterns-recipes.md`.
+
 
 ### 5.2 Cache and fast-path rules for cover-driven panels
 - Keep negative-cache sentinel for no-cover tracks to avoid repeated no-op album-art fetch.
