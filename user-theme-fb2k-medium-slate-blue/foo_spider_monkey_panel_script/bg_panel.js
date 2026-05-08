@@ -29,18 +29,42 @@ const SYNC_MODE_WITH_RAW = "with-raw";
 const SYNC_MODE_NO_ART = "no-art";
 
 const PANEL_CFG = {
+    // 背景模式：
+    // - BG_MODE_THEME: 使用主题背景色
+    // - BG_MODE_COVER_COLOR: 使用封面提色（无封面回退主题色）
+    // - BG_MODE_COVER_IMAGE: 使用封面图背景（无封面回退主题色）
     mode: BG_MODE_COVER_IMAGE,
+
+    // 渐变仅在 mode=theme/cover-color 时参与底色绘制。
     gradientEnabled: true,
+    // 渐变角度，推荐 [0, 360]。
     gradientAngle: 90,
+    // 渐变跨度：2=第1色与第2色，5=第1色与第5色（不足时回退最后可用色）。
     gradientSpan: 10,
+
+    // 背景形状："rect"=矩形；"round-rect"=圆角矩形。
     shapeType: "round-rect",
+    // 圆角半径（像素，<=0 等同矩形）。
     shapeRadius: _scale(50),
+
+    // 仅在 mode=cover-image 生效："cover"=铺满可能裁切；"fit"=完整显示可能留边。
     imageScaleMode: "cover",
+    // 仅在 mode=cover-image 生效，范围 [0, 200]，越大越模糊。
     imageBlurRadius: 0,
+    // 仅在 mode=cover-image 生效，最小 1；越大占用更多内存但重建更少。
     imageCacheSize: 3,
+
+    // 遮罩在所有 mode 都生效。
     maskEnabled: true,
+    // 遮罩 RGB 颜色（alpha 由 maskAlpha 控制）。
     maskColor: _rgb(255, 255, 255),
+    // 遮罩透明度，范围 [0, 255]；0=透明，255=不透明。
     maskAlpha: 90,
+
+    // 同步策略：
+    // - SYNC_MODE_AUTO: 使用标准 auto-fetch 路径（sync / sync(metadb)）
+    // - SYNC_MODE_WITH_RAW: 调用方提供 raw 图（syncWithRaw），用于验证“无重复取图”路径
+    // - SYNC_MODE_NO_ART: 显式声明无图（syncNoArt），用于验证 no-art 回退路径
     syncMode: SYNC_MODE_AUTO,
 };
 
@@ -91,7 +115,11 @@ function getTrackKey(metadb) {
     return key || metadb.Path || "";
 }
 
-/** @returns {void} */
+/**
+ * 按当前 PANEL_CFG 重建背景 layer，并立即做一次同步。
+ * 该入口用于切换 mode/shape/fill 等配置后的快速验证。
+ * @returns {void}
+ */
 function recreateBackgroundLayer() {
     if (bgLayer) {
         bgLayer.clearCache();
@@ -138,6 +166,10 @@ function recreateBackgroundLayer() {
 }
 
 /**
+ * 根据 syncMode 选择标准 API 路径：
+ * - auto: sync / sync(metadb)
+ * - with-raw: syncWithRaw(metadb, rawImg)
+ * - no-art: syncNoArt(metadb)
  * @param {FbMetadbHandle|null} [metadb]
  * @returns {void}
  */

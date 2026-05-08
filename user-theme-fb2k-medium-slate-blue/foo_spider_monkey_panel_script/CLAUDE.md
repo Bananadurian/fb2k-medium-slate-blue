@@ -91,7 +91,7 @@ Active scripts:
 - `info+rating.js`, `album_info.js`, `biography.js`
 - `playback_buttons.js`, `control_buttons.js`
 - `title_playlist.js`, `title_library.js`
-- `cover_panel.js`, `tab_stack.js`
+- `cover_panel.js`, `tab_stack.js`, `bg_panel.js`
 
 Shared libs:
 - `lib/utils.js`, `lib/data.js`, `lib/interaction.js`, `lib/theme.js`, `lib/background.js`, `lib/title_bar_shared.js`

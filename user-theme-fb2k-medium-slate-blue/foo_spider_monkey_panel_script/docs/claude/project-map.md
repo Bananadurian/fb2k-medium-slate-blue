@@ -10,6 +10,7 @@
 - `title_library.js`: library title bar
 - `cover_panel.js`: cover display + background controller
 - `tab_stack.js`: JSplitter tab controller
+- `bg_panel.js`: background controller validation panel
 
 ## 2. Directory Layout
 - `lib/`: shared libs (`utils.js`, `data.js`, `interaction.js`, `theme.js`, `background.js`, `title_bar_shared.js`)
@@ -24,7 +25,7 @@
 ## 4. Canonical Reuse Targets
 - `lib/utils.js`: `_hitTest`, `_measureString`, `_measureDispose`, `_extractImageColors`
 - `lib/interaction.js`: `_setCursor`, `_drawScrollbar`, `_drawScrollText`, `_disposeImageDict`, `TextTab.getPreferredSize`, `TextTab.repaint`
-- `lib/background.js`: `createPanelBackgroundController`, `createPanelBackgroundAutoController`
+- `lib/background.js`: `createPanelBackgroundController`, `createPanelBackgroundAutoController`, `createPanelBackgroundLayer`
 - `lib/title_bar_shared.js`: `createTitleBarController`
 
 ## 5. Behavior Constraints Snapshot

@@ -81,38 +81,30 @@ const PANEL_CFG = {
     // - "cover-color": 使用封面提色（无封面回退主题色）
     // - "cover-image": 使用封面图作为背景（无封面回退主题色）
     mode: "cover-color",
-    gradient: {
-      // 渐变仅在 theme / cover-color 参与底色绘制时生效；cover-image 下不参与底图绘制。
-      enabled: true,
-      // 渐变角度，推荐 [0, 360]。
-      angle: 90,
-      // 渐变跨度：2=第1色与第2色，5=第1色与第5色（不足则回退最后可用色）。
-      span: 10,
-    },
-    image: {
-      // 仅在 mode="cover-image" 生效：
-      // - "cover": 铺满区域，可能裁切
-      // - "fit": 完整显示，可能留边
-      scaleMode: "cover",
-      // 仅在 mode="cover-image" 生效，范围 [0, 200]，越大越模糊。
-      blurRadius: 100,
-      // 仅在 mode="cover-image" 生效，最小 1；越大占用越多内存但重建更少。
-      cacheSize: 3,
-    },
-    shape: {
-      // 背景形状："rect"=矩形；"round-rect"=圆角矩形。
-      type: "round-rect",
-      // 圆角半径（像素，<=0 等同矩形）。
-      radius: _scale(200),
-    },
-    mask: {
-      // 遮罩在所有 mode 都生效。
-      enabled: false,
-      // 遮罩 RGB 颜色（alpha 由下方 alpha 控制）。
-      color: _rgb(255, 255, 255),
-      // 遮罩透明度，范围 [0, 255]；0=透明，255=不透明。
-      alpha: 20,
-    },
+    // 渐变仅在 theme / cover-color 参与底色绘制时生效；cover-image 下不参与底图绘制。
+    gradientEnabled: true,
+    // 渐变角度，推荐 [0, 360]。
+    gradientAngle: 90,
+    // 渐变跨度：2=第1色与第2色，5=第1色与第5色（不足则回退最后可用色）。
+    gradientSpan: 10,
+    // 仅在 mode="cover-image" 生效：
+    // - "cover": 铺满区域，可能裁切
+    // - "fit": 完整显示，可能留边
+    imageScaleMode: "cover",
+    // 仅在 mode="cover-image" 生效，范围 [0, 200]，越大越模糊。
+    imageBlurRadius: 100,
+    // 仅在 mode="cover-image" 生效，最小 1；越大占用越多内存但重建更少。
+    imageCacheSize: 3,
+    // 背景形状："rect"=矩形；"round-rect"=圆角矩形。
+    shapeType: "round-rect",
+    // 圆角半径（像素，<=0 等同矩形）。
+    shapeRadius: _scale(20),
+    // 遮罩在所有 mode 都生效。
+    maskEnabled: false,
+    // 遮罩 RGB 颜色（alpha 由下方 alpha 控制）。
+    maskColor: _rgb(255, 255, 255),
+    // 遮罩透明度，范围 [0, 255]；0=透明，255=不透明。
+    maskAlpha: 20,
   },
 };
 
@@ -147,10 +139,25 @@ const coverCache = new LRUCache(Math.min(5, THEME.CFG.CACHE_SIZE), (entry) => {
 const backgroundAuto = createPanelBackgroundLayer({
   background: {
     mode: PANEL_CFG.background.mode,
-    gradient: PANEL_CFG.background.gradient,
-    image: PANEL_CFG.background.image,
-    shape: PANEL_CFG.background.shape,
-    mask: PANEL_CFG.background.mask,
+    gradient: {
+      enabled: PANEL_CFG.background.gradientEnabled,
+      angle: PANEL_CFG.background.gradientAngle,
+      span: PANEL_CFG.background.gradientSpan,
+    },
+    image: {
+      scaleMode: PANEL_CFG.background.imageScaleMode,
+      blurRadius: PANEL_CFG.background.imageBlurRadius,
+      cacheSize: PANEL_CFG.background.imageCacheSize,
+    },
+    shape: {
+      type: PANEL_CFG.background.shapeType,
+      radius: PANEL_CFG.background.shapeRadius,
+    },
+    mask: {
+      enabled: PANEL_CFG.background.maskEnabled,
+      color: PANEL_CFG.background.maskColor,
+      alpha: PANEL_CFG.background.maskAlpha,
+    },
     cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
     keyTf: coverKeyTf,
   },

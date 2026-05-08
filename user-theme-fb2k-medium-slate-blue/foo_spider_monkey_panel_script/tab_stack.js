@@ -41,49 +41,54 @@ const TAB_BAR_BG_CFG = {
     // - "cover-color": 使用封面提色（无封面回退主题色）
     // - "cover-image": 使用封面图背景（无封面回退主题色）
     mode: "cover-color",
-    gradient: {
-        // 渐变仅在 theme / cover-color 参与底色绘制时生效；cover-image 下不参与底图绘制。
-        enabled: true,
-        // 渐变角度，推荐 [0, 360]。
-        angle: 90,
-        // 渐变跨度：2=第1色与第2色，5=第1色与第5色（不足则回退最后可用色）。
-        span: 10,        
-    },
-    image: {
-        // 仅在 mode="cover-image" 生效：cover=铺满可能裁切；fit=完整显示可能留边。
-        scaleMode: "cover",
-        // 仅在 mode="cover-image" 生效，范围 [0, 200]，越大越模糊。
-        blurRadius: 150,
-        // 仅在 mode="cover-image" 生效，最小 1；越大占用越多内存但重建更少。
-        cacheSize: 3,
-    },
-    mask: {
-        // 遮罩在所有 mode 都生效。
-        enabled: true,
-        // 遮罩 RGB 颜色（alpha 由下方 alpha 控制）。
-        color: _rgb(0, 0, 0),
-        // 遮罩透明度，范围 [0, 255]；0=透明，255=不透明。
-        alpha: 120,
-    },
+    // 渐变仅在 theme / cover-color 参与底色绘制时生效；cover-image 下不参与底图绘制。
+    gradientEnabled: true,
+    // 渐变角度，推荐 [0, 360]。
+    gradientAngle: 90,
+    // 渐变跨度：2=第1色与第2色，5=第1色与第5色（不足则回退最后可用色）。
+    gradientSpan: 10,
+    // 仅在 mode="cover-image" 生效：cover=铺满可能裁切；fit=完整显示可能留边。
+    imageScaleMode: "cover",
+    // 仅在 mode="cover-image" 生效，范围 [0, 200]，越大越模糊。
+    imageBlurRadius: 150,
+    // 仅在 mode="cover-image" 生效，最小 1；越大占用越多内存但重建更少。
+    imageCacheSize: 3,
+    // 遮罩在所有 mode 都生效。
+    maskEnabled: true,
+    // 遮罩 RGB 颜色（alpha 由下方 alpha 控制）。
+    maskColor: _rgb(0, 0, 0),
+    // 遮罩透明度，范围 [0, 255]；0=透明，255=不透明。
+    maskAlpha: 120,
     // auto controller 颜色缓存条目数，最小 1。
     cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
 };
 
+
 const tabBarBackground = createPanelBackgroundLayer({
     background: {
         mode: TAB_BAR_BG_CFG.mode,
-        gradient: TAB_BAR_BG_CFG.gradient,
-        image: TAB_BAR_BG_CFG.image,
-        mask: TAB_BAR_BG_CFG.mask,
+        gradient: {
+            enabled: TAB_BAR_BG_CFG.gradientEnabled,
+            angle: TAB_BAR_BG_CFG.gradientAngle,
+            span: TAB_BAR_BG_CFG.gradientSpan,
+        },
+        image: {
+            scaleMode: TAB_BAR_BG_CFG.imageScaleMode,
+            blurRadius: TAB_BAR_BG_CFG.imageBlurRadius,
+            cacheSize: TAB_BAR_BG_CFG.imageCacheSize,
+        },
+        mask: {
+            enabled: TAB_BAR_BG_CFG.maskEnabled,
+            color: TAB_BAR_BG_CFG.maskColor,
+            alpha: TAB_BAR_BG_CFG.maskAlpha,
+        },
         cacheSize: TAB_BAR_BG_CFG.cacheSize,
         keyTf: fb.TitleFormat("%album artist% - %album%"),
     },
     getPreferredMetadb: function () {
-        // const selection = fb.GetSelection();
-        // const selection = fb.GetFocusItem();
-        // if (selection) return selection;
-        if (fb.IsPlaying) return fb.GetNowPlaying();
-        return null;
+        const now = fb.IsPlaying ? fb.GetNowPlaying() : null;
+        const selection = fb.GetSelection();
+        return now || selection || null;
     },
     getTargetRect: function () {
         return { x: 0, y: 0, w: window.Width, h: getBgPaintHeight() };

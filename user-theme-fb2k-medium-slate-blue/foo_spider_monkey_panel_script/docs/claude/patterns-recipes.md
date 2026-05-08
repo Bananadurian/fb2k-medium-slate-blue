@@ -44,6 +44,8 @@ Rule: if bitmap lifecycle is cache-owned with eviction disposal, do not dispose 
   - `syncWithRaw(metadb, rawImg)` to avoid duplicate fetch when caller already has art
   - `syncNoArt(metadb)` when caller explicitly confirms no art
 - Compatibility rule: legacy `sync(metadb?, rawImg?)` remains callable during migration and internally bridges to the standard API.
+- Keep panel-side config style aligned (`cover_panel.js` / `tab_stack.js` / `bg_panel.js`) using flat fields (e.g. `gradientEnabled`, `imageScaleMode`, `shapeType`, `maskAlpha`), then map into `background.gradient/image/shape/mask` when calling `createPanelBackgroundLayer(...)`.
+- This keeps panel configs readable while preserving the stable background controller input contract.
 - Reuse rule: when panel already has `rawImg` (e.g. `cover_panel.js`), prefer `syncWithRaw(...)`.
 - Paint order: background first, then foreground cover/fallback text.
 - Keep extraction, scaling, blur out of `on_paint`.
@@ -68,6 +70,8 @@ Rule: if bitmap lifecycle is cache-owned with eviction disposal, do not dispose 
 - On resize, prefer reusing last synced raw image.
 - If no reusable image exists, only auto-fetch when last sync strategy was auto-fetch.
 - Skip rebuild when target size is unchanged.
+- Keep a render signature fast-path (track/size/source/raw-state) to skip repeated same-input rebuilds.
+- Keep auto-fetch miss suppression for no-art tracks to avoid repeated fetch attempts during continuous resize.
 
 ### 5.4 Round-rect fill recipe
 - `cover-image + round-rect`: use preprocessed rounded bitmap path.
