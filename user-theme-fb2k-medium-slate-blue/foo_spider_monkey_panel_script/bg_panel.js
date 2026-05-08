@@ -29,7 +29,7 @@ const SYNC_MODE_WITH_RAW = "with-raw";
 const SYNC_MODE_NO_ART = "no-art";
 
 const PANEL_CFG = {
-    mode: BG_MODE_COVER_COLOR,
+    mode: BG_MODE_COVER_IMAGE,
     gradientEnabled: true,
     gradientAngle: 90,
     gradientSpan: 10,
