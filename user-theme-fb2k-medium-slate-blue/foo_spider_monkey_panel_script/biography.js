@@ -964,6 +964,11 @@ function on_mouse_lbtn_up(x, y) {
 // 播放/停止/切歌 -> 触发数据更新
 function on_playback_new_track(metadb) {
     reloadArtistData(metadb);
+    if (window.IsTransparent) {
+        window.SetTimeout(() => {
+            window.Repaint();
+        }, 0);
+    }
 }
 
 function on_playback_stop(reason) {

@@ -211,6 +211,8 @@ function reloadAlbumData(metadb) {
             updateLayoutMetrics();
             if (coverReloaded) {
                 window.Repaint();
+            } else if (window.IsTransparent) {
+                window.Repaint();
             } else {
                 window.RepaintRect(0, coverH, window.Width, window.Height - coverH);
             }
@@ -800,6 +802,11 @@ function on_mouse_lbtn_up(x, y) {
 // 播放/选中 逻辑
 function on_playback_new_track(metadb) {
     reloadAlbumData(metadb);
+    if (window.IsTransparent) {
+        window.SetTimeout(() => {
+            window.Repaint();
+        }, 0);
+    }
 }
 
 function on_playback_stop(reason) {

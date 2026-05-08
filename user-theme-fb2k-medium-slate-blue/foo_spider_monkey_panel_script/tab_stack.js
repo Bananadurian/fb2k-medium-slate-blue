@@ -244,7 +244,7 @@ function getTabBarHeight() {
     return tabBarHeightCache;
 }
 function getBgPaintHeight() {
-    return window.IsTransparent ? window.Height : getTabBarHeight();
+    return window.Height;
 }
 
 function layoutButtons() {
@@ -506,7 +506,7 @@ function on_font_changed() {
 }
 
 function on_playback_new_track(metadb) {
-    tabBarBackground.sync();
+    tabBarBackground.sync(metadb);
     window.RepaintRect(0, 0, window.Width, getBgPaintHeight());
 }
 
@@ -518,7 +518,10 @@ function on_playback_stop(reason) {
 }
 
 function on_playlist_items_selection_change() {
-    tabBarBackground.sync();
+    const now = fb.IsPlaying ? fb.GetNowPlaying() : null;
+    const sel = fb.GetSelection();
+    const target = now || sel || null;
+    tabBarBackground.sync(target);
     window.RepaintRect(0, 0, window.Width, getBgPaintHeight());
 }
 
