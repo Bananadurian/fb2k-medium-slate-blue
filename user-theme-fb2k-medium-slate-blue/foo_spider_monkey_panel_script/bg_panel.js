@@ -2,13 +2,17 @@
  * @file bg_panel.js
  * @author XYSRe
  * @created 2026-05-08
- * @updated 2026-05-08
- * @version 1.0.0
- * @description 背景控制器专用测试面板：验证 lib/background.js 新标准调用与性能路径
+ * @updated 2026-05-10
+ * @version 1.1.1
+ * @description 背景控制器专用面板：支持封面提取色彩、高斯模糊背景，并优化了原生组件（如波形条）的伪透明同步。
  */
 
 "use strict";
 
+/** 启用 Direct2D 硬件加速渲染模式 */
+window.DrawMode = 1;
+
+// --- 外部库引入 ---
 include("lib/utils.js");
 include("lib/data.js");
 include("lib/theme.js");
@@ -16,50 +20,78 @@ include("lib/background.js");
 
 window.DefineScript("bg_panel", {
     author: "XYSRe",
-    version: "1.0.0",
+    version: "1.1.1",
     options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 
+// --- 常量定义 ---
+
+/** @const {string} 主题背景模式 */
 const BG_MODE_THEME = "theme";
+/** @const {string} 封面提色模式 */
 const BG_MODE_COVER_COLOR = "cover-color";
+/** @const {string} 封面图片模式 */
 const BG_MODE_COVER_IMAGE = "cover-image";
 
+/** @const {string} 自动同步策略 */
 const SYNC_MODE_AUTO = "auto";
+/** @const {string} 原生图片同步策略 */
 const SYNC_MODE_WITH_RAW = "with-raw";
+/** @const {string} 无图回退策略 */
 const SYNC_MODE_NO_ART = "no-art";
 
+/** 
+ * 面板核心配置对象
+ * @type {Object}
+ * @property {string} mode 背景渲染模式选择
+ * @property {boolean} gradientEnabled 是否开启渐变底色
+ * @property {number} gradientAngle 渐变角度 (0-360)
+ * @property {number} gradientSpan 渐变色彩跨度
+ * @property {string} shapeType 形状类型 ("rect" | "round-rect")
+ * @property {number} shapeRadius 圆角半径 (px)
+ * @property {number} padding 背景内边距 (px)
+ * @property {string} imageScaleMode 图片缩放模式 ("cover" | "fit")
+ * @property {number} imageBlurRadius 模糊半径 (0-200)
+ * @property {number} imageCacheSize 图片缓存数量
+ * @property {boolean} maskEnabled 是否启用遮罩层
+ * @property {number} maskColor 遮罩层颜色 (RGB)
+ * @property {number} maskAlpha 遮罩层透明度 (0-255)
+ * @property {string} syncMode 封面获取同步模式
+ */
 const PANEL_CFG = {
     // 背景模式：
     // - BG_MODE_THEME: 使用主题背景色
     // - BG_MODE_COVER_COLOR: 使用封面提色（无封面回退主题色）
     // - BG_MODE_COVER_IMAGE: 使用封面图背景（无封面回退主题色）
-    mode: BG_MODE_COVER_IMAGE,
+    mode: BG_MODE_THEME,
 
     // 渐变仅在 mode=theme/cover-color 时参与底色绘制。
     gradientEnabled: true,
     // 渐变角度，推荐 [0, 360]。
     gradientAngle: 90,
     // 渐变跨度：2=第1色与第2色，5=第1色与第5色（不足时回退最后可用色）。
-    gradientSpan: 10,
+    gradientSpan: 8,
 
     // 背景形状："rect"=矩形；"round-rect"=圆角矩形。
     shapeType: "round-rect",
     // 圆角半径（像素，<=0 等同矩形）。
-    shapeRadius: _scale(50),
+    shapeRadius: THEME.LAYOUT.CORNER_RADIUS,
+    // 背景内边距（像素）；用于控制背景与面板边缘的间距。
+    padding: _scale(8),
 
     // 仅在 mode=cover-image 生效："cover"=铺满可能裁切；"fit"=完整显示可能留边。
     imageScaleMode: "cover",
     // 仅在 mode=cover-image 生效，范围 [0, 200]，越大越模糊。
-    imageBlurRadius: 0,
+    imageBlurRadius: 150,
     // 仅在 mode=cover-image 生效，最小 1；越大占用更多内存但重建更少。
     imageCacheSize: 3,
 
     // 遮罩在所有 mode 都生效。
     maskEnabled: true,
     // 遮罩 RGB 颜色（alpha 由 maskAlpha 控制）。
-    maskColor: _rgb(255, 255, 255),
+    maskColor: THEME.COL.MASK,
     // 遮罩透明度，范围 [0, 255]；0=透明，255=不透明。
-    maskAlpha: 90,
+    maskAlpha: 255,
 
     // 同步策略：
     // - SYNC_MODE_AUTO: 使用标准 auto-fetch 路径（sync / sync(metadb)）
@@ -68,62 +100,101 @@ const PANEL_CFG = {
     syncMode: SYNC_MODE_AUTO,
 };
 
+// --- 状态变量 ---
+
+/** @type {number} 当前面板宽度 */
 let panelW = window.Width;
+/** @type {number} 当前面板高度 */
 let panelH = window.Height;
+/** @type {Object|null} 背景层实例对象 */
 let bgLayer = null;
 
-let titleFont = THEME.FONT.TITLE;
-let bodyFont = THEME.FONT.BODY;
+// --- 同步与计时器管理 ---
 
-let fetchCount = 0;
-let manualRawCount = 0;
-let noArtCount = 0;
-let lastTrackKey = "";
+/** @type {number} 当前同步版本纪元，用于废弃过时的异步请求 */
+let bgSyncEpoch = 0;
 
-const coverKeyTf = fb.TitleFormat("%album artist% - %album%");
+/** @type {number|null} 延迟同步主计时器 */
+let deferredBgSyncTimer = null;
+/** @type {number|null} 延迟同步补充计时器 */
+let deferredBgLateSyncTimer = null;
 
-/** @returns {FbMetadbHandle|null} */
+/** @type {number|null} 启动刷新主计时器 */
+let bgStartupKickTimer = null;
+/** @type {number|null} 启动刷新补充计时器 */
+let bgStartupKickLateTimer = null;
+/** @type {boolean} 启动刷新序列是否已完成 */
+let bgStartupKickDone = false;
+
+// --- 逻辑函数 ---
+
+/**
+ * 获取当前活动的媒体元数据句柄
+ * @returns {FbMetadbHandle|null} 优先返回播放中歌曲，其次返回选中的歌曲
+ */
 function getActiveMetadb() {
-    if (fb.IsPlaying) return fb.GetNowPlaying();
-    const selection = fb.GetSelection();
-    return selection || null;
+    return resolveMetadbByMode(METADB_RESOLVE_MODE.PLAYING_FIRST);
 }
 
 /**
- * @param {FbMetadbHandle} metadb
- * @returns {GdiBitmap|null}
+ * 从元数据中提取专辑封面
+ * @param {FbMetadbHandle} metadb 歌曲句柄
+ * @returns {GdiBitmap|null} 封面位图对象
  */
 function fetchAlbumArt(metadb) {
-    fetchCount += 1;
     return utils.GetAlbumArtV2(metadb, 0);
 }
 
-/** @returns {void} */
-function resetCounters() {
-    fetchCount = 0;
-    manualRawCount = 0;
-    noArtCount = 0;
-}
-
 /**
- * @param {FbMetadbHandle|null} metadb
- * @returns {string}
+ * 强制触发原生组件（Native Components）的背景重捕获。
+ * 原理：通过极小的进度跳转（10ms）绕过组件内部的等值判断，强制产生 Seek 信号。
  */
-function getTrackKey(metadb) {
-    if (!metadb) return "";
-    const key = coverKeyTf.EvalWithMetadb(metadb);
-    return key || metadb.Path || "";
+function syncNativePanel() {
+    if (fb.IsPlaying || fb.IsPaused) {
+        try {
+            const now = fb.PlaybackTime;
+            const delta = 0.01; 
+            fb.PlaybackTime = Math.max(0, now - delta);
+            fb.PlaybackTime = now;
+        } catch (e) {}
+    }
 }
 
 /**
- * 按当前 PANEL_CFG 重建背景 layer，并立即做一次同步。
- * 该入口用于切换 mode/shape/fill 等配置后的快速验证。
- * @returns {void}
+ * 清除所有与启动刷新相关的计时器
+ */
+function clearStartupKickTimers() {
+    if (bgStartupKickTimer) { window.ClearTimeout(bgStartupKickTimer); bgStartupKickTimer = null; }
+    if (bgStartupKickLateTimer) { window.ClearTimeout(bgStartupKickLateTimer); bgStartupKickLateTimer = null; }
+}
+
+/**
+ * 启动或重置播放时的“强效刷新”序列，用于修复波形条等组件启动变灰的问题。
+ */
+function triggerStartupChildRefreshKick() {
+    if (bgStartupKickDone || bgStartupKickTimer) return;
+
+    bgStartupKickTimer = window.SetTimeout(function () {
+        bgStartupKickTimer = null;
+        if (bgStartupKickDone) return;
+
+        syncNativePanel();
+
+        bgStartupKickLateTimer = window.SetTimeout(function () {
+            bgStartupKickLateTimer = null;
+            if (bgStartupKickDone) return;
+
+            syncNativePanel();
+            bgStartupKickDone = true; 
+        }, THEME.LAYOUT.BG_TRANSPARENT_SYNC_LATE_DELAY_MS + 200);
+    }, THEME.LAYOUT.BG_TRANSPARENT_SYNC_DELAY_MS + 160);
+}
+
+/**
+ * 重新创建背景渲染层实例并初始化配置
  */
 function recreateBackgroundLayer() {
-    if (bgLayer) {
-        bgLayer.clearCache();
-    }
+    if (bgLayer) bgLayer.clearCache();
 
     bgLayer = createPanelBackgroundLayer({
         background: {
@@ -148,17 +219,13 @@ function recreateBackgroundLayer() {
                 alpha: PANEL_CFG.maskAlpha,
             },
             cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
-            keyTf: coverKeyTf,
+            keyTf: THEME.TF.COVER_KEY,
         },
-        getPreferredMetadb: function () {
-            return getActiveMetadb();
-        },
+        getPreferredMetadb: getActiveMetadb,
         getTargetRect: function () {
-            return { x: 0, y: 0, w: panelW, h: panelH };
+            return calcContentRect(panelW, panelH, PANEL_CFG.padding);
         },
-        getAlbumArt: function (metadb) {
-            return fetchAlbumArt(metadb);
-        },
+        getAlbumArt: fetchAlbumArt,
     });
 
     bgLayer.setThemeColor(THEME.COL.BG);
@@ -166,191 +233,167 @@ function recreateBackgroundLayer() {
 }
 
 /**
- * 根据 syncMode 选择标准 API 路径：
- * - auto: sync / sync(metadb)
- * - with-raw: syncWithRaw(metadb, rawImg)
- * - no-art: syncNoArt(metadb)
- * @param {FbMetadbHandle|null} [metadb]
- * @returns {void}
+ * 立即执行背景同步
+ * @param {FbMetadbHandle|null} [metadb] 可选，指定同步的元数据
  */
 function syncBackground(metadb) {
     if (!bgLayer) return;
 
-    const hasInputMetadb = typeof metadb !== "undefined";
-    const target = hasInputMetadb ? metadb || null : getActiveMetadb();
+    const target = (typeof metadb !== "undefined") ? (metadb || null) : getActiveMetadb();
 
     if (PANEL_CFG.syncMode === SYNC_MODE_WITH_RAW) {
         if (!target) {
-            noArtCount += 1;
             bgLayer.syncNoArt(null);
-            window.Repaint();
-            return;
-        }
-        const raw = utils.GetAlbumArtV2(target, 0);
-        if (raw) {
-            manualRawCount += 1;
-            bgLayer.syncWithRaw(target, raw);
         } else {
-            noArtCount += 1;
-            bgLayer.syncNoArt(target);
+            const raw = fetchAlbumArt(target);
+            raw ? bgLayer.syncWithRaw(target, raw) : bgLayer.syncNoArt(target);
         }
-        window.Repaint();
-        return;
-    }
-
-    if (PANEL_CFG.syncMode === SYNC_MODE_NO_ART) {
-        noArtCount += 1;
+    } else if (PANEL_CFG.syncMode === SYNC_MODE_NO_ART) {
         bgLayer.syncNoArt(target);
-        window.Repaint();
-        return;
-    }
-
-    if (hasInputMetadb) {
-        bgLayer.sync(target);
     } else {
-        bgLayer.sync();
+        bgLayer.sync(target);
     }
-
     window.Repaint();
 }
 
-/** @returns {void} */
-function cycleMode() {
-    if (PANEL_CFG.mode === BG_MODE_THEME) {
-        PANEL_CFG.mode = BG_MODE_COVER_COLOR;
-    } else if (PANEL_CFG.mode === BG_MODE_COVER_COLOR) {
-        PANEL_CFG.mode = BG_MODE_COVER_IMAGE;
-    } else {
-        PANEL_CFG.mode = BG_MODE_THEME;
-    }
-    recreateBackgroundLayer();
+/**
+ * 清除背景同步相关的防抖计时器
+ */
+function clearDeferredBackgroundSyncTimers() {
+    if (deferredBgSyncTimer) { window.ClearTimeout(deferredBgSyncTimer); deferredBgSyncTimer = null; }
+    if (deferredBgLateSyncTimer) { window.ClearTimeout(deferredBgLateSyncTimer); deferredBgLateSyncTimer = null; }
 }
 
-/** @returns {void} */
-function cycleSyncMode() {
-    if (PANEL_CFG.syncMode === SYNC_MODE_AUTO) {
-        PANEL_CFG.syncMode = SYNC_MODE_WITH_RAW;
-    } else if (PANEL_CFG.syncMode === SYNC_MODE_WITH_RAW) {
-        PANEL_CFG.syncMode = SYNC_MODE_NO_ART;
-    } else {
-        PANEL_CFG.syncMode = SYNC_MODE_AUTO;
-    }
-    syncBackground();
-}
-
-
-/** @param {GdiGraphics} gr */
-function drawOverlay(gr) {
-    const metadb = getActiveMetadb();
-    const trackKey = getTrackKey(metadb);
-    if (trackKey !== lastTrackKey) {
-        lastTrackKey = trackKey;
+/**
+ * 计划一次背景同步，包含透明模式下的双重延迟逻辑
+ * @param {FbMetadbHandle|null} [metadb] 可选，指定同步的元数据
+ */
+function scheduleBackgroundSync(metadb) {
+    if (!window.IsTransparent) {
+        syncBackground(metadb);
+        return;
     }
 
-    const info = [
-        "bg_panel.js",
-        "Mode: " + PANEL_CFG.mode,
-        "Sync: " + PANEL_CFG.syncMode,
-        "Shape: " + PANEL_CFG.shapeType + " (r=" + PANEL_CFG.shapeRadius + ")",
-        "Gradient: " + (PANEL_CFG.gradientEnabled ? "on" : "off") + " @ " + PANEL_CFG.gradientAngle,
-        "Image: " + PANEL_CFG.imageScaleMode + ", blur=" + PANEL_CFG.imageBlurRadius,
-        "Mask: " + (PANEL_CFG.maskEnabled ? "on" : "off") + ", alpha=" + PANEL_CFG.maskAlpha,
-        "AutoFetch Count: " + fetchCount,
-        "ManualRaw Count: " + manualRawCount,
-        "NoArt Count: " + noArtCount,
-        "Track: " + (trackKey || "(none)"),
-        "",
-        "LButton: cycle mode",
-        "MButton: cycle sync strategy",
-        "RButton: no-op (edit PANEL_CFG manually)",
-    ].join("\n");
+    const epoch = ++bgSyncEpoch;
+    clearDeferredBackgroundSyncTimers();
 
-    const pad = _scale(18);
-    const boxW = Math.max(_scale(420), Math.floor(panelW * 0.62));
-    const boxH = Math.max(_scale(280), Math.floor(panelH * 0.7));
+    deferredBgSyncTimer = window.SetTimeout(function () {
+        deferredBgSyncTimer = null;
+        if (epoch !== bgSyncEpoch) return;
+        syncBackground(metadb);
 
-    gr.FillRoundRect(pad, pad, boxW, boxH, _scale(12), _scale(12), _argb(140, 0, 0, 0));
-    gr.GdiDrawText(info, bodyFont, _rgb(235, 235, 235), pad + _scale(12), pad + _scale(10), boxW - _scale(24), boxH - _scale(20), DT_LEFT | DT_WORDBREAK | DT_NOPREFIX);
-
-    if (titleFont) {
-        gr.GdiDrawText("Background Controller Test Panel", titleFont, _rgb(255, 255, 255), pad + _scale(12), pad - _scale(2), boxW - _scale(24), _scale(30), DT_LEFT | DT_NOPREFIX);
-    }
+        deferredBgLateSyncTimer = window.SetTimeout(function () {
+            deferredBgLateSyncTimer = null;
+            if (epoch !== bgSyncEpoch) return;
+            syncBackground(metadb);
+        }, THEME.LAYOUT.BG_TRANSPARENT_SYNC_LATE_DELAY_MS);
+    }, THEME.LAYOUT.BG_TRANSPARENT_SYNC_DELAY_MS);
 }
 
-function init() {
-    recreateBackgroundLayer();
-}
+// --- 回调函数接口 ---
 
-init();
-
+/**
+ * 当面板尺寸改变时触发
+ */
 function on_size() {
     if (window.Width <= 0 || window.Height <= 0) return;
     panelW = window.Width;
     panelH = window.Height;
-    if (bgLayer) {
-        bgLayer.onResize();
-    }
+    if (bgLayer) bgLayer.onResize();
+    scheduleBackgroundSync();
 }
 
-/** @param {GdiGraphics} gr */
+/**
+ * 核心绘图函数
+ * @param {GdiGraphics} gr 
+ */
 function on_paint(gr) {
     if (bgLayer) {
         bgLayer.paint(gr);
     } else {
         gr.FillSolidRect(0, 0, panelW, panelH, THEME.COL.BG);
     }
-    drawOverlay(gr);
 }
 
-/** @param {FbMetadbHandle} metadb */
+/**
+ * 当播放新轨道时触发
+ * @param {FbMetadbHandle} metadb 
+ */
 function on_playback_new_track(metadb) {
-    syncBackground(metadb);
+    scheduleBackgroundSync(metadb);
 }
 
-function on_playback_stop(reason) {
-    if (reason !== 2) {
-        syncBackground(null);
+/**
+ * 当播放开始或状态切换时触发
+ * @param {number} cmd 启动命令
+ * @param {boolean} is_paused 暂停状态
+ */
+function on_playback_starting(cmd, is_paused) {
+    if (cmd === 1) { // 停止后重新开始
+        clearStartupKickTimers();
+        bgStartupKickDone = false;
+        triggerStartupChildRefreshKick();
     }
 }
 
-function on_playlist_items_selection_change() {
-    const now = fb.IsPlaying ? fb.GetNowPlaying() : null;
-    const sel = fb.GetSelection();
-    const target = now || sel || null;
-    syncBackground(target);
+/**
+ * 当播放停止时触发
+ * @param {number} reason 停止原因 (0: 停止, 1: 切歌, 2: 结束)
+ */
+function on_playback_stop(reason) {
+    if (reason !== 2) { 
+        scheduleBackgroundSync(null);
+    }
 }
 
+/**
+ * 当界面配色方案改变时触发
+ */
 function on_colours_changed() {
     _refreshThemeColors();
-    if (bgLayer) {
-        bgLayer.setThemeColor(THEME.COL.BG);
-        bgLayer.sync();
-    }
-    window.Repaint();
+    if (bgLayer) bgLayer.setThemeColor(THEME.COL.BG);
+    scheduleBackgroundSync();
 }
 
-function on_font_changed() {
-    _refreshThemeFonts();
-    titleFont = THEME.FONT.TITLE;
-    bodyFont = THEME.FONT.BODY;
-    window.Repaint();
-}
-
-function on_mouse_lbtn_up() {
-    cycleMode();
-}
-
-function on_mouse_mbtn_up() {
-    cycleSyncMode();
-}
-
-// function on_mouse_rbtn_up() {
-//     return true;
+// 停止播放显示选中的歌曲信息
+// function on_playlist_items_selection_change() {
+//     const now = fb.IsPlaying ? fb.GetNowPlaying() : null;
+//     const sel = fb.GetSelection();
+//     const target = now || sel || null;
+//     scheduleBackgroundSync(target);
 // }
 
+// Columns UI 有一个通知
+// function on_notify_data(name, info) {
+//     console.log("=================on_notify_data\n" +name)
+//     if (name === "CUI_COLOURS_CHANGED" || name === "CUI_FONT_CHANGED") {
+//         console.log("=================on_notify_data\n" +name)
+//         window.Repaint();
+//     }
+// }
+
+
+/**
+ * 当脚本卸载或重载前触发
+ */
 function on_script_unload() {
+    clearStartupKickTimers();
+    clearDeferredBackgroundSyncTimers();
     if (bgLayer) {
         bgLayer.clearCache();
         bgLayer = null;
     }
 }
+
+// --- 初始化流程 ---
+
+/**
+ * 面板启动初始化
+ */
+function init() {
+    recreateBackgroundLayer();
+    scheduleBackgroundSync();
+    triggerStartupChildRefreshKick();
+}
+
+init();

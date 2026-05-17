@@ -67,9 +67,9 @@ include("lib/background.js");
 /** @type {CoverPanelConfig} */
 const PANEL_CFG = {
   // 前景封面圆角半径（像素）；推荐 >= 0。
-  cornerRadius: _scale(20),
+  cornerRadius: THEME.LAYOUT.CORNER_RADIUS,
   // 前景封面可用区域边距（像素）；推荐 >= 0。
-  margin: _scale(40),
+  margin: _scale(6),
   // 前景封面绘制模式：
   // - "fit": 完整显示，可能留边
   // - "cover": 填满可用区域，可能裁切
@@ -80,7 +80,10 @@ const PANEL_CFG = {
     // - "theme": 仅使用主题背景色
     // - "cover-color": 使用封面提色（无封面回退主题色）
     // - "cover-image": 使用封面图作为背景（无封面回退主题色）
-    mode: "cover-color",
+    mode: "theme",
+    // 封面获取优先级：按顺序尝试，首个成功即返回。
+    // 0=front 1=back 2=disc 3=icon 4=artist
+    albumArtFetchPriority: [4, 0],
     // 渐变仅在 theme / cover-color 参与底色绘制时生效；cover-image 下不参与底图绘制。
     gradientEnabled: true,
     // 渐变角度，推荐 [0, 360]。
@@ -98,13 +101,13 @@ const PANEL_CFG = {
     // 背景形状："rect"=矩形；"round-rect"=圆角矩形。
     shapeType: "round-rect",
     // 圆角半径（像素，<=0 等同矩形）。
-    shapeRadius: _scale(20),
+    shapeRadius: THEME.LAYOUT.CORNER_RADIUS,
     // 遮罩在所有 mode 都生效。
     maskEnabled: false,
     // 遮罩 RGB 颜色（alpha 由下方 alpha 控制）。
-    maskColor: _rgb(255, 255, 255),
+    maskColor: _rgb(0, 0, 0),
     // 遮罩透明度，范围 [0, 255]；0=透明，255=不透明。
-    maskAlpha: 20,
+    maskAlpha: 255,
   },
 };
 
@@ -112,7 +115,6 @@ const PANEL_CFG = {
 // 2. 全局状态 (Global State)
 // ==========================================
 
-const font = THEME.FONT.TITLE;
 let panelW = window.Width,
   panelH = window.Height;
 let currentImgRounded = null;
@@ -121,7 +123,6 @@ let currentTrackKey = "";
 
 const coverRect = { x: 0, y: 0, w: 0, h: 0 };
 
-const coverKeyTf = fb.TitleFormat("%album artist% - %album%");
 const coverCache = new LRUCache(Math.min(5, THEME.CFG.CACHE_SIZE), (entry) => {
   if (entry && entry.imgRounded && typeof entry.imgRounded.Dispose === "function") {
     entry.imgRounded.Dispose();
@@ -135,6 +136,11 @@ const coverCache = new LRUCache(Math.min(5, THEME.CFG.CACHE_SIZE), (entry) => {
     entry.rawImg.Dispose();
   }
 });
+
+// 透明同步通知 freshness 窗口与兜底延迟 — 通道定义见 lib/data.js NOTIFY.TRANSPARENT_SYNC
+let transparentTrackRepaintTimer = null;
+let lastTransparentNotifyEpoch = 0;
+let lastTransparentNotifyTs = 0;
 
 const backgroundAuto = createPanelBackgroundLayer({
   background: {
@@ -159,7 +165,7 @@ const backgroundAuto = createPanelBackgroundLayer({
       alpha: PANEL_CFG.background.maskAlpha,
     },
     cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
-    keyTf: coverKeyTf,
+    keyTf: THEME.TF.COVER_KEY,
   },
   getPreferredMetadb: function () {
     return currentMetadb;
@@ -169,13 +175,13 @@ const backgroundAuto = createPanelBackgroundLayer({
   },
   getAlbumArt: function (metadb) {
     if (!metadb) return null;
-    const key = coverKeyTf.EvalWithMetadb(metadb) || metadb.Path;
+    const key = THEME.TF.COVER_KEY.EvalWithMetadb(metadb) || metadb.Path;
     const cached = coverCache.get(key);
     if (cached) {
       if (cached.rawImg) return cached.rawImg;
       if (cached.artMissing) return null;
     }
-    return utils.GetAlbumArtV2(metadb, 0);
+    return fetchAlbumArt(metadb);
   },
 });
 backgroundAuto.setThemeColor(THEME.COL.BG);
@@ -188,6 +194,20 @@ backgroundAuto.sync();
 /** @returns {boolean} */
 function isCoverImageMode() {
   return PANEL_CFG.background.mode === "cover-image";
+}
+
+/**
+ * 按优先级获取封面，首个成功即返回。
+ * @param {FbMetadbHandle} metadb
+ * @returns {GdiBitmap|null}
+ */
+function fetchAlbumArt(metadb) {
+  const priority = PANEL_CFG.background.albumArtFetchPriority;
+  for (let i = 0; i < priority.length; i++) {
+    const img = utils.GetAlbumArtV2(metadb, priority[i]);
+    if (img) return img;
+  }
+  return null;
 }
 
 /**
@@ -230,7 +250,7 @@ function updatePanelData(metadb) {
     return;
   }
 
-  const key = coverKeyTf.EvalWithMetadb(metadb) || metadb.Path;
+  const key = THEME.TF.COVER_KEY.EvalWithMetadb(metadb) || metadb.Path;
   // 同轨且已有圆角图时直接返回，避免重复同步与重绘。
   if (key === currentTrackKey && currentMetadb && currentImgRounded) {
     return;
@@ -267,7 +287,7 @@ function updatePanelData(metadb) {
     return;
   }
 
-  const rawImg = utils.GetAlbumArtV2(metadb, 0);
+  const rawImg = fetchAlbumArt(metadb);
 
   if (rawImg) {
     if (!isCoverImageMode()) {
@@ -312,7 +332,24 @@ function updatePanelData(metadb) {
   window.Repaint();
 }
 
-/** @returns {void} */
+function clearTransparentTrackRepaintTimers() {
+  if (transparentTrackRepaintTimer) {
+    window.ClearTimeout(transparentTrackRepaintTimer);
+    transparentTrackRepaintTimer = null;
+  }
+}
+
+function scheduleTransparentTrackRepaintFallback() {
+  if (!window.IsTransparent || !window.IsVisible) return;
+
+  clearTransparentTrackRepaintTimers();
+  transparentTrackRepaintTimer = window.SetTimeout(function () {
+    transparentTrackRepaintTimer = null;
+    if (!window.IsVisible) return;
+    if (Date.now() - lastTransparentNotifyTs <= THEME.LAYOUT.TRANSPARENT_SYNC_NOTIFY_FRESH_MS) return;
+    window.Repaint();
+  }, THEME.LAYOUT.TRANSPARENT_REPAINT_FALLBACK_DELAY_MS);
+}
 function on_size() {
   if (window.Width <= 0 || window.Height <= 0) return;
   panelW = window.Width;
@@ -321,9 +358,10 @@ function on_size() {
   backgroundAuto.onResize();
 }
 
-/** @param {GdiGraphics} gr @returns {void} */
 function on_paint(gr) {
-  backgroundAuto.paint(gr);
+  if (!window.IsTransparent) {
+    backgroundAuto.paint(gr);
+  }
 
   if (currentImgRounded) {
     gr.DrawImage(
@@ -339,16 +377,17 @@ function on_paint(gr) {
     );
   } else {
     const text = fb.IsPlaying ? "No Cover Found" : "Stopped";
-    if (font) {
+    const es = THEME.TEXT.empty;
+    if (es.font) {
       gr.GdiDrawText(
         text,
-        font,
-        THEME.COL.FG,
+        es.font,
+        es.color,
         0,
         0,
         panelW,
         panelH,
-        DT_CENTER | DT_VCENTER | DT_SINGLELINE,
+        es.flags,
       );
     }
   }
@@ -357,6 +396,7 @@ function on_paint(gr) {
 /** @param {FbMetadbHandle} metadb @returns {void} */
 function on_playback_new_track(metadb) {
   updatePanelData(metadb);
+  scheduleTransparentTrackRepaintFallback();
 }
 
 /**
@@ -365,17 +405,19 @@ function on_playback_new_track(metadb) {
  */
 function on_playback_stop(reason) {
   if (reason !== 2) {
-    updatePanelData(null);
+    const target = resolveMetadbByMode(METADB_RESOLVE_MODE.SELECTION_FIRST);
+    if (target) {
+      updatePanelData(target);
+    }    
   }
 }
 
 /** @returns {void} */
 function on_playlist_items_selection_change() {
-  let selection = fb.GetSelection();
-  if (selection) {
-    updatePanelData(selection);
-  } else if (fb.IsPlaying) {
-    updatePanelData(fb.GetNowPlaying());
+  if (fb.IsPlaying) return;
+  const target = resolveMetadbByMode(METADB_RESOLVE_MODE.SELECTION_FIRST);
+  if (target) {
+    updatePanelData(target);
   }
 }
 
@@ -393,12 +435,40 @@ function on_font_changed() {
   window.Repaint();
 }
 
+/**
+ * 透明同步通知：bg_panel_container_control 重绘后触发本面板跟随重绘。
+ * 通道与发送方标识见 lib/data.js NOTIFY。
+ * @param {string} name
+ * @param {*} info
+ * @returns {void}
+ */
+function on_notify_data(name, info) {
+  if (!window.IsTransparent) return;
+  if (name !== NOTIFY.TRANSPARENT_SYNC.name) return;
+  if (!info || typeof info !== "object") return;
+
+  const version = typeof info.v === "number" ? info.v : 0;
+  if (version !== NOTIFY.TRANSPARENT_SYNC.version) return;
+
+  const source = typeof info.source === "string" ? info.source : "";
+  if (source !== NOTIFY.SOURCE.BG_PANEL_CONTAINER_CONTROL) return;
+
+  const notifyEpoch = typeof info.epoch === "number" ? info.epoch : 0;
+  if (notifyEpoch <= lastTransparentNotifyEpoch) return;
+
+  lastTransparentNotifyEpoch = notifyEpoch;
+  lastTransparentNotifyTs = Date.now();
+  clearTransparentTrackRepaintTimers();
+  if (window.IsVisible) window.Repaint();
+}
+
 // ==========================================
 // 5. 启动初始化 (Initialization)
 // ==========================================
 
 /** @returns {void} */
 function on_script_unload() {
+  clearTransparentTrackRepaintTimers();
   coverCache.clear();
   backgroundAuto.clearCache();
   currentImgRounded = null;
@@ -406,7 +476,7 @@ function on_script_unload() {
   currentTrackKey = "";
 }
 
-let currentTrack = fb.GetNowPlaying();
+const currentTrack = resolveMetadbByMode(METADB_RESOLVE_MODE.PLAYING_ONLY);
 if (currentTrack) {
   updatePanelData(currentTrack);
 }

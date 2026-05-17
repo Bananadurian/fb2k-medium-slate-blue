@@ -2,9 +2,9 @@
  * @file biography.js
  * @author XYSRe
  * @created 2025-12-23
- * @updated 2026-04-29
- * @version 2.0.0
- * @description 艺人资料面板: 封面轮播、风格/生日/地区、外部链接、简介/作品集切换。
+ * @updated 2026-05-14
+ * @version 2.1.0
+ * @description 艺人资料面板: 封面轮播、风格/生日/地区、外部链接、简介/作品集切换。接入 THEME.TEXT 样式预设。
  */
 
 "use strict";
@@ -15,6 +15,7 @@ include("lib/utils.js");
 include("lib/data.js");
 include("lib/interaction.js");
 include("lib/theme.js");
+include("lib/flag.js");
 
 
 window.DefineScript("Biography", {
@@ -32,17 +33,14 @@ const PANEL_CFG = {
     dataPath:    "D:\\11_MusicLib\\_Extras\\",  // 数据根目录
     showCover:   true,                            // 是否显示封面
     coverAspectRatio: 3 / 4,                      // 封面宽高比
-    coverMode:   "fit",                          // 封面缩放模式 (fit=完整显示, cover=裁剪填充)
-    cornerRadius: _scale(0),                              // 封面圆角半径, 0=直角
-    coverMargin: _scale(0),                               // 封面四周内边距
+    coverMode:   "cover",                          // 封面缩放模式 (fit=完整显示, cover=裁剪填充)
+    cornerRadius: THEME.LAYOUT.CORNER_RADIUS,                              // 封面圆角半径, 0=直角
+    coverPadding: {top:_scale(10), right:_scale(10), bottom: _scale(10), left:_scale(10)}, // 封面内边距
 };
 const JSON_DIR = PANEL_CFG.dataPath + "ArtistBiography\\";
 const ARTIST_COVER_DIR = PANEL_CFG.dataPath + "ArtistCover\\";
 const SCROLL_STEP = THEME.LAYOUT.SCROLL_STEP;
 const ICON_SIZE = THEME.LAYOUT.ICON_SIZE;
-const MARGIN = THEME.LAYOUT.MARGIN;
-const LINE_H = THEME.LAYOUT.LINE_H;
-const LINE_SPACE = THEME.LAYOUT.LINE_SPACE;
 const IMG_CYCLE_MS = THEME.LAYOUT.IMG_CYCLE_MS;
 const COVER_IDENTIFIER = "_Cover_";    // 封面文件名特征匹配符
 
@@ -52,10 +50,12 @@ const COVER_IDENTIFIER = "_Cover_";    // 封面文件名特征匹配符
 // =========================================================================
 
 const COL = THEME.COL;
+const TS = THEME.TEXT;
 
 
 // [图标资源]
 const LINK_ICONS = {
+    "Aliases":       _loadImage(IMGS_LINKS_DIR + "user-round.png"),
     "Genres":       _loadImage(IMGS_LINKS_DIR + "circle-small.png"),
     "Country":      _loadImage(IMGS_LINKS_DIR + "locate.png"),
     "Born":         _loadImage(IMGS_LINKS_DIR + "calendar.png"),
@@ -84,7 +84,7 @@ const LINK_ICONS = {
 const artistTf = fb.TitleFormat("$meta(artist,0)");  
 const albumTf = fb.TitleFormat(" ▸ [%date%]: [%album%] ['('$meta(EDITION)')']"); 
 
-let tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
+let tooltip = _createDefaultTooltip();
 
 // =========================================================================
 // 全局状态变量 (State Management)
@@ -109,8 +109,8 @@ const carousel = {
     rawPaths: [],
     fallbackMetadb: null,
 };
-// IMG_CYCLE_MS 来自上方别名 (THEME.LAYOUT.IMG_CYCLE_MS)
-
+let currentCountryFlagImg = null; // 当前国籍对应的国旗图标
+let lastCountryCode = null;       // 缓存 code，不变则跳过 loadFlagImage
 // UI 视图状态
 let isShowingDiscography = false; // Tab状态：False=简介(Profile), True=作品集(Discography)
 let scrollY = 0;             // 当前垂直滚动条位置
@@ -123,19 +123,10 @@ let errorText = "请选择或播放歌曲..."; // 空状态或错误提示文案
 let activeLinkBtns = [];     // 当前生成的外部链接按钮数组
 let activeElement = null;  // [状态机] 当前鼠标悬停/激活的 UI 元素
 
-// 布局动态计算变量 (初始化为 LINE_H 防止除零或计算异常)
+// 布局动态计算变量
 let panelW = window.Width;
 let panelH = window.Height;
-const coverRect = { x: 0, y: 0, w: 0, h: 0 };
-let titleH = LINE_H;        
-let titleW = 0;     
-let coverH = 0;              
-let genresH = LINE_H;        
-let lineW = 0;               
-let lineStartY = 0;
-let headerHeight = 0;        
-let viewW = 0;               
-let viewH = 0;               
+let genresH = _getFontLineHeight(TS.body.font);
 
 // 固定 UI 元素定义
 const elements = {
@@ -143,13 +134,144 @@ const elements = {
     discographyBtn: { displayText: "Discography", x: 0, y: 0, w: 0, h: 0, isHover: false, tooltip: "" }
 };
 
+// 离屏滚动文本 padding — section 与渲染器共享，保证布局一致
+const SCROLL_TEXT_PADDING = { top: _scale(6), right: _scale(10), bottom: _scale(6), left: _scale(10) };
+
+// 区域定义 — 每个区域自带 layout/draw 逻辑，layoutSections 垂直堆叠
+const SECTIONS = [
+    {
+        name: "cover",
+        padding: PANEL_CFG.coverPadding,
+        rect:    { x: 0, y: 0, w: 0, h: 0 },
+        content: { x: 0, y: 0, w: 0, h: 0 },
+        visible: PANEL_CFG.showCover,
+        getContentHeight() {
+            const rawH = Math.floor(window.Width * PANEL_CFG.coverAspectRatio);
+            const p = PANEL_CFG.coverPadding;
+            return Math.max(0, rawH - p.top - p.bottom);
+        },
+        draw(gr) {
+            if (!carousel.images || carousel.images.length === 0) return;
+            const count = carousel.images.length;
+            const idx = ((carousel.index % count) + count) % count;
+            if (!carousel.images[idx]) scheduleEnsureFromPaint();
+            const img = carousel.images[idx];
+            if (!img) return;
+            gr.DrawImage(img, this.content.x, this.content.y, this.content.w, this.content.h,
+                0, 0, img.Width, img.Height);
+            if (count > 1) {
+                const ph = _getFontLineHeight(TS.body.font);
+                const pp = _scale(10);
+                _drawPageIndicator(gr, carousel.index, count,
+                    this.content.x + pp,
+                    this.content.y + this.content.h - pp - ph,
+                    _scale(50), ph, TS.body.font, TS.body.color,
+                    _argb(153, (COL.BG >> 16) & 0xff, (COL.BG >> 8) & 0xff, COL.BG & 0xff));
+            }
+        },
+    },
+    {
+        name: "title",
+        padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
+        rect:    { x: 0, y: 0, w: 0, h: 0 },
+        content: { x: 0, y: 0, w: 0, h: 0 },
+        visible: true,
+        getContentHeight() { return _getFontLineHeight(TS.title.font); },
+        draw(gr) { _drawText(gr, TS.titleLine, artistData.title, this.content.x, this.content.y, this.content.w, this.content.h); },
+    },
+    {
+        name: "aliases",
+        padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
+        icon:    LINK_ICONS.Aliases,
+        iconGap: _scale(5),
+        rect:    { x: 0, y: 0, w: 0, h: 0 },
+        content: { x: 0, y: 0, w: 0, h: 0 },
+        visible: true,
+        getContentHeight() { return _getFontLineHeight(TS.body.font); },
+        draw(gr) {
+            drawIconTextSection(gr, this, artistData.aliases || "Unknown Aliases",
+                TS.bodyLine.font, LEFT_LINE_FLAGS);
+        },
+    },
+    {
+        name: "genres",
+        padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
+        icon:    LINK_ICONS.Genres,
+        iconGap: _scale(5),
+        rect:    { x: 0, y: 0, w: 0, h: 0 },
+        content: { x: 0, y: 0, w: 0, h: 0 },
+        visible: true,
+        getContentHeight() { return genresH; },
+        draw(gr) {
+            drawIconTextSection(gr, this, artistData.genres || "Unknown Genre",
+                TS.body.font, LEFT_WRAP_FLAGS);
+        },
+    },
+    {
+        name: "born",
+        // 双列: [Born-icon+born] [Country-icon+country]
+        padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
+        icon:    LINK_ICONS.Born,
+        iconGap: _scale(5),
+        icon2:   LINK_ICONS.Country,
+        colGap:  _scale(100),
+        rect:    { x: 0, y: 0, w: 0, h: 0 },
+        content: { x: 0, y: 0, w: 0, h: 0 },
+        visible: true,
+        getContentHeight() { return _getFontLineHeight(TS.body.font); },
+        draw(gr) { drawBornSection(gr, this); },
+    },
+    {
+        name: "links",
+        padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
+        icon:    LINK_ICONS.Links,
+        iconGap: _scale(5),
+        rect:    { x: 0, y: 0, w: 0, h: 0 },
+        content: { x: 0, y: 0, w: 0, h: 0 },
+        visible: true,
+        getContentHeight() { return _getFontLineHeight(TS.body.font); },
+        draw(gr) { drawLinksSection(gr, this); },
+    },
+    {
+        name: "tab",
+        padding: { left: _scale(25), top: 0, right: _scale(10), bottom: 0 },
+        rect:    { x: 0, y: 0, w: 0, h: 0 },
+        content: { x: 0, y: 0, w: 0, h: 0 },
+        visible: true,
+        getContentHeight() { return _getFontLineHeight(TS.tab.font) * 2; },
+        draw(gr) { drawTabSection(gr, this); },
+    },
+    {
+        name: "scrollText",
+        fillRemaining: true,
+        padding: SCROLL_TEXT_PADDING,
+        rect:    { x: 0, y: 0, w: 0, h: 0 },
+        content: { x: 0, y: 0, w: 0, h: 0 },
+        visible: true,
+        getContentHeight() { return 0; },
+        draw(gr) {
+            if (!currentText) return;
+            scrollText.draw(gr, scrollY, this.content.x, this.content.y, this.content.w);
+            if (maxScrollY > 0) {
+                _drawScrollbar(gr, this.content.h, fullTextH, scrollY, maxScrollY,
+                    window.Width, this.content.y, COL.SCROLLBAR);
+            }
+        },
+    },
+];
+
+const SEC = {};
+SECTIONS.forEach(function(sec) { SEC[sec.name] = sec; });
+
+// 离屏滚动文本渲染器
+const scrollText = createScrollTextRenderer(TS.body.font, TS.body.color, TS.body.flags, SCROLL_TEXT_PADDING);
 
 // 构建封面处理签名 (用于尺寸/模式变化失效)
 function buildCoverProcessKey(pathsSig) {
     return [
         artistName,
-        coverRect.w,
-        coverRect.h,
+        SEC.cover.content.w,
+        SEC.cover.content.h,
         PANEL_CFG.coverMode,
         PANEL_CFG.cornerRadius,
         PANEL_CFG.showCover,
@@ -166,8 +288,8 @@ function ensureCarouselImageReady(nextIndex, carouselState, reason) {
     const index = ((nextIndex % count) + count) % count;
     if (carouselState.images[index]) return true;
 
-    const targetW = Math.max(1, coverRect.w);
-    const targetH = Math.max(1, coverRect.h);
+    const targetW = Math.max(1, SEC.cover.content.w);
+    const targetH = Math.max(1, SEC.cover.content.h);
 
     if (carouselState.rawPaths && carouselState.rawPaths.length > 0) {
         const path = carouselState.rawPaths[index];
@@ -248,90 +370,16 @@ function scheduleDeferredRefresh(seq) {
 }
 
 function on_paint(gr) {
-    // 1. 绘制背景 (关闭抗锯齿以保持矩形边缘锐利)
     gr.SetSmoothingMode(0);
     if (!window.IsTransparent) gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
 
     if (!artistData) {
-        _drawEmptyState(gr, errorText, THEME.FONT.TITLE, COL.FG, window.Width, window.Height);
+        _drawEmptyState(gr, errorText, TS.title.font, TS.title.color, window.Width, window.Height);
         return;
     }
 
-    // 2. 绘制滚动文本 (在封面/头部之前，溢出部分会被后续遮盖)
-    _drawScrollText(gr, currentText, THEME.FONT.BOLD, COL.FG, MARGIN, headerHeight - scrollY, viewW, fullTextH, MULTI_LINE_FLAGS, COL.BG, window.Width, headerHeight);
-
-    // 3. 绘制封面区
-    if (PANEL_CFG.showCover && carousel.images.length > 0) {
-        const count = carousel.images.length;
-        const index = ((carousel.index % count) + count) % count;
-        if (!carousel.images[index]) {
-            scheduleEnsureFromPaint();
-        }
-
-        const currentImg = carousel.images[index];
-        if (currentImg) {
-            gr.DrawImage(currentImg, coverRect.x, coverRect.y, coverRect.w, coverRect.h, 0, 0, currentImg.Width, currentImg.Height);
-
-            if (carousel.images.length > 1) {
-                _drawPageIndicator(gr, carousel.index, carousel.images.length, coverRect.x + MARGIN, coverRect.y + coverRect.h - MARGIN - LINE_H, _scale(50), LINE_H, THEME.FONT.BODY, COL.FG, _argb(153, (COL.BG >> 16) & 0xff, (COL.BG >> 8) & 0xff, COL.BG & 0xff));
-            }
-        }
-    }
-
-    let currentY = lineStartY;
-
-    // 4. 绘制头部信息 (Header)
-
-    // 3.1 艺人标题 (超长截断逻辑)
-    gr.GdiDrawText(artistData.title, THEME.FONT.TITLE, COL.FG, MARGIN, currentY, titleW > lineW ? lineW : titleW, titleH, ONE_LINE_FLAGS);
-    // 别名 (如果标题没占满一行，在后面追加显示)
-    if (artistData.aliases && titleW < (lineW - MARGIN * 2)) {
-        gr.GdiDrawText(" (" + artistData.aliases + ")", THEME.FONT.BODY, COL.FG, titleW + MARGIN, currentY + _scale(4), lineW - titleW - MARGIN, LINE_H, ONE_LINE_FLAGS);
-    }
-    currentY += titleH + LINE_SPACE;
-
-    // 3.2 风格 (多行)
-    if (LINK_ICONS.Genres) gr.DrawImage(LINK_ICONS.Genres, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Genres.Width, LINK_ICONS.Genres.Height);
-    gr.GdiDrawText(artistData.genres || "Unknown Genre", THEME.FONT.BODY, COL.FG, MARGIN * 2.5, currentY, lineW, genresH, MULTI_LINE_FLAGS);
-    currentY += genresH + LINE_SPACE;
-
-    // 3.3 生日
-    if (LINK_ICONS.Born) gr.DrawImage(LINK_ICONS.Born, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Born.Width, LINK_ICONS.Born.Height);
-    gr.GdiDrawText(artistData.born || "-", THEME.FONT.BODY, COL.FG, MARGIN * 2.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
-
-    // 3.4 地区 (与生日同一行，靠右侧布局)
-    if (LINK_ICONS.Country) gr.DrawImage(LINK_ICONS.Country, MARGIN * 13, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Country.Width, LINK_ICONS.Country.Height);
-    gr.GdiDrawText(artistData.country || "-", THEME.FONT.BODY, COL.FG, MARGIN * 14.5, currentY, lineW, LINE_H, ONE_LINE_FLAGS);
-    currentY += LINE_H + LINE_SPACE;
-
-    // 3.5 链接图标按钮
-    if (LINK_ICONS.Links) gr.DrawImage(LINK_ICONS.Links, MARGIN, currentY + Math.ceil(((LINE_H - ICON_SIZE) / 2)), ICON_SIZE, ICON_SIZE, 0, 0, LINK_ICONS.Links.Width, LINK_ICONS.Links.Height);
-
-    activeLinkBtns.forEach(btn => {
-        if (!btn.img) return;
-        // if (btn.isHover) { ... } // 可选：绘制按钮Hover背景
-        gr.DrawImage(btn.img, btn.x, btn.y, btn.w, btn.h, 0, 0, btn.img.Width, btn.img.Height);
-    });
-
-    // 5. 绘制 Tab 切换按钮
-    const pBtn = elements.profileBtn;
-    const dBtn = elements.discographyBtn;
-    const isProfile = !isShowingDiscography;
-
-    // 根据状态确定颜色
-    const pColor = isProfile ? COL.FG : (pBtn.isHover ? COL.FRAME : COL.FG);
-    const dColor = !isProfile ? COL.FG : (dBtn.isHover ? COL.FRAME : COL.FG);
-
-    gr.GdiDrawText(pBtn.displayText, isProfile ? THEME.FONT.BOLD : THEME.FONT.BODY, pColor, pBtn.x, pBtn.y, pBtn.w, pBtn.h, BTN_STYLE_FLAGS);
-    gr.GdiDrawText(dBtn.displayText, !isProfile ? THEME.FONT.BOLD : THEME.FONT.BODY, dColor, dBtn.x, dBtn.y, dBtn.w, dBtn.h, BTN_STYLE_FLAGS);
-
-    // Tab 指示线
-    const activeBtn = isProfile ? pBtn : dBtn;
-    _drawTabIndicator(gr, activeBtn, headerHeight, window.Width, MARGIN, COL.SEL_BG, COL.FG);
-
-    // 6. 绘制滚动条
-    if (currentText && maxScrollY > 0) {
-        _drawScrollbar(gr, viewH, fullTextH, scrollY, maxScrollY, window.Width, headerHeight, COL.SCROLLBAR);
+    for (const sec of SECTIONS) {
+        if (sec.visible) sec.draw(gr);
     }
 }
 
@@ -348,7 +396,7 @@ function scheduleEnsureFromPaint() {
         const changed = ensureCarouselImageReady(index, carousel, "paint-deferred");
         if (changed) {
             manageCycleTimer();
-            window.RepaintRect(0, 0, panelW, coverH);
+            window.RepaintRect(0, 0, panelW, SEC.cover.rect.h);
         }
     }, 0);
 }
@@ -374,8 +422,6 @@ function reloadArtistData(metadb) {
         if (window.Width > 0) {
             panelW = window.Width;
             panelH = window.Height;
-            coverH = PANEL_CFG.showCover ? Math.floor(panelW * PANEL_CFG.coverAspectRatio) : 0;
-            recalculateCoverLayout();
 
             let coverReloaded = false;
             if (PANEL_CFG.showCover) {
@@ -392,7 +438,7 @@ function reloadArtistData(metadb) {
                     const changed = ensureCarouselImageReady(index, carousel, "same-artist-refresh");
                     manageCycleTimer();
                     if (changed) {
-                        window.RepaintRect(0, 0, panelW, coverH);
+                        window.RepaintRect(0, 0, panelW, SEC.cover.rect.h);
                         coverReloaded = true;
                     }
                 }
@@ -402,7 +448,7 @@ function reloadArtistData(metadb) {
             if (coverReloaded) {
                 window.Repaint();
             } else {
-                window.RepaintRect(0, coverH, window.Width, window.Height - coverH);
+                window.RepaintRect(0, SEC.cover.rect.h, window.Width, window.Height - SEC.cover.rect.h);
             }
         }
         return;
@@ -417,6 +463,7 @@ function reloadArtistData(metadb) {
 
     const cacheEntry = getArtistCacheEntry(safeName);
     artistData = cacheEntry.json;
+    updateCountryFlag();
     if (cacheEntry.jsonError) {
         errorText = cacheEntry.jsonError;
     } else {
@@ -426,8 +473,6 @@ function reloadArtistData(metadb) {
     if (window.Width > 0) {
         panelW = window.Width;
         panelH = window.Height;
-        coverH = PANEL_CFG.showCover ? Math.floor(panelW * PANEL_CFG.coverAspectRatio) : 0;
-        recalculateCoverLayout();
 
         loadImagesFromCache(cacheEntry.imgPaths, metadb, seq);
         const pathsSig = cacheEntry.imgPaths && cacheEntry.imgPaths.length > 0 ? cacheEntry.imgPaths.join("||") : "fallback";
@@ -496,65 +541,17 @@ function getArtistCacheEntry(safeName) {
                 jsonData.genres = jsonData.genres.join(", ");
             }
         } catch (e) {
-            const sanitizedText = rawText
-                .replace(/^﻿/, "")
-                .replace(/[\x00-\x1F]/g, " ");
-
-            const variants = [];
-            variants.push(sanitizedText);
-            variants.push(sanitizedText.replace(/,\s*([}\]])/g, "$1"));
-
-            const objStart = sanitizedText.indexOf("{");
-            const objEnd = sanitizedText.lastIndexOf("}");
-            if (objStart >= 0 && objEnd > objStart) {
-                const sliced = sanitizedText.slice(objStart, objEnd + 1);
-                variants.push(sliced);
-                variants.push(sliced.replace(/,\s*([}\]])/g, "$1"));
-            }
-
-            let parsed = null;
-            let lastErr = null;
-            for (let i = 0; i < variants.length; i++) {
-                try {
-                    parsed = JSON.parse(variants[i]);
-                    break;
-                } catch (e2) {
-                    lastErr = e2;
-                }
-            }
-
-            if (parsed) {
-                jsonData = parsed;
-                if (jsonData.aliases && Array.isArray(jsonData.aliases)) {
-                    jsonData.aliases = jsonData.aliases.join(", ");
-                }
-                if (jsonData.genres && Array.isArray(jsonData.genres)) {
-                    jsonData.genres = jsonData.genres.join(", ");
-                }
-                console.log("JSON Warning: sanitized/recovered -> " + jsonPath);
-            } else {
-                const errText = String(lastErr || "unknown parse error");
-                const colMatch = errText.match(/column\s+(\d+)/i);
-                if (colMatch) {
-                    const col = Math.max(1, parseInt(colMatch[1], 10));
-                    const idx = Math.max(0, col - 1);
-                    const start = Math.max(0, idx - 80);
-                    const end = Math.min(sanitizedText.length, idx + 80);
-                    console.log("JSON Error Context (" + jsonPath + "): " + sanitizedText.slice(start, end));
-                }
-
-                jsonData = {
-                    title: safeName,
-                    aliases: "",
-                    genres: "",
-                    born: "",
-                    country: "",
-                    artistbiography: "",
-                    links: {}
-                };
-                jsonErrorData = "JSON Error (" + jsonPath + "): " + errText;
-                console.log("JSON Error (" + jsonPath + "): " + errText + " -> fallback object used");
-            }
+            jsonData = {
+                title: safeName,
+                aliases: "",
+                genres: "",
+                born: "",
+                country: "",
+                artistbiography: "",
+                links: {}
+            };
+            jsonErrorData = "JSON Error (" + jsonPath + "): " + String(e);
+            console.log(jsonErrorData);
         }
     }
 
@@ -587,8 +584,8 @@ function loadImagesFromCache(paths, metadb, seq) {
         return;
     }
 
-    const targetW = Math.max(1, coverRect.w);
-    const targetH = Math.max(1, coverRect.h);
+    const targetW = Math.max(1, SEC.cover.content.w);
+    const targetH = Math.max(1, SEC.cover.content.h);
 
     if (paths && paths.length > 0) {
         carousel.rawPaths = paths.slice();
@@ -629,7 +626,7 @@ function loadImagesFromCache(paths, metadb, seq) {
         }
 
         manageCycleTimer();
-        window.RepaintRect(0, 0, panelW, coverH);
+        window.RepaintRect(0, 0, panelW, SEC.cover.rect.h);
     }, 0);
 }
 
@@ -640,12 +637,12 @@ function manageCycleTimer() {
     const nextKey = [
         PANEL_CFG.showCover ? 1 : 0,
         carousel.images && carousel.images.length > 1 ? 1 : 0,
-        coverH,
+        SEC.cover.rect.h,
         panelW,
     ].join("|");
     if (nextKey === lastCarouselTimerKey) return;
     lastCarouselTimerKey = nextKey;
-    _manageCarousel(carousel, coverH, IMG_CYCLE_MS, panelW, ensureCarouselImageReady);
+    _manageCarousel(carousel, SEC.cover.rect.h, IMG_CYCLE_MS, panelW, ensureCarouselImageReady);
 }
 
 /**
@@ -706,90 +703,98 @@ function getDiscoText() {
 // 布局与几何计算 (Layout & Geometry)
 // =========================================================================
 
-/**
- * 预计算封面绘制矩形 (coverRect): 在顶部封面区域内应用四周 margin
- */
-function recalculateCoverLayout() {
-    if (!PANEL_CFG.showCover) {
-        coverRect.x = 0;
-        coverRect.y = 0;
-        coverRect.w = 0;
-        coverRect.h = 0;
-        return;
+
+/** @param {Object} sec - SECTIONS item with icon/iconGap */
+function drawIconTextSection(gr, sec, text, font, flags) {
+    const cx = sec.content.x, cy = sec.content.y, cw = sec.content.w, ch = sec.content.h;
+    if (sec.icon) {
+        _drawIcon(gr, sec.icon, cx, cy, ch);
     }
-
-    const margin = Math.max(0, PANEL_CFG.coverMargin);
-    const coverW = Math.max(1, panelW - margin * 2);
-    const coverInnerH = Math.max(1, coverH - margin * 2);
-
-    coverRect.w = coverW;
-    coverRect.h = coverInnerH;
-    coverRect.x = Math.round((panelW - coverRect.w) / 2);
-    coverRect.y = Math.round((coverH - coverRect.h) / 2);
+    const tx = cx + ICON_SIZE + sec.iconGap;
+    gr.GdiDrawText(text, font, COL.FG, tx, cy, cw - ICON_SIZE - sec.iconGap, ch, flags);
+}
+/** @param {Object} sec - SECTIONS born item with icon/icon2/colGap */
+function drawBornSection(gr, sec) {
+    const cx = sec.content.x, cy = sec.content.y, ch = sec.content.h, cw = sec.content.w;
+    if (sec.icon) {
+        _drawIcon(gr, sec.icon, cx, cy, ch);
+    }
+    const tx1 = cx + ICON_SIZE + sec.iconGap;
+    _drawText(gr, TS.bodyLine, artistData.born || "-",
+        tx1, cy, sec.colGap - sec.iconGap - ICON_SIZE, ch);
+    // 第二列: country (国旗优先，无国旗回退通用位置图标)
+    const cx2 = cx + sec.colGap;
+    if (currentCountryFlagImg) {
+        _drawIcon(gr, currentCountryFlagImg, cx2, cy, ch);
+    } else if (sec.icon2) {
+        _drawIcon(gr, sec.icon2, cx2, cy, ch);
+    }
+    const tx2 = cx2 + ICON_SIZE + sec.iconGap;
+    _drawText(gr, TS.bodyLine, artistData.country || "-",
+        tx2, cy, cw - sec.colGap - ICON_SIZE - sec.iconGap, ch);
 }
 
+/** @param {Object} sec - SECTIONS links item, reads activeLinkBtns */
+function drawLinksSection(gr, sec) {
+    const cx = sec.content.x, cy = sec.content.y, ch = sec.content.h;
+    if (sec.icon) {
+        _drawIcon(gr, sec.icon, cx, cy, ch);
+    }
+    activeLinkBtns.forEach(btn => {
+        if (btn.img) gr.DrawImage(btn.img, btn.x, btn.y, btn.w, btn.h,
+            0, 0, btn.img.Width, btn.img.Height);
+    });
+}
 
-/**
- * 布局核心算法
- * 负责计算所有元素的坐标和尺寸，实现逻辑与渲染分离
- */
+/** @param {Object} sec - SECTIONS tab item */
+function drawTabSection(gr, sec) {
+    const pBtn = elements.profileBtn;
+    const dBtn = elements.discographyBtn;
+    const isProfile = !isShowingDiscography;
+
+    const pColor = isProfile ? COL.FG : (pBtn.isHover ? COL.FRAME : COL.FG);
+    const dColor = !isProfile ? COL.FG : (dBtn.isHover ? COL.FRAME : COL.FG);
+
+    gr.GdiDrawText(pBtn.displayText, isProfile ? TS.tab.font : TS.body.font,
+        pColor, pBtn.x, pBtn.y, pBtn.w, pBtn.h, CENTER_WRAP_FLAGS);
+    gr.GdiDrawText(dBtn.displayText, !isProfile ? TS.tab.font : TS.body.font,
+        dColor, dBtn.x, dBtn.y, dBtn.w, dBtn.h, CENTER_WRAP_FLAGS);
+
+    const activeBtn = isProfile ? pBtn : dBtn;
+    _drawTabIndicator(gr, activeBtn, window.Width, _scale(10), COL.FRAME, COL.FG);
+}
+
 function updateLayoutMetrics() {
     panelW = window.Width;
     panelH = window.Height;
 
-    coverH = PANEL_CFG.showCover ? Math.floor(panelW * PANEL_CFG.coverAspectRatio) : 0;
-    recalculateCoverLayout();
-    lineW = panelW - MARGIN * 4;
-    lineStartY = coverH + MARGIN;
+    // 更新 aliases 区域可见性
+    SEC.aliases.visible = artistData && artistData.aliases;
 
-    // 1. 计算标题高度
-    if (artistData && artistData.title) {
-        // 分别计算单行和完整高度，限制标题最多显示一行的高度(配合 truncate 样式)
-        const measureOne = _measureString("M", THEME.FONT.TITLE, lineW, ONE_LINE_FLAGS);
-        const measureFull = _measureString(artistData.title, THEME.FONT.TITLE, lineW, ONE_LINE_FLAGS);
-        titleH = Math.min(measureFull.Height, measureOne.Height); 
-        titleW = measureFull.Width;
-    } else {
-        titleH = LINE_H * 2;
-        titleW = LINE_H * 2;
-    }
-
-    // 2. 计算风格高度 (限制最大2行)
+    // 3. 计算风格高度 (最多 2 行)
+    const lineW = Math.max(1, panelW - SEC.genres.padding.left - SEC.genres.padding.right);
     if (artistData && artistData.genres) {
-        const measureOne = _measureString("M", THEME.FONT.BODY, lineW, MULTI_LINE_FLAGS);
-        const measureFull = _measureString(artistData.genres, THEME.FONT.BODY, lineW, MULTI_LINE_FLAGS);
-        const limitHeight = Math.ceil(measureOne.Height * 2); 
-        
-        // [修复] 修正了 genresH 可能为 0 的 Bug
-        genresH = Math.min(limitHeight, measureFull.Height);
-    } else {
-        genresH = LINE_H;
+        genresH = _measureText(artistData.genres, TS.body, lineW).Height;
+        genresH = Math.min(genresH, _getFontLineHeight(TS.body.font) * 2);
     }
 
-    // 3. 模拟垂直堆叠，计算头部总高度
-    let stackY = lineStartY;
-    stackY += titleH + LINE_SPACE;     // 名字
-    stackY += genresH + LINE_SPACE;    // 风格
-    stackY += LINE_H + LINE_SPACE;      // 生日/地区
-    
-    // 4. 计算链接按钮的 Y 坐标
-    if (activeLinkBtns && activeLinkBtns.length > 0) {
-        const linkY = stackY + _scale(1); // 微调偏移
-        activeLinkBtns.forEach(btn => {
-            btn.y = linkY;
-        });
+    // 4. 更新 links 区域可见性
+    SEC.links.visible = activeLinkBtns && activeLinkBtns.length > 0;
+
+    // 5. 一次性布局所有 section (cover → title → ... → tab → scrollText)
+    layoutSections(SECTIONS, panelW, panelH);
+
+    // 6. 更新链接按钮 Y 坐标
+    if (SEC.links.visible) {
+        const linkCy = SEC.links.content.y;
+        activeLinkBtns.forEach(btn => { btn.y = linkCy + _scale(1); });
     }
-    stackY += LINE_H + LINE_SPACE; // 链接行占用
-    
-    stackY += LINE_H * 2.5; // 预留给 Tab 按钮和分割线的空间
-    
-    headerHeight = stackY; 
 
-    viewW = Math.max(1, window.Width - MARGIN * 2);
-    viewH = Math.max(1, window.Height - headerHeight - MARGIN);
-
-    // 设置 Tab 按钮坐标
-    elements.profileBtn.y = headerHeight - elements.profileBtn.h * 2;
+    // 7. 设置 Tab 按钮位置
+    const tabCx = SEC.tab.content.x;
+    elements.profileBtn.x = tabCx;
+    elements.profileBtn.y = SEC.tab.content.y + Math.ceil((SEC.tab.content.h - elements.profileBtn.h) / 2);
+    elements.discographyBtn.x = tabCx + elements.profileBtn.w + _scale(5);
     elements.discographyBtn.y = elements.profileBtn.y;
 
     manageCycleTimer();
@@ -799,16 +804,13 @@ function updateLayoutMetrics() {
  * 计算 Tab 按钮的尺寸和 X 坐标
  */
 function calcElementsBtnSize() {
-    const pM = _measureString(elements.profileBtn.displayText, THEME.FONT.BOLD, window.Width, BTN_STYLE_FLAGS);
+    const pM = _measureText(elements.profileBtn.displayText, TS.tab, window.Width);
     elements.profileBtn.w = pM.Width;
     elements.profileBtn.h = pM.Height;
-    
-    const dM = _measureString(elements.discographyBtn.displayText, THEME.FONT.BOLD, window.Width, BTN_STYLE_FLAGS);
+
+    const dM = _measureText(elements.discographyBtn.displayText, TS.tab, window.Width);
     elements.discographyBtn.w = dM.Width;
     elements.discographyBtn.h = dM.Height;
-
-    elements.profileBtn.x = MARGIN * 2.5;
-    elements.discographyBtn.x = MARGIN * 3.5 + elements.profileBtn.w;
 }
 
 // 测量文本高度并更新滚动状态
@@ -816,15 +818,27 @@ function createTextBuffer() {
     currentText = "";
     fullTextH = 0;
 
-    if (!artistData || viewW <= 0 || viewH <= 0) return;
+    if (!artistData || SEC.scrollText.content.w <= 0 || SEC.scrollText.content.h <= 0) return;
 
     currentText = isShowingDiscography ? getDiscoText() : (artistData.artistbiography || "暂无详细简介信息");
 
-    const measured = _measureString(currentText, THEME.FONT.BODY, viewW, MULTI_LINE_FLAGS);
+    const measured = _measureText(currentText, TS.body, SEC.scrollText.content.w);
     fullTextH = Math.max(1, Math.min(Math.ceil(measured.Height), _scale(2000)));
 
-    maxScrollY = Math.max(0, fullTextH - viewH);
+    maxScrollY = Math.max(0, fullTextH - SEC.scrollText.content.h);
     if (scrollY > maxScrollY) scrollY = maxScrollY;
+    scrollText.ensure(currentText, window.Width, fullTextH);
+}
+/**
+ * 根据艺人国籍解析国旗图标。
+ * 调用 lib/flag.js resolveCountryCode() 做正则匹配，支持 "美国纽约" 等地址串。
+ */
+function updateCountryFlag() {
+    if (!artistData || !artistData.country) { currentCountryFlagImg = null; lastCountryCode = null; return; }
+    const code = resolveCountryCode(artistData.country);
+    if (code === lastCountryCode) return;
+    lastCountryCode = code;
+    currentCountryFlagImg = code ? loadFlagImage(code) : null;
 }
 
 /**
@@ -835,7 +849,7 @@ function createLinkButtons() {
     if (!artistData || !artistData.links) return;
 
     const btnSize = ICON_SIZE + _scale(4);
-    const startX = MARGIN * 2.5;
+    const startX = _scale(25);
     let currentX = startX;
     
     for (let key in artistData.links) {
@@ -863,15 +877,13 @@ function createLinkButtons() {
 // 交互事件处理 (Event Handlers)
 // =========================================================================
 
-/**
- * 检测坐标是否在元素矩形内
- */
+
 
 function on_mouse_wheel(step) {
     if (!currentText || maxScrollY <= 0) return;
     scrollY -= step * SCROLL_STEP;
     scrollY = Math.max(0, Math.min(scrollY, maxScrollY));
-    window.RepaintRect(0, headerHeight, window.Width, window.Height - headerHeight);
+    window.RepaintRect(0, SEC.scrollText.rect.y, window.Width, window.Height - SEC.scrollText.rect.y);
 }
 
 // [核心] 状态机：on_mouse_move
@@ -929,21 +941,27 @@ function on_mouse_leave() {
 
 function on_mouse_lbtn_up(x, y) {
     // 1. 封面点击 (切换图片)
-    if (PANEL_CFG.showCover && y < coverH && carousel.images.length > 1) {
-        _carouselNext(carousel, coverH, IMG_CYCLE_MS, panelW, ensureCarouselImageReady);
+    if (PANEL_CFG.showCover && y < SEC.cover.rect.y + SEC.cover.rect.h && carousel.images.length > 1) {
+        _carouselNext(carousel, SEC.cover.rect.h, IMG_CYCLE_MS, panelW, ensureCarouselImageReady);
         return;
     }
 
     // 2. Tab 切换
     if (_hitTest(x, y, elements.profileBtn)) {
         isShowingDiscography = false;
+        scrollY = 0;
         createTextBuffer();
-        window.RepaintRect(0, elements.profileBtn.y, window.Width, window.Height - elements.profileBtn.y);
+        if (window.IsTransparent) {
+            window.Repaint();
+        } else {
+            window.RepaintRect(0, elements.profileBtn.y, window.Width, window.Height - elements.profileBtn.y);
+        }
         return;
     } else if (_hitTest(x, y, elements.discographyBtn)) {
         isShowingDiscography = true;
+        scrollY = 0;
         createTextBuffer();
-        window.RepaintRect(0, elements.profileBtn.y, window.Width, window.Height - elements.profileBtn.y); 
+        window.RepaintRect(0, elements.profileBtn.y, window.Width, window.Height - elements.profileBtn.y);
         return;
     }
 
@@ -973,16 +991,14 @@ function on_playback_new_track(metadb) {
 
 function on_playback_stop(reason) {
     if (reason !== 2) {
-        reloadArtistData(fb.GetNowPlaying());
+        reloadArtistData(resolveMetadbByMode(METADB_RESOLVE_MODE.PLAYING_ONLY));
     }
 }
 
 function on_playlist_items_selection_change() {
-    let selection = fb.GetSelection();
-    if (selection) {
-        reloadArtistData(selection);
-    } else if (fb.IsPlaying) {
-        reloadArtistData(fb.GetNowPlaying());
+    const target = resolveMetadbByMode(METADB_RESOLVE_MODE.SELECTION_FIRST);
+    if (target) {
+        reloadArtistData(target);
     } else {
         artistName = null;
         artistData = null;
@@ -1025,6 +1041,7 @@ function on_script_unload() {
             if (img && typeof img.Dispose === "function") img.Dispose();
         });
     }
+    scrollText.dispose();
     _disposeImageDict(LINK_ICONS);
     _measureDispose();
     ARTIST_CACHE.clear();
@@ -1034,9 +1051,12 @@ function on_script_unload() {
 // 初始化执行 (Initialization)
 // =========================================================================
 
-let initSelection = fb.GetSelection();
+const initSelection = resolveMetadbByMode(METADB_RESOLVE_MODE.SELECTION_ONLY);
 if (initSelection) {
     reloadArtistData(initSelection);
-} else if (fb.IsPlaying) {
-    reloadArtistData(fb.GetNowPlaying());
+} else {
+    const initPlaying = resolveMetadbByMode(METADB_RESOLVE_MODE.PLAYING_ONLY);
+    if (initPlaying) {
+        reloadArtistData(initPlaying);
+    }
 }

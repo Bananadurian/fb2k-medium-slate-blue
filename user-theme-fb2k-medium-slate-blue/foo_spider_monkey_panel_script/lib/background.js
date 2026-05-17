@@ -362,6 +362,9 @@ function createPanelBackgroundController(cfg) {
 
         if (blurRadius > 0 && typeof bmp.StackBlur === "function") {
             bmp.StackBlur(blurRadius);
+            if (shapeType === "round-rect" && shapeRadius > 0) {
+                _applyRoundMaskToBitmap(bmp, width, height, shapeRadius);
+            }
         }
 
         imageCache.set(imageKey, bmp);

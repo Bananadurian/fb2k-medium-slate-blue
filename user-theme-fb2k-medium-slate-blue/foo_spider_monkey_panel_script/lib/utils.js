@@ -2,9 +2,9 @@
  * @file utils.js
  * @author XYSRe
  * @created 2026-04-27
- * @updated 2026-04-29
- * @version 2.0.0
- * @description 共享工具函数库 — DPI 缩放、颜色、图片、命中检测、文本测量、图片绘制
+ * @updated 2026-05-14
+ * @version 2.1.0
+ * @description 共享工具函数库 — DPI 缩放、颜色、图片、命中检测、文本测量(_measureText)、图片绘制
  */
 
 "use strict";
@@ -130,7 +130,7 @@ function _measureString(text, font, maxWidth, textStyleFlag) {
     const result = _measure.gr.MeasureString(text, font, 0, 0, maxWidth, _scale(2000), textStyleFlag || 0);
     return {
         Width: Math.ceil(result.Width),
-        Height: Math.ceil(result.Height) - 1 // GDI/GDI+ 测量高度修正，消除 1px 系统偏差
+        Height: Math.ceil(result.Height) + _scale(1) // GDI/GDI+ 测量高度修正，消除 1px 系统偏差
     };
 }
 
@@ -143,6 +143,63 @@ function _measureDispose() {
         if (typeof _measure.img.Dispose === "function") _measure.img.Dispose();
         _measure.img = null;
         _measure.gr = null;
+    }
+}
+
+/**
+ * 使用样式预设测量文本尺寸
+ * @param {string} text
+ * @param {{font:GdiFont, flags:number}} style - 样式预设对象
+ * @param {number} maxW - 最大宽度
+ * @returns {{Width:number, Height:number}}
+ */
+function _measureText(text, style, maxW) {
+    return _measureString(text, style.font, maxW, style.flags);
+}
+
+/**
+ * 垂直堆叠 SECTIONS 布局。
+ * 遍历 sections 数组，从 y=0 开始逐段计算 rect 与 content 坐标。
+ *
+ * 每个 section 对象需预置以下字段:
+ *   rect:    { x:0, y:0, w:0, h:0 }  — 本函数写入 (全宽矩形区域)
+ *   content: { x:0, y:0, w:0, h:0 }  — 本函数写入 (rect 减去 padding 的内容区)
+ *   padding: { top, right, bottom, left }  — 只读，控制内边距与段间距
+ *   visible: boolean  — false 时跳过 (rect.h=0, content 归零)
+ *   fillRemaining?: boolean  — true 时该段占据面板剩余高度
+ *   getContentHeight(): number  — 返回内容区高度 (不含 padding)
+ *
+ * @param {Array<Object>} sections - SECTIONS 数组
+ * @param {number} panelW - 面板宽度
+ * @param {number} panelH - 面板高度
+ * @returns {void}
+ */
+function layoutSections(sections, panelW, panelH) {
+    let y = 0;
+    for (const sec of sections) {
+        sec.rect.x = 0;
+        sec.rect.y = y;
+        sec.rect.w = panelW;
+
+        if (!sec.visible) {
+            sec.rect.h = 0;
+            sec.content.x = sec.content.y = sec.content.w = sec.content.h = 0;
+            continue;
+        }
+
+        if (sec.fillRemaining) {
+            sec.rect.h = Math.max(1, panelH - y);
+        } else {
+            const ch = sec.getContentHeight();
+            sec.rect.h = ch + sec.padding.top + sec.padding.bottom;
+        }
+
+        sec.content.x = sec.padding.left;
+        sec.content.y = y + sec.padding.top;
+        sec.content.w = Math.max(1, panelW - sec.padding.left - sec.padding.right);
+        sec.content.h = Math.max(1, sec.rect.h - sec.padding.top - sec.padding.bottom);
+
+        y += sec.rect.h;
     }
 }
 
@@ -284,4 +341,102 @@ function _extractImageColors(img, useGradient, fallbackColor, gradientSpan) {
         console.log("SMP Extract Colors Error: " + e);
     }
     return result;
+}
+
+// ============================================================================
+// 8. Metadb 选择策略
+// ============================================================================
+
+const METADB_RESOLVE_MODE = {
+    PLAYING_FIRST: "playing-first",
+    SELECTION_FIRST: "selection-first",
+    PLAYING_ONLY: "playing-only",
+    SELECTION_ONLY: "selection-only",
+};
+
+const ALBUM_ART_ID = {
+    FRONT: 0,
+    BACK: 1,
+    DISC: 2,
+    ICON: 3,
+    ARTIST: 4,
+};
+
+/**
+ * 按策略解析目标歌曲句柄
+ * @param {string} mode - METADB_RESOLVE_MODE.*
+ * @param {{ now?: FbMetadbHandle|null, selection?: FbMetadbHandle|null }} [opts]
+ * @returns {FbMetadbHandle|null}
+ */
+function resolveMetadbByMode(mode, opts) {
+    const options = opts || {};
+    const now = Object.prototype.hasOwnProperty.call(options, "now")
+        ? options.now
+        : (fb.IsPlaying ? fb.GetNowPlaying() : null);
+    const selection = Object.prototype.hasOwnProperty.call(options, "selection")
+        ? options.selection
+        : fb.GetSelection();
+
+    if (mode === METADB_RESOLVE_MODE.PLAYING_ONLY) return now || null;
+    if (mode === METADB_RESOLVE_MODE.SELECTION_ONLY) return selection || null;
+    if (mode === METADB_RESOLVE_MODE.SELECTION_FIRST) return selection || now || null;
+    return now || selection || null;
+}
+
+// ============================================================================
+// 9. 布局计算
+// ============================================================================
+
+/**
+ * 将统一数字或对象格式的内边距规范化为 {top, right, bottom, left} 对象
+ * @param {number|{top?:number, right?:number, bottom?:number, left?:number}} padding
+ *        number: 四边统一；对象: 独立指定各边，未指定的边默认为 0
+ * @returns {{top:number, right:number, bottom:number, left:number}}
+ */
+function normalizePadding(padding) {
+    if (typeof padding === "number") {
+        const p = Math.max(0, padding | 0);
+        return { top: p, right: p, bottom: p, left: p };
+    }
+    return {
+        top:    Math.max(0, (padding.top    | 0) || 0),
+        right:  Math.max(0, (padding.right  | 0) || 0),
+        bottom: Math.max(0, (padding.bottom | 0) || 0),
+        left:   Math.max(0, (padding.left   | 0) || 0),
+    };
+}
+
+/**
+ * 计算内容区域矩形（扣除 padding 后的可用区域）
+ * @param {number} panelW - 面板宽度
+ * @param {number} panelH - 面板高度
+ * @param {number|{top?:number, right?:number, bottom?:number, left?:number}} padding
+ *        number: 四边统一；对象: 独立指定各边，未指定的边默认为 0
+ * @returns {{x:number, y:number, w:number, h:number}}
+ */
+function calcContentRect(panelW, panelH, padding) {
+    const p = normalizePadding(padding);
+    return {
+        x: p.left,
+        y: p.top,
+        w: Math.max(0, panelW - p.left - p.right),
+        h: Math.max(0, panelH - p.top - p.bottom)
+    };
+}
+
+const _fontLineH = new Map();
+
+/**
+ * 获取字体单行高度（缓存）
+ * @param {GdiFont} font
+ * @returns {number}
+ */
+function _getFontLineHeight(font) {
+    const key = font.Name + "|" + font.Size + "|" + font.Style;
+    let h = _fontLineH.get(key);
+    if (h === undefined) {
+        h = _measureString("M", font, 10000, 0).Height;
+        _fontLineH.set(key, h);
+    }
+    return h;
 }

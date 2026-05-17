@@ -8,6 +8,8 @@
  */
 
 "use strict";
+/** 启用 Direct2D 硬件加速渲染模式 */
+window.DrawMode = 1;
 
 include("lib/utils.js");
 include("lib/data.js");
@@ -21,11 +23,10 @@ window.DefineScript("Playback Buttons", {
 });
 
 // ============================================================================
-// 1. 工具与别名
+// 1. 工具
 // ============================================================================
 
-const COL = THEME.COL;
-let tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
+let tooltip = _createDefaultTooltip();
 
 // ============================================================================
 // 2. 资源定义
@@ -67,19 +68,33 @@ const images = {
     random_hover: _loadImage(IMGS_LUCIDE_DIR + "dices_hover.png"),
 };
 
-const ICON_W = _scale(18);
-const ICON_H = _scale(18);
-const MARGIN = _scale(10);
-
-
-
+const BTN_LAYOUT = {
+    itemGap: _scale(10),
+    sizes: { S: _scale(18), L: _scale(27) },
+    items: [
+        { key: "replay",  size: "S", img: "replay",        func: () => fb.Play(),                   tipText: "重放" },
+        { key: "stop",    size: "S", img: "stop",          func: () => fb.Stop(),                   tipText: "Stop" },
+        { key: "rewind",  size: "S", img: "rewind",        func: () => fb.RunMainMenuCommand("Playback/Seek/Back by 5 seconds"), tipText: "Seek -5s" },
+        { key: "prev",    size: "L", img: "previous",      func: () => fb.Prev(),                   tipText: "上一曲" },
+        { key: "play",    size: "L", img: "play",          func: () => fb.PlayOrPause(),            tipText: "播放" },
+        { key: "next",    size: "L", img: "next",          func: () => fb.Next(),                   tipText: "下一曲" },
+        { key: "forward", size: "S", img: "forward",       func: () => fb.RunMainMenuCommand("Playback/Seek/Ahead by 5 seconds"), tipText: "Seek +5s" },
+        { key: "order",   size: "S", img: "order_default", func: () => togglePlaybackOrder(),       tipText: "播放模式" },
+        { key: "random",  size: "S", img: "random",        func: () => fb.Random(),                 tipText: "Random" },
+    ],
+};
 
 // ============================================================================
 // 3. 业务逻辑
 // ============================================================================
 
 const buttons = {};
-let currentHoverBtn = null; 
+let currentHoverBtn = null;
+
+// 透明同步通知 freshness 窗口与兜底延迟 — 通道定义见 lib/data.js NOTIFY.TRANSPARENT_SYNC
+let transparentTrackRepaintTimer = null;
+let lastTransparentNotifyEpoch = 0;
+let lastTransparentNotifyTs = 0;
 
 const ORDER_CONFIG = {
     0: { img: images.order_default, hover: images.order_default_hover, tip: "顺序播放" },
@@ -90,27 +105,21 @@ const ORDER_CONFIG = {
     default: { img: images.order_default, hover: images.order_default_hover, tip: "其他模式" }
 };
 
-/**
- * @returns {void}
- */
-function initUi() {
-    buttons.stop = new Button({ imgNormal: images.stop, imgHover: images.stop_hover, func: () => fb.Stop(), tipText: "Stop" });
-    buttons.prev = new Button({ imgNormal: images.previous, imgHover: images.previous_hover, func: () => fb.Prev(), tipText: "上一曲" });
-    buttons.play = new Button({ imgNormal: images.play, imgHover: images.play_hover, func: () => fb.PlayOrPause(), tipText: "播放" });
-    buttons.next = new Button({ imgNormal: images.next, imgHover: images.next_hover, func: () => fb.Next(), tipText: "下一曲" });
-    buttons.order = new Button({ imgNormal: images.order_default, imgHover: images.order_default_hover, func: () => togglePlaybackOrder(), tipText: "播放模式" });
-
-    buttons.replay = new Button({ imgNormal: images.replay, imgHover: images.replay_hover, func: () => fb.Play(), tipText: "重放" });
-    buttons.rewind = new Button({ imgNormal: images.rewind, imgHover: images.rewind_hover, func: () => fb.RunMainMenuCommand("Playback/Seek/Back by 5 seconds"), tipText: "Seek -5s" });
-    buttons.forward = new Button({ imgNormal: images.forward, imgHover: images.forward_hover, func: () => fb.RunMainMenuCommand("Playback/Seek/Ahead by 5 seconds"), tipText: "Seek +5s" });
-    buttons.random = new Button({ imgNormal: images.random, imgHover: images.random_hover, func: () => fb.Random(), tipText: "Random" });
-    updateAllStates();
+/** 从 BTN_LAYOUT 配置创建所有按钮并同步初始状态 */
+function createButtons() {
+    BTN_LAYOUT.items.forEach(it => {
+        buttons[it.key] = new Button({
+            imgNormal: images[it.img],
+            imgHover:  images[it.img + "_hover"],
+            func:      it.func,
+            tipText:   it.tipText,
+        });
+    });
+    syncButtonStates();
 }
 
-/**
- * @returns {void}
- */
-function updatePlayPauseButton() {
+/** 同步播放/暂停按钮图标与提示文字 */
+function syncPlayPauseState() {
     if (fb.IsPlaying && !fb.IsPaused) {
         buttons.play.updateState(images.pause, images.pause_hover, "暂停");
     } else {
@@ -118,10 +127,8 @@ function updatePlayPauseButton() {
     }
 }
 
-/**
- * @returns {void}
- */
-function updateStopState() {
+/** 同步停止按钮图标（区分普通停止 / 稍后停止） */
+function syncStopState() {
     if (fb.StopAfterCurrent) {
         buttons.stop.updateState(images.stop_after, images.stop_hover, "立即停止 (右键: 取消稍后停止)", () => fb.Stop());
     } else {
@@ -129,27 +136,21 @@ function updateStopState() {
     }
 }
 
-/**
- * @returns {void}
- */
-function updateOrderState() {
+/** 同步播放模式按钮图标与提示文字 */
+function syncOrderState() {
     const orderId = plman.PlaybackOrder;
     const cfg = ORDER_CONFIG[orderId] || ORDER_CONFIG.default;
     buttons.order.updateState(cfg.img, cfg.hover, cfg.tip);
 }
 
-/**
- * @returns {void}
- */
-function updateAllStates() {
-    updatePlayPauseButton();
-    updateStopState();
-    updateOrderState();
+/** 同步所有按钮外观状态（播放/停止/模式） */
+function syncButtonStates() {
+    syncPlayPauseState();
+    syncStopState();
+    syncOrderState();
 }
 
-/**
- * @returns {void}
- */
+/** 循环切换播放模式 (Default → Repeat → Shuffle)，跳过随机模式 */
 function togglePlaybackOrder() {
     const cycle = [0, 1, 2, 4]; // 跳过模式 3 (随机播放), 仅循环 Default/Repeat/Shuffle
     const pos = cycle.indexOf(plman.PlaybackOrder);
@@ -193,55 +194,26 @@ function showOrderMenu(x, y) {
 // 4. 主回调函数
 // ============================================================================
 
-initUi();
+createButtons();
 
 /**
  * @returns {void}
  */
 function on_size() {
-    if (window.Width <= 0 || window.Height <= 0) return;
-
-    // 6 个小按钮 + 3 个大按钮 (1.5x) + 8 个间距
-    const totalW = (ICON_W * 6) + (ICON_W * 1.5 * 3) + (MARGIN * 8);
-    let currentX = Math.round((window.Width - totalW) / 2);
-    const centerY = Math.round(window.Height / 2);
-    const midY = Math.round(centerY - ICON_H / 2);
-    const largeY = Math.round(centerY - (ICON_H * 1.5) / 2);
-
-    buttons.replay.x = currentX; buttons.replay.y = midY;
-    buttons.replay.w = ICON_W;   buttons.replay.h = ICON_H;
-    currentX += ICON_W + MARGIN;
-
-    buttons.stop.x = currentX; buttons.stop.y = midY;
-    buttons.stop.w = ICON_W;   buttons.stop.h = ICON_H;
-    currentX += ICON_W + MARGIN;
-
-    buttons.rewind.x = currentX; buttons.rewind.y = midY;
-    buttons.rewind.w = ICON_W;   buttons.rewind.h = ICON_H;
-    currentX += ICON_W + MARGIN;
-
-    buttons.prev.x = currentX; buttons.prev.y = largeY;
-    buttons.prev.w = ICON_W * 1.5;   buttons.prev.h = ICON_H * 1.5;
-    currentX += (ICON_W * 1.5) + MARGIN;
-
-    buttons.play.x = currentX; buttons.play.y = largeY;
-    buttons.play.w = ICON_W * 1.5; buttons.play.h = ICON_H * 1.5;
-    currentX += (ICON_W * 1.5) + MARGIN;
-
-    buttons.next.x = currentX; buttons.next.y = largeY;
-    buttons.next.w = ICON_W * 1.5;   buttons.next.h = ICON_H * 1.5;
-    currentX += (ICON_W * 1.5) + MARGIN;
-
-    buttons.forward.x = currentX; buttons.forward.y = midY;
-    buttons.forward.w = ICON_W;   buttons.forward.h = ICON_H;
-    currentX += ICON_W + MARGIN;
-
-    buttons.order.x = currentX; buttons.order.y = midY;
-    buttons.order.w = ICON_W;   buttons.order.h = ICON_H;
-    currentX += ICON_W + MARGIN;
-
-    buttons.random.x = currentX; buttons.random.y = midY;
-    buttons.random.w = ICON_W;   buttons.random.h = ICON_H;
+    const hw = window.Width, hh = window.Height;
+    if (hw <= 0 || hh <= 0) return;
+    const cfg = BTN_LAYOUT;
+    const items = cfg.items;
+    const totalW = items.reduce((s, it) => s + cfg.sizes[it.size], 0) + cfg.itemGap * (items.length - 1);
+    let x = Math.round((hw - totalW) / 2);
+    const cy = Math.round(hh / 2);
+    items.forEach(it => {
+        const btn = buttons[it.key];
+        const s = cfg.sizes[it.size];
+        btn.x = x; btn.y = Math.round(cy - s / 2);
+        btn.w = s; btn.h = s;
+        x += s + cfg.itemGap;
+    });
 }
 
 /**
@@ -249,13 +221,15 @@ function on_size() {
  * @returns {void}
  */
 function on_paint(gr) {
-    gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
+    if (!window.IsTransparent) {
+        gr.FillSolidRect(0, 0, window.Width, window.Height, THEME.COL.BG);
+    }
     for (let key in buttons) {
         buttons[key].paint(gr);
     }
 }
 
-// UI 状态机
+// --- 悬停状态机 ---
 /**
  * @param {number} x
  * @param {number} y
@@ -334,7 +308,7 @@ function on_mouse_lbtn_dblclk(x, y) {
 function on_mouse_rbtn_up(x, y) {
     if (buttons.stop.containsPoint(x, y)) {
         fb.StopAfterCurrent = !fb.StopAfterCurrent;
-        updateStopState();
+        syncStopState();
         return true;
     }
     if (buttons.order.containsPoint(x, y)) {
@@ -357,21 +331,43 @@ function on_mouse_rbtn_down(x, y) {
     return false;
 }
 
+function clearTransparentTrackRepaintTimers() {
+    if (transparentTrackRepaintTimer) {
+        window.ClearTimeout(transparentTrackRepaintTimer);
+        transparentTrackRepaintTimer = null;
+    }
+}
+
+function scheduleTransparentTrackRepaintFallback() {
+    if (!window.IsTransparent || !window.IsVisible) return;
+
+    clearTransparentTrackRepaintTimers();
+    transparentTrackRepaintTimer = window.SetTimeout(function () {
+        transparentTrackRepaintTimer = null;
+        if (!window.IsVisible) return;
+        if (Date.now() - lastTransparentNotifyTs <= THEME.LAYOUT.TRANSPARENT_SYNC_NOTIFY_FRESH_MS) return;
+        window.Repaint();
+    }, THEME.LAYOUT.TRANSPARENT_REPAINT_FALLBACK_DELAY_MS);
+}
+
 /** @returns {void} */
-function on_playback_starting() { updatePlayPauseButton(); }
+function on_playback_starting() { syncPlayPauseState(); }
 /** @returns {void} */
-function on_playback_new_track() { updatePlayPauseButton(); }
+function on_playback_new_track() {
+    syncPlayPauseState();
+    scheduleTransparentTrackRepaintFallback();
+}
 /**
  * @param {number} reason
  * @returns {void}
  */
 function on_playback_stop(reason) {
-    if (reason !== 2) { updatePlayPauseButton(); updateStopState(); }
+    if (reason !== 2) { syncPlayPauseState(); syncStopState(); }
 }
 /** @returns {void} */
-function on_playback_pause() { updatePlayPauseButton(); }
+function on_playback_pause() { syncPlayPauseState(); }
 /** @returns {void} */
-function on_playback_order_changed() { updateOrderState(); }
+function on_playback_order_changed() { syncOrderState(); }
 
 /**
  * @returns {void}
@@ -390,8 +386,33 @@ function on_font_changed() {
 }
 
 /**
+ * 透明同步通知：bg_panel_container_control 重绘后触发本面板跟随重绘。
+ * 通道与发送方标识见 lib/data.js NOTIFY。
+ * @param {string} name
+ * @param {*} info
  * @returns {void}
  */
+function on_notify_data(name, info) {
+    if (!window.IsTransparent) return;
+    if (name !== NOTIFY.TRANSPARENT_SYNC.name) return;
+    if (!info || typeof info !== "object") return;
+
+    const version = typeof info.v === "number" ? info.v : 0;
+    if (version !== NOTIFY.TRANSPARENT_SYNC.version) return;
+
+    const source = typeof info.source === "string" ? info.source : "";
+    if (source !== NOTIFY.SOURCE.BG_PANEL_CONTAINER_CONTROL) return;
+
+    const notifyEpoch = typeof info.epoch === "number" ? info.epoch : 0;
+    if (notifyEpoch <= lastTransparentNotifyEpoch) return;
+
+    lastTransparentNotifyEpoch = notifyEpoch;
+    lastTransparentNotifyTs = Date.now();
+    clearTransparentTrackRepaintTimers();
+    if (window.IsVisible) window.Repaint();
+}
+
 function on_script_unload() {
+    clearTransparentTrackRepaintTimers();
     _disposeImageDict(images);
 }

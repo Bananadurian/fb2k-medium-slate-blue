@@ -41,7 +41,7 @@
  */
 function createTitleBarController(cfg) {
     const COL = THEME.COL;
-    const tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
+    const tooltip = _createDefaultTooltip();
 
     const images = {
         icon: _loadImage(IMGS_LUCIDE_DIR + cfg.icon),

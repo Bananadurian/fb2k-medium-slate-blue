@@ -2,9 +2,9 @@
  * @file theme.js
  * @author XYSRe
  * @created 2026-04-27
- * @updated 2026-05-03
- * @version 2.0.0
- * @description 共享主题配置 — 颜色、字体(GdiFont)、布局、配置开关(CFG)、路径
+ * @updated 2026-05-14
+ * @version 2.1.0
+ * @description 共享主题配置 — 颜色、字体(GdiFont)、布局、配置开关(CFG)、文本样式预设(TEXT)、路径
  * @requires lib/utils.js
  */
 
@@ -91,34 +91,40 @@ Filter Panel: Items: "{D93F1EF3-4AEE-4632-B5BF-0220CEC76DED}"
  * @property {number} COL.SEL_BG - 选中项背景色
  * @property {number} COL.FRAME - 激活项/强调色
  * @property {number} COL.SCROLLBAR - 滚动条颜色 (硬编码)
+ * @property {number} COL.MASK - 遮罩层底色 (硬编码)
  * @property {Object} FONT - GdiFont 对象集合
  * @property {GdiFont} FONT.TITLE - 大标题字体
  * @property {GdiFont} FONT.BODY - 正文字体
  * @property {GdiFont} FONT.BOLD - 加粗正文字体
  * @property {GdiFont} FONT.LABEL - 标签字体 (CUI Labels)
  * @property {Object} LAYOUT - DPI 缩放后的布局常量
- * @property {number} LAYOUT.MARGIN - 外边距
- * @property {number} LAYOUT.LINE_H - 行高
- * @property {number} LAYOUT.LINE_SPACE - 行间距
  * @property {number} LAYOUT.ICON_SIZE - 图标尺寸
  * @property {number} LAYOUT.SCROLL_STEP - 滚轮步长
  * @property {number} LAYOUT.IMG_CYCLE_MS - 封面轮播间隔(ms)
+ * @property {number} LAYOUT.TRANSPARENT_SYNC_NOTIFY_FRESH_MS - 子面板通知 freshness 窗口(ms)
+ * @property {number} LAYOUT.TRANSPARENT_REPAINT_FALLBACK_DELAY_MS - 子面板兜底重绘延迟(ms)
+ * @property {number} LAYOUT.BG_TRANSPARENT_SYNC_DELAY_MS - 背景面板同步延迟(ms)
+ * @property {number} LAYOUT.BG_TRANSPARENT_SYNC_LATE_DELAY_MS - 背景面板晚发同步延迟(ms)
+ * @property {number} LAYOUT.CORNER_RADIUS - 统一圆角半径 (已缩放)
+ * @property {number} LAYOUT.TOOLTIP_FONT_SIZE - Tooltip 字号
+ * @property {number} LAYOUT.TOOLTIP_MAX_WIDTH - Tooltip 最大宽度
  * @property {Object} CFG - 共享配置开关
  * @property {boolean} CFG.GRAB_FOCUS - DefineScript 焦点选项
  * @property {number} CFG.CACHE_SIZE - LRU 缓存上限
  * @property {number} CFG.SOURCE_ICON_SIZE - 来源图标尺寸
  * @property {Object} CFG.AQ_BADGE - 音质标识布局配置
- * @property {number} CFG.AQ_BADGE.PADDING_X - 水平内边距
- * @property {number} CFG.AQ_BADGE.PADDING_Y - 垂直内边距
+ * @property {{top:number,right:number,bottom:number,left:number}} CFG.AQ_BADGE.PADDING - 四边内边距
  * @property {number} CFG.AQ_BADGE.RADIUS - 圆角半径
  * @property {number} CFG.AQ_BADGE.BORDER_W - 边框宽度
+ * @property {Object} TF - 共享 TitleFormat 实例
+ * @property {FbTitleFormat} TF.COVER_KEY - 封面缓存键格式
  */
 
 // CUI 字体源
 const FONT_ITEMS  = window.GetFontCUI(0);  // Common (list items)
 const FONT_LABELS = window.GetFontCUI(1);  // Common (labels)
 
-console.log("============theme初始化");
+// console.log("============theme初始化");
 
 const THEME = {
     // --- CUI 全局颜色 ---
@@ -139,6 +145,7 @@ const THEME = {
         // ITEM_DETAIL_BG:  window.GetColourCUI(3, "{4E20CEED-42F6-4743-8EB3-610454457E19}"),
         // 硬编码色值
         SCROLLBAR:      _rgb(149, 149, 149),
+        MASK:           _rgb(23, 23, 23),
     },
 
     // --- CUI 字体 (统一为 GdiFont 对象) ---
@@ -160,12 +167,18 @@ const THEME = {
 
     // --- 通用布局常量 (已 DPI 缩放) ---
     LAYOUT: {
-        MARGIN:       _scale(10),
-        LINE_H:       _scale(16),
-        LINE_SPACE:   _scale(8),
-        ICON_SIZE:    _scale(10),
-        SCROLL_STEP:  _scale(30),
-        IMG_CYCLE_MS: 8000,
+        ICON_SIZE:                      _scale(10),
+        SCROLL_STEP:                    _scale(30),
+        IMG_CYCLE_MS:                   8000,
+        // --- 透明背景同步计时 ---
+        TRANSPARENT_SYNC_NOTIFY_FRESH_MS:  220,
+        TRANSPARENT_REPAINT_FALLBACK_DELAY_MS: 80,
+        BG_TRANSPARENT_SYNC_DELAY_MS:       75,
+        BG_TRANSPARENT_SYNC_LATE_DELAY_MS:  180,
+        // --- Tooltip ---
+        CORNER_RADIUS:                 _scale(6),  // 统一圆角半径, 0=直角
+        TOOLTIP_FONT_SIZE:             _scale(13),
+        TOOLTIP_MAX_WIDTH:             1200,
     },
 
     // --- 共享配置开关 (跨面板复用) ---
@@ -174,11 +187,32 @@ const THEME = {
         CACHE_SIZE:       50,            // LRU 缓存上限
         SOURCE_ICON_SIZE: _scale(10),    // 来源图标尺寸
         AQ_BADGE: {                      // 音质标识布局
-            PADDING_X: _scale(4),
-            PADDING_Y: _scale(4),
+            PADDING:  { top: _scale(1), right: _scale(6), bottom: _scale(1), left: _scale(6) },
             RADIUS:   _scale(4),
             BORDER_W:  _scale(1),
         },
+    },
+
+    // --- 共享 TitleFormat 实例 ---
+    TF: {
+        COVER_KEY: fb.TitleFormat("%album artist% - %album%"),
+    },
+
+    // --- 文本样式预设 (font + color + flags 三元组) ---
+    // 使用 getter 确保 on_font_changed / on_colours_changed 后自动反映最新值
+    TEXT: {
+        get body()      { return { font: THEME.FONT.BODY,  color: THEME.COL.FG, flags: LEFT_WRAP_FLAGS }; },
+        get bodyLine()  { return { font: THEME.FONT.BODY,  color: THEME.COL.FG, flags: LEFT_LINE_FLAGS }; },
+        get bodyLineBottom()  { return { font: THEME.FONT.BODY,  color: THEME.COL.FG, flags: BOTTOM_LINE_FLAGS }; },
+        get title()     { return { font: THEME.FONT.TITLE, color: THEME.COL.SEL_FG, flags: LEFT_WRAP_FLAGS }; },
+        get titleLine() { return { font: THEME.FONT.TITLE, color: THEME.COL.SEL_FG, flags: LEFT_LINE_FLAGS }; },
+        get titleLineBottom() { return { font: THEME.FONT.TITLE, color: THEME.COL.SEL_FG, flags: BOTTOM_LINE_FLAGS }; },
+        get tab()       { return { font: THEME.FONT.BOLD,  color: THEME.COL.FG, flags: CENTER_WRAP_FLAGS }; },
+        get label()      { return { font: THEME.FONT.LABEL, color: THEME.COL.FG, flags: LEFT_LINE_FLAGS }; },
+        get boldCenter() { return { font: THEME.FONT.BOLD,  color: THEME.COL.FG, flags: CENTER_LINE_FLAGS }; },
+        get labelCenter(){ return { font: THEME.FONT.LABEL, color: THEME.COL.FG, flags: CENTER_LINE_FLAGS }; },
+        get bodyCenter() { return { font: THEME.FONT.BODY,  color: THEME.COL.FG, flags: CENTER_LINE_FLAGS }; },
+        get empty()      { return { font: THEME.FONT.BODY,  color: THEME.COL.FG, flags: CENTER_LINE_FLAGS }; },
     },
 };
 
@@ -213,3 +247,4 @@ function _refreshThemeFonts() {
 const IMGS_BASE = fb.ProfilePath + "\\user-theme-fb2k-medium-slate-blue\\imgs";
 const IMGS_LUCIDE_DIR = IMGS_BASE + "\\Lucide\\";
 const IMGS_LINKS_DIR  = IMGS_BASE + "\\Links\\";
+const IMGS_FLAGS_DIR  = IMGS_BASE + "\\Flags\\png_4x3_64x64\\";

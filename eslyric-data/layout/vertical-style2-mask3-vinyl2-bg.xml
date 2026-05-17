@@ -10,7 +10,7 @@
                    width="auto"
                    height="35%"
                    anchor="top"
-                   margin="0,2%,0,0"
+                   margin="0,-2%,0,0"
                    layout="free">
             
             <!-- 优化：建立绝对坐标系基准组，防止在不同缩放比例下由于 margin 产生的黑胶和封面错位问题 -->

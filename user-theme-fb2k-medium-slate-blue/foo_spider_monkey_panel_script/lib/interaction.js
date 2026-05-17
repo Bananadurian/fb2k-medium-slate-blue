@@ -2,9 +2,9 @@
  * @file interaction.js
  * @author XYSRe
  * @created 2026-04-27
- * @updated 2026-05-03
- * @version 2.0.0
- * @description 共享 UI 交互组件 — Button、光标、滚动条、轮播、选项卡、文本缓冲、页码指示器、Tooltip 工厂
+ * @updated 2026-05-14
+ * @version 2.1.0
+ * @description 共享 UI 交互组件 — Button、光标、滚动条、轮播、选项卡、文本缓冲、页码指示器、Tooltip 工厂、_drawText/_drawIcon 样式绘制
  * @requires lib/utils.js
  */
 
@@ -283,7 +283,7 @@ function _createDefaultTextTabStyle() {
             paddingX: _scale(6),
             paddingY: _scale(2),
             height: TEXT_TAB_MIN_HEIGHT,
-            radius: _scale(6),
+            radius: THEME.LAYOUT.CORNER_RADIUS,
         },
         states: {
             normal: {
@@ -626,7 +626,7 @@ function _drawScrollbar(gr, viewH, contentH, scrollY, maxScrollY, panelW, header
     if (maxScrollY <= 0 || contentH <= 0) return;
     const barH = Math.max(_scale(20), (viewH / contentH) * viewH);
     const barY = headerH + (scrollY / maxScrollY) * (viewH - barH);
-    gr.FillRoundRect(panelW - _scale(3), barY, _scale(2.5), barH, _scale(1), _scale(1), color);
+    gr.FillRoundRect(panelW - _scale(5), barY, _scale(2), barH, _scale(1), _scale(1), color);
 }
 
 // ============================================================================
@@ -716,18 +716,47 @@ function _carouselNext(carouselState, coverH, cycleMs, panelW, beforeAdvance) {
  * 绘制选项卡底部指示线和分割线
  * @param {GdiGraphics} gr
  * @param {TabIndicatorButton} activeBtn - 当前激活的按钮
- * @param {number} headerH - 头部区域底部 Y 坐标
  * @param {number} panelW - 面板宽度
- * @param {number} margin - 边距值 (已缩放)
- * @param {number} accentColor - 指示线高亮色
- * @param {number} dimColor - 分割线暗色
+ * @param {number} inset - 边缘内缩距离 (已缩放)
+ * @param {number} activeColor - 激活指示线颜色
+ * @param {number} separatorColor - 分割线颜色
  * @returns {void}
  */
-function _drawTabIndicator(gr, activeBtn, headerH, panelW, margin, accentColor, dimColor) {
+function _drawTabIndicator(gr, activeBtn, panelW, inset, activeColor, separatorColor) {
+    const lineSize = _scale(1);
     gr.SetSmoothingMode(4);
-    gr.DrawLine(activeBtn.x, headerH - margin, activeBtn.x + activeBtn.w, headerH - margin, _scale(2), accentColor);
-    gr.DrawLine(margin, headerH - margin, panelW - margin, headerH - margin, _scale(1), dimColor);
+    gr.FillRoundRect(inset, activeBtn.y + activeBtn.h,  panelW - inset * 2, lineSize, 0, 0, separatorColor);
+    gr.FillRoundRect(activeBtn.x, activeBtn.y + activeBtn.h - lineSize / 2, activeBtn.w, lineSize * 2, _scale(1), _scale(1), activeColor);
     gr.SetSmoothingMode(0);
+}
+
+/**
+ * 使用样式预设绘制文本
+ * @param {GdiGraphics} gr
+ * @param {{font:GdiFont, color:number, flags:number}} style - 样式预设对象
+ * @param {string} text - 文本内容
+ * @param {number} x
+ * @param {number} y
+ * @param {number} w
+ * @param {number} h
+ * @returns {void}
+ */
+function _drawText(gr, style, text, x, y, w, h) {
+    gr.GdiDrawText(text, style.font, style.color, x, y, w, h, style.flags);
+}
+
+/**
+ * 绘制垂直居中的图标
+ * @param {GdiGraphics} gr
+ * @param {GdiBitmap} icon - 图标位图
+ * @param {number} x - 左上角 X
+ * @param {number} y - 行顶部 Y
+ * @param {number} rowH - 行高度 (图标在行内垂直居中)
+ * @returns {void}
+ */
+function _drawIcon(gr, icon, x, y, rowH) {
+    const sz = THEME.LAYOUT.ICON_SIZE;
+    gr.DrawImage(icon, x, y + Math.ceil((rowH - sz) / 2), sz, sz, 0, 0, icon.Width, icon.Height);
 }
 
 // ============================================================================
@@ -771,7 +800,7 @@ function _drawPageIndicator(gr, currentIndex, totalCount, x, y, w, h, font, fgCo
     if (!bgColor) bgColor = 0x99000000;
     const pageText = (currentIndex + 1) + " / " + totalCount;
     gr.SetSmoothingMode(4);
-    gr.FillRoundRect(x, y, w, h, _scale(6), _scale(6), bgColor);
+    gr.FillRoundRect(x, y, w, h, THEME.LAYOUT.CORNER_RADIUS, THEME.LAYOUT.CORNER_RADIUS, bgColor);
     gr.SetSmoothingMode(0);
     gr.GdiDrawText(pageText, font, fgColor, x, y, w, h, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 }
@@ -784,26 +813,6 @@ function _drawPageIndicator(gr, currentIndex, totalCount, x, y, w, h, font, fgCo
  * 直接渲染可滚动文本 (用于 on_paint 回调中)
  * 使用 GdiDrawText 获得原生 ClearType，并用背景色遮盖溢出到头部的文字。
  * 调用后需重绘封面和头部内容（遮盖区域之上）。
- * @param {GdiGraphics} gr - on_paint 传入的 Graphics
- * @param {string} text - 要渲染的文本
- * @param {GdiFont} font - 字体
- * @param {number} color - 文字颜色
- * @param {number} x - 渲染区域左上角 X
- * @param {number} y - 渲染区域左上角 Y
- * @param {number} w - 渲染区域宽度
- * @param {number} h - 渲染区域高度
- * @param {number} flags - 文本格式标志
- * @param {number} bgColor - 背景色 (通常为 COL.BG)
- * @param {number} panelW - 面板宽度
- * @param {number} headerH - 头部区域高度 (遮盖到此处)
- * @returns {void}
- */
-function _drawScrollText(gr, text, font, color, x, y, w, h, flags, bgColor, panelW, headerH) {
-    if (!text) return;
-    gr.GdiDrawText(text, font, color, x, y, w, h, flags);
-    if (!window.IsTransparent) gr.FillSolidRect(0, 0, panelW, headerH, bgColor);
-}
-
 // ============================================================================
 // 9. 图片字典资源释放
 // ============================================================================
@@ -844,5 +853,76 @@ function _initTooltip(gdiFont, fontSize, maxWidth) {
             tt.Text = value;
             tt.Activate();
         }
+    };
+}
+
+/**
+ * 创建默认 Tooltip 管理器 — 使用 THEME 字体/字号/最大宽度
+ * @returns {(value: string) => void}
+ */
+function _createDefaultTooltip() {
+    return _initTooltip(THEME.FONT.BODY, THEME.LAYOUT.TOOLTIP_FONT_SIZE, THEME.LAYOUT.TOOLTIP_MAX_WIDTH);
+}
+
+// ============================================================================
+// 11. 离屏滚动文本渲染器工厂
+// ============================================================================
+
+/**
+ * 创建离屏滚动文本渲染器 — 预渲染位图 + DrawImage 子矩形裁剪
+ * @param {GdiFont} font
+ * @param {number} color
+ * @param {number} flags - GDI 文本标志
+ * @param {{top:number, right:number, bottom:number, left:number}} padding - 四周边距
+ * @returns {{ensure, draw, contentW, dispose}}
+ */
+function createScrollTextRenderer(font, color, flags, padding) {
+    let bmp = null;
+    let key = "";
+
+    function contentW(panelW) {
+        return Math.max(1, panelW - padding.left - padding.right);
+    }
+
+    return {
+        /** @param {string} text @param {number} panelW @param {number} fullTextH */
+        ensure(text, panelW, fullTextH) {
+            const w = contentW(panelW);
+            const nextKey = text + "|" + w + "|" + fullTextH;
+            if (key === nextKey) return;
+            if (bmp && typeof bmp.Dispose === "function") bmp.Dispose();
+            bmp = null;
+            key = nextKey;
+            if (!text || w <= 0 || fullTextH <= 0) return;
+            bmp = gdi.CreateImage(w, fullTextH);
+            let g = bmp.GetGraphics();
+            try {
+                g.SetSmoothingMode(4);
+                g.GdiDrawText(text, font, color, 0, 0, w, fullTextH, flags);
+            } finally {
+                bmp.ReleaseGraphics(g);
+            }
+        },
+
+        /** @param {number} scrollY @param {number} destX @param {number} destY @param {number} destW */
+        draw(gr, scrollY, destX, destY, destW) {
+            if (!bmp || bmp.Height <= 0) return;
+            const srcY = scrollY;
+            const srcH = bmp.Height - srcY;
+            if (srcH <= 0) return;
+            gr.SetInterpolationMode(7);
+            gr.DrawImage(bmp,
+                destX, destY, destW, srcH,
+                0, srcY, destW, srcH);
+        },
+
+        /** @param {number} pw @returns {number} */
+        contentW(pw) { return contentW(pw); },
+
+        dispose() {
+            if (bmp && typeof bmp.Dispose === "function") bmp.Dispose();
+            bmp = null;
+            key = "";
+        },
     };
 }

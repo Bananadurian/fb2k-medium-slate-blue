@@ -8,6 +8,8 @@
  */
 
 "use strict";
+/** 启用 Direct2D 硬件加速渲染模式 */
+window.DrawMode = 1;
 
 include("lib/utils.js");
 include("lib/data.js");
@@ -21,11 +23,10 @@ window.DefineScript("Control Buttons", {
 });
 
 // ============================================================================
-// 1. 工具与别名
+// 1. 工具
 // ============================================================================
 
-const COL = THEME.COL;
-let tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
+let tooltip = _createDefaultTooltip();
 
 // ============================================================================
 // 2. 资源定义
@@ -57,9 +58,22 @@ const images = {
     menu_hover: _loadImage(IMGS_LUCIDE_DIR + "menu_hover.png"),
 };
 
-const ICON_W = _scale(15);
-const ICON_H = _scale(15);
-const DEFAULT_MARGIN = _scale(6);
+const BTN_LAYOUT = {
+    iconSize: _scale(15),
+    itemGap:  _scale(6),
+    items: [
+        // 布局顺序: 右→左
+        { key: "menu",       img: "menu",      func: (x, y) => showMainMenu(x, y),                            tipText: "主菜单" },
+        { key: "volumeBar",  type: "volume",    w: _scale(60) },
+        { key: "volumeBtn",  img: "vol",        func: () => fb.VolumeMute(),                                   margin: _scale(2) },
+        { key: "device",     img: null,         fnRightClick: (x, y) => showDevicesMenu(x, y) },
+        { key: "replaygain", img: null,         func: () => { fb.ReplaygainMode = (fb.ReplaygainMode === 0 ? 1 : 0); } },
+        { key: "search",     img: "search",     func: () => { fb.RunMainMenuCommand("View/Show now playing in playlist"); fb.RunMainMenuCommand("Edit/Search"); }, tipText: "搜索(右键: 媒体库搜索)", fnRightClick: (x, y) => showSearchMenu(x, y) },
+        { key: "queue",      img: "queue",      func: () => fb.RunMainMenuCommand("View/Queue Viewer"),        tipText: "队列" },
+        { key: "favorite",   img: "favorite",   func: () => runCustomQuery("favorite"),                        tipText: "最受欢迎" },
+        { key: "recent",     img: "recent",     func: () => runCustomQuery("recent"),                          tipText: "最近播放" },
+    ],
+};
 
 // ============================================================================
 // 3. UI 组件类
@@ -78,7 +92,7 @@ class VolumeControl {
         this.x = 0; this.y = 0; this.w = 0; this.h = 0;
         this.drag = false;
         this.hover = false;
-        this.color = COL.SEL_FG;
+        this.color = THEME.COL.SEL_FG;
         this.currentTip = "";
     }
 
@@ -95,7 +109,7 @@ class VolumeControl {
         const arc = Math.max(1, _scale(1));
         // 抗锯齿
         gr.SetSmoothingMode(4); 
-        gr.FillRoundRect(this.x, this.y, this.w, this.h, arc, arc, COL.FG);
+        gr.FillRoundRect(this.x, this.y, this.w, this.h, arc, arc, THEME.COL.FG);
         
         const posW = this.getPosWidth();
         // 这里如果值posW太小的话绘制不了arc值得圆角矩形
@@ -140,7 +154,7 @@ class VolumeControl {
         
         if (isOver !== this.hover) {
             this.hover = isOver;
-            this.color = isOver ? COL.FRAME : COL.SEL_FG;
+            this.color = isOver ? THEME.COL.FRAME : THEME.COL.SEL_FG;
             this.repaint();
         }
         
@@ -202,6 +216,11 @@ const buttons = {};
 const volumeBar = new VolumeControl();
 let currentHoverBtn = null;
 
+// 透明同步通知 freshness 窗口与兜底延迟 — 通道定义见 lib/data.js NOTIFY.TRANSPARENT_SYNC
+let transparentTrackRepaintTimer = null;
+let lastTransparentNotifyEpoch = 0;
+let lastTransparentNotifyTs = 0;
+
 const libraryQueryConfigs = {
     recent: {
         query: "%last_played% PRESENT",
@@ -210,7 +229,14 @@ const libraryQueryConfigs = {
     favorite: {
         query: "%play_count% PRESENT",
         sort: fb.TitleFormat("%play_count%|%artist%|%date%|%album%|%discnumber%|%tracknumber%")
-    }
+    },
+    search: [
+        { query: '%title% HAS "" SORT DESCENDING BY [%date%]', label: "搜索歌曲" },
+        { query: '%artist% HAS "" SORT DESCENDING BY [%date%]', label: "搜索歌手" },
+        { query: '%album artist% HAS "" SORT DESCENDING BY [%date%]', label: "搜索专辑歌手" },
+        { query: '%album% HAS "" SORT DESCENDING BY [%date%]', label: "搜索专辑" },
+        { query: '(%album artist% HAS "") AND (NOT %rating% EQUAL 1)', label: "智能列表默认搜索" },
+    ]
 };
 
 /**
@@ -296,6 +322,21 @@ function showDevicesMenu(x, y) {
     }
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {void}
+ */
+function showSearchMenu(x, y) {
+    const menu = window.CreatePopupMenu();
+    const items = libraryQueryConfigs.search;
+    items.forEach((item, i) => menu.AppendMenuItem(MF_STRING, i + 1, item.label));
+    const idx = menu.TrackPopupMenu(x, y);
+    if (idx > 0 && idx <= items.length) {
+        fb.ShowLibrarySearchUI(items[idx - 1].query);
+    }
+}
+
 // 数组索引 = fb.ReplaygainMode 值: 0=None, 1=Track, 2=Album, 3=Smart
 const replayGainConfigs = [
     { img: images.rg_off, text: "开启音轨增益 (当前:无)" },    
@@ -304,22 +345,16 @@ const replayGainConfigs = [
     { img: images.rg_album, text: "关闭增益 (当前:智能)" }      
 ];
 
-// replaygain = rg
-/**
- * 根据当前 ReplayGain 模式更新按钮图标与提示。
- * @returns {void}
- */
-function updateRgState() {
+/** 根据 ReplayGain 模式同步按钮图标与提示文字 */
+function syncRgState() {
     const mode = fb.ReplaygainMode; 
     const cfg = replayGainConfigs[mode] || replayGainConfigs[0];
     if (buttons.replaygain) buttons.replaygain.updateState(cfg.img, images.rg_hover, cfg.text);
 }
 
 /**
- * 根据当前输出设备更新设备按钮状态。
- * @returns {void}
- */
-function updateDeviceState() {
+/** 根据当前输出设备同步设备按钮图标与切换逻辑 */
+function syncDeviceState() {
     let deviceArr;
     try { deviceArr = JSON.parse(fb.GetOutputDevices()); } catch (e) { console.log("Device list error: " + e); return; }
     const current = deviceArr.find(d => d.active)?.name || "";
@@ -354,10 +389,8 @@ function updateDeviceState() {
 }
 
 /**
- * 根据静音状态更新音量按钮图标与提示。
- * @returns {void}
- */
-function updateVolumeState() {
+/** 根据静音状态同步音量按钮图标与提示文字 */
+function syncVolumeState() {
     const isMuted = (fb.Volume === -100);
     const img = isMuted ? images.mute : images.vol;
     const hover = isMuted ? images.mute_hover : images.vol_hover;
@@ -370,92 +403,51 @@ function updateVolumeState() {
 // 5. 初始化与布局
 // ============================================================================
 
-function initUi() {
-    buttons.recent = new Button({ 
-        imgNormal: images.recent, imgHover: images.recent_hover, 
-        func: () => runCustomQuery("recent"), tipText: "最近播放" 
+function createButtons() {
+    BTN_LAYOUT.items.forEach(it => {
+        if (it.type === "volume") return;
+        buttons[it.key] = new Button({
+            imgNormal:    it.img ? images[it.img] : null,
+            imgHover:     it.img ? images[it.img + "_hover"] : null,
+            func:         it.func || null,
+            fnRightClick: it.fnRightClick || null,
+            tipText:      it.tipText || "",
+        });
     });
-    buttons.favorite = new Button({ 
-        imgNormal: images.favorite, imgHover: images.favorite_hover, 
-        func: () => runCustomQuery("favorite"), tipText: "最受欢迎" 
-    });
-    buttons.queue = new Button({ 
-        imgNormal: images.queue, imgHover: images.queue_hover, 
-        func: () => fb.RunMainMenuCommand("View/Queue Viewer"), tipText: "队列" 
-    });
-    buttons.search = new Button({ 
-        imgNormal: images.search, imgHover: images.search_hover, 
-        func: () => {
-            fb.RunMainMenuCommand("View/Show now playing in playlist");
-            fb.RunMainMenuCommand("Edit/Search");
-        }, tipText: "搜索" 
-    });
-    buttons.replaygain = new Button({
-        imgNormal: images.rg_off, imgHover: images.rg_hover,
-        func: () => { fb.ReplaygainMode = (fb.ReplaygainMode === 0 ? 1 : 0); }
-    });
-    buttons.device = new Button({
-        imgNormal: images.wasapi_share, imgHover: images.wasapi_hover,
-        func: null, 
-        fnRightClick: (x, y) => showDevicesMenu(x, y)
-    });
-    buttons.volumeBtn = new Button({
-        imgNormal: images.vol, imgHover: images.vol_hover,
-        func: () => fb.VolumeMute()
-    });
-    buttons.menu = new Button({
-        imgNormal: images.menu, imgHover: images.menu_hover,
-        func: (x, y) => showMainMenu(x, y), tipText: "主菜单"
-    });
-
-    updateRgState();
-    updateDeviceState();
-    updateVolumeState();
+    syncRgState();
+    syncDeviceState();
+    syncVolumeState();
 }
 
-initUi();
+createButtons();
 
 function on_size() {
-    if (window.Width <= 0 || window.Height <= 0) return;
-
-    const layout = [
-        { key: 'menu', w: ICON_W, m: DEFAULT_MARGIN },
-        { key: 'volume', w: _scale(60), m: DEFAULT_MARGIN },
-        { key: 'volumeBtn', w: ICON_W, m: _scale(2) },
-        { key: 'device', w: ICON_W, m: DEFAULT_MARGIN },
-        { key: 'replaygain', w: ICON_W, m: DEFAULT_MARGIN },
-        { key: 'search', w: ICON_W, m: DEFAULT_MARGIN },
-        { key: 'queue', w: ICON_W, m: DEFAULT_MARGIN },
-        { key: 'favorite', w: ICON_W, m: DEFAULT_MARGIN },
-        { key: 'recent', w: ICON_W, m: DEFAULT_MARGIN },
-    ];
-
-    let currentX = window.Width;
-    const centerY = Math.floor(window.Height / 2);
-
-    layout.forEach(item => {
-        currentX -= (item.w + item.m);
-        const y = Math.floor(centerY - ICON_H / 2);
-
-        if (item.key === 'volume') {
-            volumeBar.x = currentX;
-            volumeBar.y = Math.floor(centerY - _scale(3) / 2);
-            volumeBar.w = item.w;
-            volumeBar.h = _scale(3);
+    const hw = window.Width, hh = window.Height;
+    if (hw <= 0 || hh <= 0) return;
+    const cfg = BTN_LAYOUT;
+    let x = hw;
+    const cy = Math.floor(hh / 2);
+    cfg.items.forEach(it => {
+        const w = it.w || cfg.iconSize;
+        const m = it.margin !== undefined ? it.margin : cfg.itemGap;
+        x -= w + m;
+        if (it.type === "volume") {
+            volumeBar.x = x; volumeBar.y = Math.floor(cy - _scale(3) / 2);
+            volumeBar.w = w; volumeBar.h = _scale(3);
         } else {
-            const btn = buttons[item.key];
+            const btn = buttons[it.key];
             if (btn) {
-                btn.x = currentX;
-                btn.y = y;
-                btn.w = item.w;
-                btn.h = ICON_H;
+                btn.x = x; btn.y = Math.floor(cy - cfg.iconSize / 2);
+                btn.w = w; btn.h = cfg.iconSize;
             }
         }
     });
 }
 
 function on_paint(gr) {
-    gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
+    if (!window.IsTransparent) {
+        gr.FillSolidRect(0, 0, window.Width, window.Height, THEME.COL.BG);
+    }
     for (let key in buttons) {
         buttons[key].paint(gr);
     }
@@ -463,9 +455,11 @@ function on_paint(gr) {
 }
 
 // ============================================================================
+// ============================================================================
 // 6. 全局回调 (Event Handlers)
 // ============================================================================
 
+// --- 悬停状态机 ---
 /**
  * @param {number} x
  * @param {number} y
@@ -528,7 +522,7 @@ function on_mouse_leave() {
     }
     volumeBar.hover = false;
     volumeBar.drag = false;
-    volumeBar.color = COL.SEL_FG;
+    volumeBar.color = THEME.COL.SEL_FG;
     volumeBar.repaint();
     tooltip("");
     _setCursor(CURSOR_ARROW);
@@ -561,11 +555,21 @@ function on_mouse_lbtn_up(x, y) {
  * @returns {boolean}
  */
 function on_mouse_rbtn_down(x, y) {
-    // 这里屏蔽默认的右键菜单
     if (currentHoverBtn) {
         return currentHoverBtn.onRbtnDown(x, y);
     }
-    return true; 
+}
+
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {boolean}
+ */
+function on_mouse_rbtn_up(x, y) {
+    // 这里屏蔽默认的右键菜单, 返回true即可
+    if (currentHoverBtn) {
+        return true
+    }
 }
 
 /**
@@ -581,7 +585,7 @@ function on_mouse_wheel(step) {
  * @returns {void}
  */
 function on_volume_change(val) {
-    updateVolumeState(); 
+    syncVolumeState(); 
     volumeBar.repaint();
 }
 
@@ -589,35 +593,78 @@ function on_volume_change(val) {
  * @returns {void}
  */
 function on_output_device_changed() {
-    updateDeviceState();
+    syncDeviceState();
 }
 
 /**
  * @returns {void}
  */
+function clearTransparentTrackRepaintTimers() {
+    if (transparentTrackRepaintTimer) {
+        window.ClearTimeout(transparentTrackRepaintTimer);
+        transparentTrackRepaintTimer = null;
+    }
+}
+
+function scheduleTransparentTrackRepaintFallback() {
+    if (!window.IsTransparent || !window.IsVisible) return;
+
+    clearTransparentTrackRepaintTimers();
+    transparentTrackRepaintTimer = window.SetTimeout(function () {
+        transparentTrackRepaintTimer = null;
+        if (!window.IsVisible) return;
+        if (Date.now() - lastTransparentNotifyTs <= THEME.LAYOUT.TRANSPARENT_SYNC_NOTIFY_FRESH_MS) return;
+        window.Repaint();
+    }, THEME.LAYOUT.TRANSPARENT_REPAINT_FALLBACK_DELAY_MS);
+}
 function on_replaygain_mode_changed() {
-    updateRgState();
+    syncRgState();
 }
 
-/**
- * @returns {void}
- */
+function on_playback_new_track() {
+    scheduleTransparentTrackRepaintFallback();
+}
+
+/** 主题颜色变化时刷新 */
 function on_colours_changed() {
     _refreshThemeColors();
     window.Repaint();
 }
 
-/**
- * @returns {void}
- */
+/** 系统字体变化时刷新 */
 function on_font_changed() {
     _refreshThemeFonts();
     window.Repaint();
 }
 
 /**
+ * 透明同步通知：bg_panel_container_control 重绘后触发本面板跟随重绘。
+ * 通道与发送方标识见 lib/data.js NOTIFY。
+ * @param {string} name
+ * @param {*} info
  * @returns {void}
  */
+function on_notify_data(name, info) {
+    if (!window.IsTransparent) return;
+    if (name !== NOTIFY.TRANSPARENT_SYNC.name) return;
+    if (!info || typeof info !== "object") return;
+
+    const version = typeof info.v === "number" ? info.v : 0;
+    if (version !== NOTIFY.TRANSPARENT_SYNC.version) return;
+
+    const source = typeof info.source === "string" ? info.source : "";
+    if (source !== NOTIFY.SOURCE.BG_PANEL_CONTAINER_CONTROL) return;
+
+    const notifyEpoch = typeof info.epoch === "number" ? info.epoch : 0;
+    if (notifyEpoch <= lastTransparentNotifyEpoch) return;
+
+    lastTransparentNotifyEpoch = notifyEpoch;
+    lastTransparentNotifyTs = Date.now();
+    clearTransparentTrackRepaintTimers();
+    if (window.IsVisible) window.Repaint();
+}
+
 function on_script_unload() {
+    clearTransparentTrackRepaintTimers();
     _disposeImageDict(images);
 }

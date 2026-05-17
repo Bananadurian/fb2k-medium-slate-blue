@@ -1,13 +1,14 @@
 ﻿/**
- * @file tab_stack.js
+ * @file tab_container_detail.js
  * @author XYSRe
  * @created 2026-05-02
  * @updated 2026-05-06
  * @version 1.2.0
- * @description JSplitter Tab 单选切换控制器（支持图标与文字样式）
+ * @description JSplitter Tab 单选切换控制器 - 详细信息面板（Album, Biography, ESlyric）
  */
 
 "use strict";
+window.DrawMode = 1;
 
 include("lib/utils.js");
 include("lib/data.js");
@@ -15,7 +16,7 @@ include("lib/theme.js");
 include("lib/interaction.js");
 include("lib/background.js");
 
-window.DefineScript("tab_stack", {
+window.DefineScript("tab_container_detail", {
     author: "XYSRe",
     version: "1.2.0",
     options: { grab_focus: THEME.CFG.GRAB_FOCUS },
@@ -24,29 +25,39 @@ window.DefineScript("tab_stack", {
 const TAB_KIND_ICON = "icon";
 const TAB_KIND_TEXT = "text";
 
-const TAB_BAR_PADDING = _scale(2);
+const TAB_BAR_PADDING = normalizePadding({top:_scale(12), right:0, bottom:0, left:0});
+const PANEL_AREA_PADDING = normalizePadding({top:0, right:_scale(6), bottom:_scale(10), left:_scale(6)});
 const ICON_TAB_SIZE = _scale(12);
 const TAB_ITEM_GAP = _scale(8);
 
+// 按钮位置，靠左、居中、靠右
 const ALIGN_LEFT = "left";
 const ALIGN_CENTER = "center";
 const ALIGN_RIGHT = "right";
 const TAB_ALIGNMENT = ALIGN_CENTER;
 
-const tooltip = _initTooltip(THEME.FONT.BODY, _scale(13), 1200);
+const tooltip = _createDefaultTooltip();
 
 const TAB_BAR_BG_CFG = {
     // 背景模式：
     // - "theme": 使用主题背景色
     // - "cover-color": 使用封面提色（无封面回退主题色）
     // - "cover-image": 使用封面图背景（无封面回退主题色）
-    mode: "cover-color",
+    mode: "cover-image",
+    
+    // 背景形状："rect"=矩形；"round-rect"=圆角矩形。
+    shapeType: "round-rect",
+    // 圆角半径（像素，<=0 等同矩形）。
+    shapeRadius: THEME.LAYOUT.CORNER_RADIUS,
+    // 背景绘制内边距（像素）；用于控制背景绘制区域。支持上下左右单独设置{number|{top?:number, right?:number, bottom?:number, left?:number}}
+    padding: _scale(8),    
+    
     // 渐变仅在 theme / cover-color 参与底色绘制时生效；cover-image 下不参与底图绘制。
     gradientEnabled: true,
     // 渐变角度，推荐 [0, 360]。
     gradientAngle: 90,
     // 渐变跨度：2=第1色与第2色，5=第1色与第5色（不足则回退最后可用色）。
-    gradientSpan: 10,
+    gradientSpan: 8,
     // 仅在 mode="cover-image" 生效：cover=铺满可能裁切；fit=完整显示可能留边。
     imageScaleMode: "cover",
     // 仅在 mode="cover-image" 生效，范围 [0, 200]，越大越模糊。
@@ -56,9 +67,9 @@ const TAB_BAR_BG_CFG = {
     // 遮罩在所有 mode 都生效。
     maskEnabled: true,
     // 遮罩 RGB 颜色（alpha 由下方 alpha 控制）。
-    maskColor: _rgb(0, 0, 0),
+    maskColor: THEME.COL.MASK,
     // 遮罩透明度，范围 [0, 255]；0=透明，255=不透明。
-    maskAlpha: 120,
+    maskAlpha: 150,
     // auto controller 颜色缓存条目数，最小 1。
     cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
 };
@@ -77,21 +88,23 @@ const tabBarBackground = createPanelBackgroundLayer({
             blurRadius: TAB_BAR_BG_CFG.imageBlurRadius,
             cacheSize: TAB_BAR_BG_CFG.imageCacheSize,
         },
+        shape: {
+            type: TAB_BAR_BG_CFG.shapeType,
+            radius: TAB_BAR_BG_CFG.shapeRadius,
+        },        
         mask: {
             enabled: TAB_BAR_BG_CFG.maskEnabled,
             color: TAB_BAR_BG_CFG.maskColor,
             alpha: TAB_BAR_BG_CFG.maskAlpha,
         },
         cacheSize: TAB_BAR_BG_CFG.cacheSize,
-        keyTf: fb.TitleFormat("%album artist% - %album%"),
+        keyTf: THEME.TF.COVER_KEY,
     },
     getPreferredMetadb: function () {
-        const now = fb.IsPlaying ? fb.GetNowPlaying() : null;
-        const selection = fb.GetSelection();
-        return now || selection || null;
+        return resolveMetadbByMode(METADB_RESOLVE_MODE.PLAYING_FIRST);
     },
     getTargetRect: function () {
-        return { x: 0, y: 0, w: window.Width, h: getBgPaintHeight() };
+        return calcContentRect(window.Width, getBgPaintHeight(), TAB_BAR_BG_CFG.padding);
     },
     getAlbumArt: function (metadb) {
         return utils.GetAlbumArtV2(metadb, 0);
@@ -167,7 +180,7 @@ function resolvePanel(cfg) {
             const panelByCaption = window.GetPanel(cfg.caption);
             if (panelByCaption) return panelByCaption;
         } catch (e) {
-            console.log("tab_stack: GetPanel failed for caption \"" + cfg.caption + "\": " + e);
+            console.log("tab_container_detail: GetPanel failed for caption \"" + cfg.caption + "\": " + e);
         }
     }
 
@@ -176,7 +189,7 @@ function resolvePanel(cfg) {
             const panelByIndex = window.GetPanelByIndex(cfg.index);
             if (panelByIndex) return panelByIndex;
         } catch (e) {
-            console.log("tab_stack: GetPanelByIndex failed for index " + cfg.index + ": " + e);
+            console.log("tab_container_detail: GetPanelByIndex failed for index " + cfg.index + ": " + e);
         }
     }
 
@@ -242,14 +255,18 @@ function recalcLayoutMetrics() {
         if (i < tabs.length - 1) totalWidth += TAB_ITEM_GAP;
     }
 
-    tabBarHeightCache = maxControlH + TAB_BAR_PADDING * 2;
+    tabBarHeightCache = maxControlH + TAB_BAR_PADDING.top + TAB_BAR_PADDING.bottom;
     return totalWidth;
 }
 function getTabBarHeight() {
     return tabBarHeightCache;
 }
 function getBgPaintHeight() {
-    return window.Height;
+    // 不是伪透明模式下直接重绘区域高度
+    if (!window.IsTransparent) return window.Height;
+    // 避免画圆角矩形报错
+    const minRoundRectHeight = TAB_BAR_BG_CFG.shapeType === "round-rect" ? TAB_BAR_BG_CFG.shapeRadius * 2 : 1;
+    return Math.max(tabBarHeightCache, minRoundRectHeight);
 }
 
 function layoutButtons() {
@@ -259,20 +276,20 @@ function layoutButtons() {
 
     let startX;
     if (TAB_ALIGNMENT === ALIGN_LEFT) {
-        startX = TAB_BAR_PADDING;
+        startX = TAB_BAR_PADDING.left;
     } else if (TAB_ALIGNMENT === ALIGN_RIGHT) {
-        startX = window.Width - TAB_BAR_PADDING - totalWidth;
+        startX = window.Width - TAB_BAR_PADDING.right - totalWidth;
     } else {
         startX = Math.floor((window.Width - totalWidth) / 2);
     }
 
-    const maxControlH = tabBarHeightCache - TAB_BAR_PADDING * 2;
+    const maxControlH = tabBarHeightCache - TAB_BAR_PADDING.top - TAB_BAR_PADDING.bottom;
 
     let x = startX;
     for (let i = 0; i < tabs.length; i++) {
         const w = tabLayoutSizes[i].w;
         const h = tabLayoutSizes[i].h;
-        const y = TAB_BAR_PADDING + Math.floor((maxControlH - h) / 2);
+        const y = TAB_BAR_PADDING.top + Math.floor((maxControlH - h) / 2);
 
         tabs[i].button.x = x;
         tabs[i].button.y = y;
@@ -286,12 +303,16 @@ function layoutButtons() {
 function layoutPanels() {
     if (window.Width <= 0 || window.Height <= 0) return;
 
+    const roundInset = TAB_BAR_BG_CFG.shapeType === "round-rect" ? TAB_BAR_BG_CFG.shapeRadius : 0;
     const contentY = tabBarHeightCache;
-    const contentH = Math.max(0, window.Height - contentY);
+    const panelX = PANEL_AREA_PADDING.left + roundInset;
+    const panelY = contentY + PANEL_AREA_PADDING.top + roundInset;
+    const panelW = Math.max(0, window.Width - PANEL_AREA_PADDING.left - PANEL_AREA_PADDING.right - roundInset * 2);
+    const panelH = Math.max(0, window.Height - panelY - PANEL_AREA_PADDING.bottom - roundInset);
 
     for (let i = 0; i < tabs.length; i++) {
         if (tabs[i].panel) {
-            tabs[i].panel.Move(0, contentY, window.Width, contentH, false);
+            tabs[i].panel.Move(panelX, panelY, panelW, panelH, false);
         }
     }
 }
@@ -304,7 +325,7 @@ function rebuildTabs() {
         const cfg = TAB_CONFIGS[i];
         const panel = resolvePanel(cfg);
         if (!panel) {
-            console.log("tab_stack: skipped tab, target panel not found at config index " + i);
+            console.log("tab_container_detail: skipped tab, target panel not found at config index " + i);
             continue;
         }
 
@@ -315,7 +336,7 @@ function rebuildTabs() {
 
         if (kind === TAB_KIND_TEXT) {
             if (!isValidTextConfig(cfg)) {
-                console.log("tab_stack: skipped text tab, label is invalid at config index " + i);
+                console.log("tab_container_detail: skipped text tab, label is invalid at config index " + i);
                 continue;
             }
             button = new TextTab({
@@ -326,7 +347,7 @@ function rebuildTabs() {
             });
         } else {
             if (!isValidIconConfig(cfg)) {
-                console.log("tab_stack: skipped icon tab, icon images invalid at config index " + i);
+                console.log("tab_container_detail: skipped icon tab, icon images invalid at config index " + i);
                 continue;
             }
             button = new Button({
@@ -338,7 +359,7 @@ function rebuildTabs() {
             });
         }
 
-        tabs.push({ panel, button, kind });
+        tabs.push({ panel, button, kind, name: cfg.caption || cfg.label || "" });
     }
 
     if (!tabs.length) {
@@ -485,6 +506,33 @@ function on_mouse_lbtn_up(x, y) {
     }
 }
 
+/**
+ * 接收 info+rating 点击通知，切换到指定 detail tab
+ * @param {string} name
+ * @param {*} info
+ * @returns {void}
+ */
+function on_notify_data(name, info) {
+    if (name !== NOTIFY.SWITCH_DETAIL_TAB.name) return;
+    if (!info || typeof info !== "object") return;
+
+    const version = typeof info.v === "number" ? info.v : 0;
+    if (version !== NOTIFY.SWITCH_DETAIL_TAB.version) return;
+
+    const source = typeof info.source === "string" ? info.source : "";
+    if (source !== NOTIFY.SOURCE.INFO_RATING) return;
+
+    const tabName = typeof info.tab === "string" ? info.tab : "";
+    if (!tabName) return;
+
+    for (let i = 0; i < tabs.length; i++) {
+        if (tabs[i].name === tabName) {
+            applyActive(i);
+            return;
+        }
+    }
+}
+
 function on_colours_changed() {
     _refreshThemeColors();
     tabBarBackground.setThemeColor(THEME.COL.BG);
@@ -523,9 +571,7 @@ function on_playback_stop(reason) {
 }
 
 function on_playlist_items_selection_change() {
-    const now = fb.IsPlaying ? fb.GetNowPlaying() : null;
-    const sel = fb.GetSelection();
-    const target = now || sel || null;
+    const target = resolveMetadbByMode(METADB_RESOLVE_MODE.PLAYING_FIRST);
     tabBarBackground.sync(target);
     window.RepaintRect(0, 0, window.Width, getBgPaintHeight());
 }

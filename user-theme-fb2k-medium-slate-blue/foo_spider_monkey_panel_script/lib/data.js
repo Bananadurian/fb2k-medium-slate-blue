@@ -2,9 +2,9 @@
  * @file data.js
  * @author XYSRe
  * @created 2026-04-27
- * @updated 2026-04-29
- * @version 2.0.0
- * @description 共享数据常量与音质系统 — GDI 标志、AQ 音质标识、来源图标、LRU 缓存、音质/来源解析
+ * @updated 2026-05-14
+ * @version 2.1.0
+ * @description 共享数据常量与音质系统 — GDI 标志({LEFT,CENTER}_{WRAP,LINE}_FLAGS)、AQ 音质标识、来源图标、LRU 缓存、音质/来源解析
  * @requires lib/utils.js
  */
 
@@ -24,20 +24,24 @@ const MF_STRING = 0x00000000; // PopupMenu 菜单项标志
 const DT_LEFT         = 0x00000000; // 左对齐
 const DT_CENTER       = 0x00000001; // 水平居中
 const DT_RIGHT        = 0x00000002; // 右对齐
-const DT_VCENTER      = 0x00000004; // 垂直居中 (仅限单行)
-const DT_BOTTOM       = 0x00000008; // 底部对齐
+const DT_VCENTER      = 0x00000004; // 垂直居中 (垂直居中文本。 此值仅用于DT_SINGLELINE值。)
+const DT_TOP          = 0x00000000; // 顶？
+const DT_BOTTOM       = 0x00000008; // 底部对齐 将文本与矩形底部对齐。 此值仅用于DT_SINGLELINE值。
 const DT_WORDBREAK    = 0x00000010; // 自动换行
+const DT_WORD_ELLIPSIS= 0x00040000; // 截断矩形中不适合的任何单词，并添加省略号。与DT_END_ELLIPSIS和DT_PATH_ELLIPSIS进行比较。
 const DT_SINGLELINE   = 0x00000020; // 单行模式
 const DT_NOPREFIX     = 0x00000800; // 禁用 '&' 转义
 const DT_EDITCONTROL  = 0x00002000; // 编辑控件样式 (显示部分最后一行)
 const DT_END_ELLIPSIS = 0x00008000; // 超出显示省略号
 const DT_CALCRECT     = 0x00000400; // 计算矩形
 
-// 常用组合样式
-const MULTI_LINE_FLAGS = DT_LEFT | DT_WORDBREAK | DT_END_ELLIPSIS | DT_NOPREFIX;
-const ONE_LINE_FLAGS   = DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX;
-const BTN_STYLE_FLAGS  = DT_CENTER | DT_VCENTER | DT_NOPREFIX | DT_WORDBREAK;
-const BADGE_TEXT_ALIGN = DT_CENTER | DT_VCENTER | DT_SINGLELINE;
+// 常用组合样式 — {LEFT,CENTER} × {WRAP,LINE}_FLAGS 矩阵
+// VCENTER 、DT_BOTTOM仅与 SINGLELINE 配对有效；WRAP 与 SINGLELINE 互斥
+const LEFT_WRAP_FLAGS   = DT_LEFT   | DT_WORDBREAK | DT_END_ELLIPSIS | DT_NOPREFIX;
+const LEFT_LINE_FLAGS   = DT_LEFT   | DT_VCENTER   | DT_END_ELLIPSIS | DT_NOPREFIX | DT_SINGLELINE;
+const CENTER_WRAP_FLAGS = DT_CENTER | DT_WORDBREAK | DT_END_ELLIPSIS | DT_NOPREFIX;
+const CENTER_LINE_FLAGS = DT_CENTER | DT_VCENTER   | DT_END_ELLIPSIS | DT_NOPREFIX | DT_SINGLELINE;
+const BOTTOM_LINE_FLAGS = DT_LEFT   | DT_BOTTOM    | DT_END_ELLIPSIS | DT_NOPREFIX | DT_SINGLELINE;
 
 // ============================================================================
 // 3. 音质标识系统 (AQ Badge)
@@ -267,3 +271,20 @@ class LRUCache {
     }
 }
 
+// ============================================================================
+// 6. 通知系统 (Notification Protocol)
+// ============================================================================
+
+const NOTIFY = {
+    // 发送方唯一标识 — 跨通知通道复用
+    SOURCE: {
+        BG_PANEL_CONTAINER_CONTROL: "bg_panel_container_control",
+        TAB_CONTAINER:              "tab_container",
+        TAB_CONTAINER_DETAIL:       "tab_container_detail",
+        TAB_CONTAINER_PLAYLIST:     "tab_container_playlist",
+        INFO_RATING:                "info_rating",
+    },
+    // 通知通道定义
+    TRANSPARENT_SYNC:    { name: "fb2k.theme.transparent_sync", version: 1 },
+    SWITCH_DETAIL_TAB:   { name: "fb2k.detail.switch_tab",      version: 1 },
+};
