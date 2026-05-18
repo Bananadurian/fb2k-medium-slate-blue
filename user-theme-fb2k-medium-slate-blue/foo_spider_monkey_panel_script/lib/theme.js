@@ -2,7 +2,7 @@
  * @file theme.js
  * @author XYSRe
  * @created 2026-04-27
- * @updated 2026-05-14
+ * @updated 2026-05-18
  * @version 2.1.0
  * @description 共享主题配置 — 颜色、字体(GdiFont)、布局、配置开关(CFG)、文本样式预设(TEXT)、路径
  * @requires lib/utils.js

@@ -2,8 +2,8 @@
  * @file playback_buttons.js
  * @author XYSRe
  * @created 2025-12-14
- * @updated 2026-04-29
- * @version 2.0.0
+ * @updated 2026-05-18
+ * @version 2.1.0
  * @description 播放控制按钮 — 播放/暂停、停止、上下曲、快进快退、播放模式、随机
  */
 

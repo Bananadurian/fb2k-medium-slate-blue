@@ -2,8 +2,8 @@
  * @file background.js
  * @author XYSRe
  * @created 2026-05-04
- * @updated 2026-05-08
- * @version 2.0.0
+ * @updated 2026-05-18
+ * @version 2.1.0
  * @description 面板背景控制器: 统一背景色策略（主题色/封面提色/封面背景图）与可选遮罩层绘制。
  * @requires lib/utils.js
  * @requires lib/data.js

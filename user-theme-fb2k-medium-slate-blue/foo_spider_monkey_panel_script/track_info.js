@@ -2,7 +2,7 @@
  * @file track_info.js
  * @author XYSRe
  * @created 2025-12-16
- * @updated 2026-05-14
+ * @updated 2026-05-18
  * @version 2.1.0
  * @description 歌曲信息+评分面板: 标题/艺人/专辑/年份、星级评分、音质标识、来源图标。接入 TS 样式别名。
  */

@@ -2,7 +2,7 @@
  * @file biography.js
  * @author XYSRe
  * @created 2025-12-23
- * @updated 2026-05-14
+ * @updated 2026-05-18
  * @version 2.1.0
  * @description 艺人资料面板: 封面轮播、风格/生日/地区、外部链接、简介/作品集切换。接入 THEME.TEXT 样式预设。
  */

@@ -2,8 +2,8 @@
  * @file rating.js
  * @author XYSRe
  * @created 2025-12-16
- * @updated 2025-12-16
- * @version 1.0.0
+ * @updated 2026-05-18
+ * @version 2.1.0
  * @description 一个基于SMP的评分控件，基于作者的示例代码改造
  */
 

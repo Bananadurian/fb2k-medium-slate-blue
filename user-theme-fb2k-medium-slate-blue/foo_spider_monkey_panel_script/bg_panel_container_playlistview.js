@@ -2,8 +2,8 @@
  * @file bg_panel_container_playlistview.js
  * @author XYSRe
  * @created 2026-05-12
- * @updated 2026-05-12
- * @version 1.0.0
+ * @updated 2026-05-18
+ * @version 2.1.0
  * @description 基于bg_panel.js，背景控制器专用面板：支持封面提取色彩、高斯模糊背景，并优化了原生组件（如波形条）的伪透明同步。
  */
 

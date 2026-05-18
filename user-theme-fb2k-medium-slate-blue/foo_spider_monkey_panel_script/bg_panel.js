@@ -2,8 +2,8 @@
  * @file bg_panel.js
  * @author XYSRe
  * @created 2026-05-08
- * @updated 2026-05-10
- * @version 1.1.1
+ * @updated 2026-05-18
+ * @version 2.1.0
  * @description 背景控制器专用面板：支持封面提取色彩、高斯模糊背景，并优化了原生组件（如波形条）的伪透明同步。
  */
 

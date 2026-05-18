@@ -2,7 +2,7 @@
  * @file utils.js
  * @author XYSRe
  * @created 2026-04-27
- * @updated 2026-05-14
+ * @updated 2026-05-18
  * @version 2.1.0
  * @description 共享工具函数库 — DPI 缩放、颜色、图片、命中检测、文本测量(_measureText)、图片绘制
  */

@@ -2,8 +2,8 @@
  * @file panel.js
  * @author XYSRe
  * @created 2025-12-15
- * @updated 2025-12-15
- * @version 1.0.0
+ * @updated 2026-05-18
+ * @version 2.1.0
  * @description 通用内容，从作者的 panel.js 移植.
  */
 

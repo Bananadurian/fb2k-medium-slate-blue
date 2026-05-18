@@ -2,8 +2,8 @@
  * @file control_buttons.js
  * @author XYSRe
  * @created 2025-12-12
- * @updated 2026-04-29
- * @version 2.0.0
+ * @updated 2026-05-18
+ * @version 2.1.0
  * @description 控制按钮 — 输出设备切换、音量控制、搜索、队列、最近播放、最受欢迎、主菜单
  */
 

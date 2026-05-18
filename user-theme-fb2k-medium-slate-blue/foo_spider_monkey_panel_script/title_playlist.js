@@ -2,7 +2,7 @@
  * @file title_playlist.js
  * @author XYSRe
  * @created 2025-12-16
- * @updated 2026-05-04
+ * @updated 2026-05-18
  * @version 2.1.0
  * @description 播放列表标题栏: 图标、播放列表名称、通过资料库新建播放列表按钮。
  */

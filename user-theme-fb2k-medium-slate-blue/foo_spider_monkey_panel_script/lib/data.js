@@ -2,7 +2,7 @@
  * @file data.js
  * @author XYSRe
  * @created 2026-04-27
- * @updated 2026-05-14
+ * @updated 2026-05-18
  * @version 2.1.0
  * @description 共享数据常量与音质系统 — GDI 标志({LEFT,CENTER}_{WRAP,LINE}_FLAGS)、AQ 音质标识、来源图标、LRU 缓存、音质/来源解析
  * @requires lib/utils.js

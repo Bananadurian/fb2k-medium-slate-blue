@@ -2,7 +2,7 @@
  * @file title_library.js
  * @author XYSRe
  * @created 2025-12-16
- * @updated 2026-05-04
+ * @updated 2026-05-18
  * @version 2.1.0
  * @description 资料库标题栏: 图标、资料库名称、资料库搜索按钮。
  */

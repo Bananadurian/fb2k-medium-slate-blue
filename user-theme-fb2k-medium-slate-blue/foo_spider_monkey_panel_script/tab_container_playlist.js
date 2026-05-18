@@ -2,8 +2,8 @@
  * @file tab_container_playlist.js
  * @author XYSRe
  * @created 2026-05-12
- * @updated 2026-05-12
- * @version 1.0.0
+ * @updated 2026-05-18
+ * @version 2.1.0
  * @description 基于tab_container.js的播放列表视图单选切换控制器（支持图标与文字样式）
  */
 

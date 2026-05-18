@@ -2,7 +2,7 @@
  * @file flag.js
  * @author XYSRe
  * @created 2026-05-15
- * @version 2.0.0
+ * @version 2.1.0
  * @description 国旗图标系统 — 国家正则匹配 + 语言 hash 映射 → ISO-2 码 → 国旗图片
  * @requires lib/theme.js (IMGS_FLAGS_DIR)
  */

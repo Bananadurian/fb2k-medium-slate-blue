@@ -16,6 +16,7 @@
 
 ## biography.js
 
+- [ ] 点击查看大图
 - [x] 硬编码本地路径改为可定义，GetProperty()
 - [x] 艺人中文名还有自己的icon
 - [x] 考虑艺人中文名字如何布局：独立一行
@@ -32,6 +33,7 @@
 
 ## album_info.js
 
+- [ ] 点击查看大图
 - [x] badgeElement放到elements中管理？
 - [x] 优化音质徽章计算逻辑，支持四周padding。
 - [x] 语言支持解析 mp3tag 标准 // 分割数组。
@@ -103,6 +105,7 @@
 
 ## 封面cover_panel.js
 
+- [ ] 点击查看大图
 - [x] 动态mask颜色支持on_colours_changed()
 - [x] 停止播放没有显示封面
 - [x] ~~默认选中艺人图片，为空选中专辑封面，支持定义优先级~~
@@ -120,7 +123,7 @@
   - [x] 本地写死路径
   - [ ] 全局透明模式开启
   - [ ] d2d渲染模式
-- [ ] 统一版本号后推送。
+- [x] 统一版本号后推送。
 ~~- [ ] TitleFormat对象使用字典管理是不是更好？不推荐！~~
 - [x] 定义panelW、panelH，不要直接使用window.Width、window.Height
   - [x] control button panel
