@@ -16,6 +16,7 @@
 
 ## biography.js
 
+- [x] 硬编码本地路径改为可定义，GetProperty()
 - [x] 艺人中文名还有自己的icon
 - [x] 考虑艺人中文名字如何布局：独立一行
 - [x] 图标和文字对齐问题（日历明显）：重构过对齐标记位置应该没有了，后续确认
@@ -64,6 +65,7 @@
 
 自定义tab面板
 
+- [x] 动态mask颜色支持on_colours_changed()
 - [x] ~~tab切换面板闪速问题解决（是CUI显示了窗口标题名字导致的，隐藏即可）~~
 - [x] ~~按钮使用 自定义按钮实现而不是JSPlitter图个提供的，解决tooltio问题~~
 - [x] ~~tab样式优化~~
@@ -78,6 +80,7 @@
 
 ## bg_panel\*
 
+- [x] 动态mask颜色支持on_colours_changed()
 - [x] 接入所有panel, 没有必要使用伪透明模式穿透即可！
 
 ### lib/background.js
@@ -87,8 +90,8 @@
 - [x] ~~渐变色背景，提取封面，支持遮罩一个透明图层，控制颜色~~
 - [x] ~~封面背景，支持模糊背景模糊 GdiBitmap.StackBlur(radius)实现~~
 - [x] ~~添加一个通用背景panel~~
-- [ ] 背景颜色新增自定义颜色模式。（当前直接遮罩一个颜色就可以了，但是透明度不支持）
-- [ ] 背景颜色支持透明度设置。
+- [x] 背景颜色新增自定义颜色模式。（直接遮罩一个颜色也可以，但是透明度不支持）
+- [x] 背景颜色支持透明度设置。
 - [ ] 支持定制图片
 
 ### bg_panel_container_playlistview.js
@@ -100,6 +103,7 @@
 
 ## 封面cover_panel.js
 
+- [x] 动态mask颜色支持on_colours_changed()
 - [x] 停止播放没有显示封面
 - [x] ~~默认选中艺人图片，为空选中专辑封面，支持定义优先级~~
 - [x] ~~圆角封面~~
@@ -113,13 +117,15 @@
 ## 其它
 
 - [ ] 引入配置模块
-  - [ ] 本地写死路径
+  - [x] 本地写死路径
   - [ ] 全局透明模式开启
   - [ ] d2d渲染模式
 - [ ] 统一版本号后推送。
 ~~- [ ] TitleFormat对象使用字典管理是不是更好？不推荐！~~
-- [ ] 定义panelW、panelH，不要直接使用window.Width、window.Height
-
+- [x] 定义panelW、panelH，不要直接使用window.Width、window.Height
+  - [x] control button panel
+  - [x] info rating panel
+  - [x] playback button panel
 - [ ] 脚本 Readme.md 文档
 - [ ] 添加一个阴影遮罩在面板底部，让显示更加自然，而不是生硬的切割
 - [x] 使用eslyric作为底层背景面板？让其显示动态颜色？
@@ -141,7 +147,9 @@
   - [x] 移除重复常量定义。共享开关现集中在 THEME.CFG 中，面板自有开关集中在 PANEL_CFG 中。
   - [x] 封面及面板的圆角提取？
  
-- [ ] tooltip及默认文案改为英文。
+- [x] tooltip及默认文案改为英文。
+  - [x] album
+  - [x] biography
 
 - [x] ~~背景padding计算函数抽取，方便传入不同padding。~~
       ~~lib\utils.js function calcContentRect(panelW, panelH, padding)~~

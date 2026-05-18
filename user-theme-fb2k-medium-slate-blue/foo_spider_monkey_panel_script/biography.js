@@ -30,15 +30,14 @@ window.DefineScript("Biography", {
 
 // 面板配置开关
 const PANEL_CFG = {
-    dataPath:    "D:\\11_MusicLib\\_Extras\\",  // 数据根目录
     showCover:   true,                            // 是否显示封面
     coverAspectRatio: 3 / 4,                      // 封面宽高比
     coverMode:   "cover",                          // 封面缩放模式 (fit=完整显示, cover=裁剪填充)
     cornerRadius: THEME.LAYOUT.CORNER_RADIUS,                              // 封面圆角半径, 0=直角
     coverPadding: {top:_scale(10), right:_scale(10), bottom: _scale(10), left:_scale(10)}, // 封面内边距
 };
-const JSON_DIR = PANEL_CFG.dataPath + "ArtistBiography\\";
-const ARTIST_COVER_DIR = PANEL_CFG.dataPath + "ArtistCover\\";
+const JSON_DIR = window.GetProperty("biography.jsonDir", "D:\\11_MusicLib\\_Extras\\ArtistBiography\\");
+const ARTIST_COVER_DIR = window.GetProperty("biography.coverDir", "D:\\11_MusicLib\\_Extras\\ArtistCover\\");
 const SCROLL_STEP = THEME.LAYOUT.SCROLL_STEP;
 const ICON_SIZE = THEME.LAYOUT.ICON_SIZE;
 const IMG_CYCLE_MS = THEME.LAYOUT.IMG_CYCLE_MS;
@@ -117,7 +116,7 @@ let scrollY = 0;             // 当前垂直滚动条位置
 let maxScrollY = 0;          // 最大可滚动距离
 let currentText = "";        // 当前显示的文本内容
 let fullTextH = 0;           // 文本总高度
-let errorText = "请选择或播放歌曲..."; // 空状态或错误提示文案
+let errorText = "Select or play a track..."; // 空状态或错误提示文案
 
 // 交互状态
 let activeLinkBtns = [];     // 当前生成的外部链接按钮数组
@@ -146,7 +145,7 @@ const SECTIONS = [
         content: { x: 0, y: 0, w: 0, h: 0 },
         visible: PANEL_CFG.showCover,
         getContentHeight() {
-            const rawH = Math.floor(window.Width * PANEL_CFG.coverAspectRatio);
+            const rawH = Math.floor(panelW * PANEL_CFG.coverAspectRatio);
             const p = PANEL_CFG.coverPadding;
             return Math.max(0, rawH - p.top - p.bottom);
         },
@@ -254,7 +253,7 @@ const SECTIONS = [
             scrollText.draw(gr, scrollY, this.content.x, this.content.y, this.content.w);
             if (maxScrollY > 0) {
                 _drawScrollbar(gr, this.content.h, fullTextH, scrollY, maxScrollY,
-                    window.Width, this.content.y, COL.SCROLLBAR);
+                    panelW, this.content.y, COL.SCROLLBAR);
             }
         },
     },
@@ -328,7 +327,8 @@ function ensureCarouselImageReady(nextIndex, carouselState, reason) {
 }
 function on_size() {
     if (window.Width <= 0 || window.Height <= 0) return;
-
+    panelW = window.Width;
+    panelH = window.Height;
     // 1. 计算Tab按钮尺寸
     calcElementsBtnSize();
     // 2. 计算整体布局 (确定Y坐标和高度)
@@ -363,7 +363,7 @@ function scheduleDeferredRefresh(seq) {
         createLinkButtons();
         updateLayoutMetrics();
         createTextBuffer();
-        if (window.Width > 0) {
+        if (panelW > 0) {
             window.Repaint();
         }
     }, 0);
@@ -371,10 +371,10 @@ function scheduleDeferredRefresh(seq) {
 
 function on_paint(gr) {
     gr.SetSmoothingMode(0);
-    if (!window.IsTransparent) gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
+    if (!window.IsTransparent) gr.FillSolidRect(0, 0, panelW, panelH, COL.BG);
 
     if (!artistData) {
-        _drawEmptyState(gr, errorText, TS.title.font, TS.title.color, window.Width, window.Height);
+        _drawEmptyState(gr, errorText, TS.title.font, TS.title.color, panelW, panelH);
         return;
     }
 
@@ -419,10 +419,7 @@ function reloadArtistData(metadb) {
     const safeName = artist.replace(/[\\\/:*?"<>|]/g, "_");
 
     if (artistName === safeName) {
-        if (window.Width > 0) {
-            panelW = window.Width;
-            panelH = window.Height;
-
+        if (panelW > 0) {
             let coverReloaded = false;
             if (PANEL_CFG.showCover) {
                 carousel.fallbackMetadb = metadb;
@@ -448,7 +445,7 @@ function reloadArtistData(metadb) {
             if (coverReloaded) {
                 window.Repaint();
             } else {
-                window.RepaintRect(0, SEC.cover.rect.h, window.Width, window.Height - SEC.cover.rect.h);
+                window.RepaintRect(0, SEC.cover.rect.h, panelW, panelH - SEC.cover.rect.h);
             }
         }
         return;
@@ -470,15 +467,12 @@ function reloadArtistData(metadb) {
         errorText = artistData ? "" : "No Biography\n" + safeName;
     }
 
-    if (window.Width > 0) {
-        panelW = window.Width;
-        panelH = window.Height;
-
+    if (panelW > 0) {
         loadImagesFromCache(cacheEntry.imgPaths, metadb, seq);
         const pathsSig = cacheEntry.imgPaths && cacheEntry.imgPaths.length > 0 ? cacheEntry.imgPaths.join("||") : "fallback";
         lastCoverProcessKey = buildCoverProcessKey(pathsSig);
 
-        if (window.Width > 0) {
+        if (panelW > 0) {
             window.Repaint();
         }
         scheduleDeferredRefresh(seq);
@@ -653,7 +647,7 @@ function getDiscoText() {
     // 1. 检查缓存：如果已经有数据（且是数组），直接返回 joined 字符串
     // 注意：这里我们改变了数据结构，从原来的 Object 变成了 Array<String>
     if (artistData.discography && Array.isArray(artistData.discography)) {
-        if (artistData.discography.length === 0) return "音乐库中暂无该艺人专辑记录";
+        if (artistData.discography.length === 0) return "No albums found for this artist in library";
         return artistData.discography.join("\n"); // 使用双换行让排版更稀疏好看
     }
 
@@ -694,7 +688,7 @@ function getDiscoText() {
     artistData.discography = resultList;
 
     // 8. 返回结果
-    if (resultList.length === 0) return "音乐库中暂无该艺人专辑记录";
+    if (resultList.length === 0) return "No albums found for this artist in library";
     return resultList.join("\n");
 }
 
@@ -761,13 +755,10 @@ function drawTabSection(gr, sec) {
         dColor, dBtn.x, dBtn.y, dBtn.w, dBtn.h, CENTER_WRAP_FLAGS);
 
     const activeBtn = isProfile ? pBtn : dBtn;
-    _drawTabIndicator(gr, activeBtn, window.Width, _scale(10), COL.FRAME, COL.FG);
+    _drawTabIndicator(gr, activeBtn, panelW, _scale(10), COL.FRAME, COL.FG);
 }
 
 function updateLayoutMetrics() {
-    panelW = window.Width;
-    panelH = window.Height;
-
     // 更新 aliases 区域可见性
     SEC.aliases.visible = artistData && artistData.aliases;
 
@@ -804,11 +795,11 @@ function updateLayoutMetrics() {
  * 计算 Tab 按钮的尺寸和 X 坐标
  */
 function calcElementsBtnSize() {
-    const pM = _measureText(elements.profileBtn.displayText, TS.tab, window.Width);
+    const pM = _measureText(elements.profileBtn.displayText, TS.tab, panelW);
     elements.profileBtn.w = pM.Width;
     elements.profileBtn.h = pM.Height;
 
-    const dM = _measureText(elements.discographyBtn.displayText, TS.tab, window.Width);
+    const dM = _measureText(elements.discographyBtn.displayText, TS.tab, panelW);
     elements.discographyBtn.w = dM.Width;
     elements.discographyBtn.h = dM.Height;
 }
@@ -820,14 +811,14 @@ function createTextBuffer() {
 
     if (!artistData || SEC.scrollText.content.w <= 0 || SEC.scrollText.content.h <= 0) return;
 
-    currentText = isShowingDiscography ? getDiscoText() : (artistData.artistbiography || "暂无详细简介信息");
+    currentText = isShowingDiscography ? getDiscoText() : (artistData.artistbiography || "No biography available");
 
     const measured = _measureText(currentText, TS.body, SEC.scrollText.content.w);
     fullTextH = Math.max(1, Math.min(Math.ceil(measured.Height), _scale(2000)));
 
     maxScrollY = Math.max(0, fullTextH - SEC.scrollText.content.h);
     if (scrollY > maxScrollY) scrollY = maxScrollY;
-    scrollText.ensure(currentText, window.Width, fullTextH);
+    scrollText.ensure(currentText, panelW, fullTextH);
 }
 /**
  * 根据艺人国籍解析国旗图标。
@@ -883,7 +874,7 @@ function on_mouse_wheel(step) {
     if (!currentText || maxScrollY <= 0) return;
     scrollY -= step * SCROLL_STEP;
     scrollY = Math.max(0, Math.min(scrollY, maxScrollY));
-    window.RepaintRect(0, SEC.scrollText.rect.y, window.Width, window.Height - SEC.scrollText.rect.y);
+    window.RepaintRect(0, SEC.scrollText.rect.y, panelW, panelH - SEC.scrollText.rect.y);
 }
 
 // [核心] 状态机：on_mouse_move
@@ -954,14 +945,14 @@ function on_mouse_lbtn_up(x, y) {
         if (window.IsTransparent) {
             window.Repaint();
         } else {
-            window.RepaintRect(0, elements.profileBtn.y, window.Width, window.Height - elements.profileBtn.y);
+            window.RepaintRect(0, elements.profileBtn.y, panelW, panelH - elements.profileBtn.y);
         }
         return;
     } else if (_hitTest(x, y, elements.discographyBtn)) {
         isShowingDiscography = true;
         scrollY = 0;
         createTextBuffer();
-        window.RepaintRect(0, elements.profileBtn.y, window.Width, window.Height - elements.profileBtn.y);
+        window.RepaintRect(0, elements.profileBtn.y, panelW, panelH - elements.profileBtn.y);
         return;
     }
 
@@ -1002,8 +993,8 @@ function on_playlist_items_selection_change() {
     } else {
         artistName = null;
         artistData = null;
-        errorText = "请选择或播放歌曲...";
-        if (window.Width > 0) {
+        errorText = "Select or play a track...";
+        if (panelW > 0) {
             window.Repaint();
         }
     }

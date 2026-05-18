@@ -91,7 +91,9 @@ Filter Panel: Items: "{D93F1EF3-4AEE-4632-B5BF-0220CEC76DED}"
  * @property {number} COL.SEL_BG - 选中项背景色
  * @property {number} COL.FRAME - 激活项/强调色
  * @property {number} COL.SCROLLBAR - 滚动条颜色 (硬编码)
- * @property {number} COL.MASK - 遮罩层底色 (硬编码)
+ * @property {number} COL.MASK - 遮罩层底色
+ * @property {number} COL.PLAYLIST_SWICHER_MASK - Playlist Switcher 遮罩底色 (指定 GUID)
+ * @property {number} COL.PLAYLIST_MASK - NG Playlist 遮罩底色 (指定 GUID)
  * @property {Object} FONT - GdiFont 对象集合
  * @property {GdiFont} FONT.TITLE - 大标题字体
  * @property {GdiFont} FONT.BODY - 正文字体
@@ -143,9 +145,12 @@ const THEME = {
         SEL_BG:         window.GetColourCUI(4),
         FRAME:          window.GetColourCUI(6),
         // ITEM_DETAIL_BG:  window.GetColourCUI(3, "{4E20CEED-42F6-4743-8EB3-610454457E19}"),
+        MASK:          window.GetColourCUI(3),
+        PLAYLIST_SWICHER_MASK: window.GetColourCUI(3, "{EB38A997-3B5F-4126-8746-262AA9C1F94B}"),
+        PLAYLIST_MASK: window.GetColourCUI(3, "{C882D3AC-C014-44DF-9C7E-2DADF37645A0}"),
         // 硬编码色值
         SCROLLBAR:      _rgb(149, 149, 149),
-        MASK:           _rgb(23, 23, 23),
+        
     },
 
     // --- CUI 字体 (统一为 GdiFont 对象) ---
@@ -224,11 +229,14 @@ const THEME = {
  * @returns {void}
  */
 function _refreshThemeColors() {
-    THEME.COL.FG             = window.GetColourCUI(0);
-    THEME.COL.SEL_FG         = window.GetColourCUI(1);
-    THEME.COL.BG             = window.GetColourCUI(3);
-    THEME.COL.SEL_BG         = window.GetColourCUI(4);
-    THEME.COL.FRAME          = window.GetColourCUI(6);
+    THEME.COL.FG                   = window.GetColourCUI(0);
+    THEME.COL.SEL_FG               = window.GetColourCUI(1);
+    THEME.COL.BG                   = window.GetColourCUI(3);
+    THEME.COL.SEL_BG               = window.GetColourCUI(4);
+    THEME.COL.FRAME                = window.GetColourCUI(6);
+    THEME.COL.MASK                 = window.GetColourCUI(3);
+    THEME.COL.PLAYLIST_SWICHER_MASK = window.GetColourCUI(3, "{EB38A997-3B5F-4126-8746-262AA9C1F94B}");
+    THEME.COL.PLAYLIST_MASK        = window.GetColourCUI(3, "{C882D3AC-C014-44DF-9C7E-2DADF37645A0}");
 }
 
 /**

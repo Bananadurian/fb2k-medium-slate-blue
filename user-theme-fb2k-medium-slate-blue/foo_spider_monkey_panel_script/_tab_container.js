@@ -1,5 +1,5 @@
 ﻿/**
- * @file tab_container.js
+ * @file _tab_container.js
  * @author XYSRe
  * @created 2026-05-02
  * @updated 2026-05-06
@@ -39,39 +39,41 @@ const TAB_ALIGNMENT = ALIGN_CENTER;
 const tooltip = _createDefaultTooltip();
 
 const TAB_BAR_BG_CFG = {
-    // 背景模式：
+    // 背景模式: "theme" | "cover-color" | "cover-image" | "custom"
     // - "theme": 使用主题背景色
     // - "cover-color": 使用封面提色（无封面回退主题色）
     // - "cover-image": 使用封面图背景（无封面回退主题色）
+    // - "custom": 使用 custom.color1/color2 填充（无需封面/meta，支持 _argb 半透明）
     mode: "cover-image",
     
-    // 背景形状："rect"=矩形；"round-rect"=圆角矩形。
-    shapeType: "round-rect",
-    // 圆角半径（像素，<=0 等同矩形）。
-    shapeRadius: THEME.LAYOUT.CORNER_RADIUS,
-    // 背景绘制内边距（像素）；用于控制背景绘制区域。支持上下左右单独设置{number|{top?:number, right?:number, bottom?:number, left?:number}}
-    padding: _scale(8),    
-    
-    // 渐变仅在 theme / cover-color 参与底色绘制时生效；cover-image 下不参与底图绘制。
-    gradientEnabled: true,
-    // 渐变角度，推荐 [0, 360]。
-    gradientAngle: 90,
-    // 渐变跨度：2=第1色与第2色，5=第1色与第5色（不足则回退最后可用色）。
-    gradientSpan: 8,
-    // 仅在 mode="cover-image" 生效：cover=铺满可能裁切；fit=完整显示可能留边。
-    imageScaleMode: "cover",
-    // 仅在 mode="cover-image" 生效，范围 [0, 200]，越大越模糊。
-    imageBlurRadius: 150,
-    // 仅在 mode="cover-image" 生效，最小 1；越大占用越多内存但重建更少。
-    imageCacheSize: 3,
-    // 遮罩在所有 mode 都生效。
+    // ===== 形状（全模式生效）=====
+    shapeType: "round-rect",                // "rect" | "round-rect"
+    shapeRadius: THEME.LAYOUT.CORNER_RADIUS, // 圆角半径 (px)，<=0 等同矩形
+    padding: _scale(8),                     // 背景绘制内边距 (px)
+
+    // ===== 渐变（theme / cover-color / custom 生效，cover-image 不参与底图绘制）=====
+    gradientEnabled: true,                  // 是否启用渐变
+    gradientAngle: 90,                      // 渐变角度 [0, 360]
+    gradientSpan: 8,                        // 渐变跨度 (>=2)；2=第1/2色，N=第1/N色
+
+    // ===== 背景图（仅 cover-image 生效）=====
+    imageScaleMode: "cover",                // "cover"=铺满裁切 | "fit"=完整留边
+    imageBlurRadius: 150,                   // 模糊半径 [0, 200]
+    imageCacheSize: 3,                      // 图片缓存条目数 (>=1)
+
+    // ===== 遮罩（全模式生效，可与 fill alpha 叠加）=====
     maskEnabled: true,
-    // 遮罩 RGB 颜色（alpha 由下方 alpha 控制）。
-    maskColor: THEME.COL.MASK,
-    // 遮罩透明度，范围 [0, 255]；0=透明，255=不透明。
-    maskAlpha: 150,
-    // auto controller 颜色缓存条目数，最小 1。
-    cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
+    maskColor: THEME.COL.MASK,              // 遮罩 RGB 颜色
+    maskAlpha: 150,                         // 遮罩透明度 [0, 255]；0=透明
+
+    // ===== 缓存（cover-color / cover-image 用于颜色/图片缓存）=====
+    cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE), // 颜色缓存条目数 (>=1)
+
+    // ===== custom 模式专用（仅在 mode="custom" 生效）=====
+    // custom: {
+    //     color1: _argb(255, 30, 35, 45),  // ARGB 填充色1（必填）
+    //     color2: _argb(255, 40, 45, 55),  // ARGB 填充色2（可选，不设=单色无渐变）
+    // },
 };
 
 
@@ -97,6 +99,7 @@ const tabBarBackground = createPanelBackgroundLayer({
             color: TAB_BAR_BG_CFG.maskColor,
             alpha: TAB_BAR_BG_CFG.maskAlpha,
         },
+        custom: TAB_BAR_BG_CFG.custom,
         cacheSize: TAB_BAR_BG_CFG.cacheSize,
         keyTf: THEME.TF.COVER_KEY,
     },
@@ -509,6 +512,7 @@ function on_mouse_lbtn_up(x, y) {
 function on_colours_changed() {
     _refreshThemeColors();
     tabBarBackground.setThemeColor(THEME.COL.BG);
+    tabBarBackground.setMaskColor(THEME.COL.MASK);
     for (let i = 0; i < tabs.length; i++) {
         if (tabs[i].kind === TAB_KIND_TEXT) {
             tabs[i].button.refreshStyle();

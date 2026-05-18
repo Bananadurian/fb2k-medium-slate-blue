@@ -63,7 +63,7 @@ Buttons created by `window.CreateButton(...)` are JSplitter-owned runtime object
 - Keep expensive work out of `on_paint`.
 - In `cover_panel`-style flows, cover extraction, image scaling, and blur preprocessing must run outside `on_paint`.
 
-### 5.1 Background controller collaboration rules (`lib/background.js`, `cover_panel.js`, `tab_container.js`, `bg_panel.js`)
+### 5.1 Background controller collaboration rules (`lib/background.js`, `cover_panel.js`, `_tab_container.js`, `bg_panel.js`)
 - Prefer `createPanelBackgroundLayer(...)` as panel integration entry; keep `createPanelBackgroundAutoController(...)` as strategy adapter and `createPanelBackgroundController(...)` as stable low-level primitive.
 - Standard sync API:
   - `sync()` / `sync(metadb)` for default auto-fetch flows
@@ -96,7 +96,7 @@ Buttons created by `window.CreateButton(...)` are JSplitter-owned runtime object
 - Keep existing behavior per panel:
   - background/tab stacks typically `PLAYING_FIRST`
   - content/info panels often `SELECTION_FIRST`
-- Do not change `GetFocusItem`-based flows unless explicitly requested (e.g. `info+rating.js`).
+- Do not change `GetFocusItem`-based flows unless explicitly requested (e.g. `track_info.js`).
 
 ### 5.5 Transparent background paint gate rule (`window.IsTransparent`)
 - For child/overlay panels, gate panel background clear in `on_paint(gr)`:
@@ -104,14 +104,14 @@ Buttons created by `window.CreateButton(...)` are JSplitter-owned runtime object
   - transparent mode should avoid full-panel `FillSolidRect(..., COL.BG)` that covers parent background
 - Keep component-owned foreground drawing unchanged (buttons/text/icons/progress bars).
 - For local clear patches (e.g. rating area), apply the same gate to avoid transparent-mode color blocks.
-- Current applied scripts: `playback_buttons.js`, `control_buttons.js`, `info+rating.js`, `cover_panel.js`.
+- Current applied scripts: `playback_buttons.js`, `control_buttons.js`, `track_info.js`, `cover_panel.js`.
 - Transparent sync contract for child panels:
   - default sender is `bg_panel_container_control.js` (`NOTIFY.TRANSPARENT_SYNC.name`)
   - child consumers must validate `info.source === NOTIFY.SOURCE.BG_PANEL_CONTAINER_CONTROL` before repaint
   - keep `epoch` monotonic filtering (`notifyEpoch > lastEpoch`)
   - keep one lightweight fallback timer on track switch (current baseline: `THEME.LAYOUT.TRANSPARENT_SYNC_NOTIFY_FRESH_MS`=220, `THEME.LAYOUT.TRANSPARENT_REPAINT_FALLBACK_DELAY_MS`=80) to cover missed notify edges.
 
-### 5.6 SECTIONS layout convention (`album_info.js`, `biography.js`, `info+rating.js`)
+### 5.6 SECTIONS layout convention (`album_info.js`, `biography.js`, `track_info.js`)
 - All three panels use a single `SECTIONS` array where each section is a self-contained object with `{name, padding, rect, content, visible, getContentHeight(), draw(gr)}`.
 - `rect` and `content` MUST be pre-declared as `{x:0,y:0,w:0,h:0}` on every section object — `layoutSections()` writes into them.
 - `layoutSections(sections, panelW, panelH)` (shared in `lib/utils.js`) vertically stacks all sections from y=0; `fillRemaining: true` marks a section that takes leftover panel height.
@@ -121,7 +121,7 @@ Buttons created by `window.CreateButton(...)` are JSplitter-owned runtime object
 - Add/remove/reorder sections without changing any painting or layout code outside the array definition.
 - Detailed spec: `docs/claude/patterns-recipes.md` §10.
 
-### 5.7 Text style preset convention (`album_info.js`, `biography.js`, `info+rating.js`)
+### 5.7 Text style preset convention (`album_info.js`, `biography.js`, `track_info.js`)
 - Use `const TS = THEME.TEXT` alias. All font references (GdiDrawText / _getFontLineHeight / _measureText / createScrollTextRenderer) go through `TS.*.font`/`.color`/`.flags` — do not create a separate `const FONT = THEME.FONT`.
 - `THEME.TEXT` (in `lib/theme.js`) provides getter-based style presets: `body`, `bodyLine`, `bodyLineBottom`, `bodyCenter`, `title`, `titleLine`, `titleLineBottom`, `tab`, `boldCenter`, `label`, `labelCenter`, `empty`.
 - Use `_drawText(gr, style, text, x, y, w, h)` over raw `gr.GdiDrawText` when font+color+flags are a fixed triplet.
@@ -133,10 +133,10 @@ Buttons created by `window.CreateButton(...)` are JSplitter-owned runtime object
 
 ## 6. Quick Project Map
 Active scripts:
-- `info+rating.js`, `album_info.js`, `biography.js`
+- `track_info.js`, `album_info.js`, `biography.js`
 - `playback_buttons.js`, `control_buttons.js`
 - `title_playlist.js`, `title_library.js`
-- `cover_panel.js`, `bg_panel_container_control.js`, `tab_container.js`, `tab_container_detail.js`, `bg_panel.js`, `bg_panel_container_playlistview.js`, `tab_container_playlist.js`
+- `cover_panel.js`, `bg_panel_container_control.js`, `_tab_container.js`, `tab_container_detail.js`, `bg_panel.js`, `bg_panel_container_playlistview.js`, `tab_container_playlist.js`
 
 Shared libs:
 - `lib/utils.js`, `lib/data.js`, `lib/interaction.js`, `lib/theme.js`, `lib/background.js`, `lib/title_bar_shared.js`, `lib/flag.js`
@@ -153,7 +153,7 @@ Examples:
 - `bg_panel.js` — pure background decoration, no sub-panels
 - `bg_panel_container_playlistview.js` — bg container with playlist-view sub-panel layout
 - `bg_panel_container_control.js` — bg container with playback-control sub-panel layout
-- `tab_container.js` — tab-switching container (canonical template)
+- `_tab_container.js` — tab-switching container (canonical template)
 - `tab_container_detail.js` — tab-switching container (detail panels variant: Album, Biography, ESlyric)
 - `tab_container_playlist.js` — tab-switching container (playlist variant)
 

@@ -92,7 +92,7 @@ let scrollY = 0;
 let maxScrollY = 0;
 let currentText = "";               // 当前显示的文本内容
 let fullTextH = 0;                  // 文本总高度
-let errorText = "请选择或播放歌曲...";
+let errorText = "Select or play a track...";
 let activeElement = null;         // [状态机] 当前激活的 UI 元素
 
 let panelW = window.Width;
@@ -134,7 +134,7 @@ const SECTIONS = [
         content: { x: 0, y: 0, w: 0, h: 0 },
         visible: PANEL_CFG.showCover,
         getContentHeight() {
-            const rawH = Math.floor(window.Width * PANEL_CFG.coverAspectRatio);
+            const rawH = Math.floor(panelW * PANEL_CFG.coverAspectRatio);
             const p = PANEL_CFG.coverPadding;
             return Math.max(0, rawH - p.top - p.bottom);
         },
@@ -245,7 +245,7 @@ const SECTIONS = [
             scrollText.draw(gr, scrollY, this.content.x, this.content.y, this.content.w);
             if (maxScrollY > 0) {
                 _drawScrollbar(gr, this.content.h, fullTextH, scrollY, maxScrollY,
-                    window.Width, this.content.y, COL.SCROLLBAR);
+                    panelW, this.content.y, COL.SCROLLBAR);
             }
         },
     },
@@ -304,7 +304,7 @@ function reloadAlbumData(metadb) {
 
     // 缓存检查 (同专辑时仅刷新曲目级状态)
     if (currentAlbumKey === safeAlbumKey) {
-        if (window.Width > 0) {
+        if (panelW > 0) {
             const latestSource = albumSourceTf.EvalWithMetadb(metadb).trim().toUpperCase();
             if (albumData) {
                 albumData.source = latestSource;
@@ -330,7 +330,7 @@ function reloadAlbumData(metadb) {
             } else if (window.IsTransparent) {
                 window.Repaint();
             } else {
-                window.RepaintRect(0, SEC.cover.rect.h, window.Width, window.Height - SEC.cover.rect.h);
+                window.RepaintRect(0, SEC.cover.rect.h, panelW, panelH - SEC.cover.rect.h);
             }
         }
         return;
@@ -342,12 +342,12 @@ function reloadAlbumData(metadb) {
     
     albumData = getAlbumCacheEntry(safeAlbumKey, metadb);
 
-    errorText = albumData ? "" : "暂无专辑资料";
+    errorText = albumData ? "" : "No album information available";
 
     updateSourceIcon(albumData.source);
     updateLanguageFlag();
 
-    if (window.Width > 0) {
+    if (panelW > 0) {
         updateLayoutMetrics();
         loadAlbumImages(metadb);
         createTextBuffer();
@@ -473,7 +473,7 @@ function drawTabSection(gr, sec) {
         tColor, tBtn.x, tBtn.y, tBtn.w, tBtn.h, CENTER_WRAP_FLAGS);
 
     const activeBtn = isDescMode ? dBtn : tBtn;
-    _drawTabIndicator(gr, activeBtn, window.Width, _scale(10), COL.FRAME, COL.FG);
+    _drawTabIndicator(gr, activeBtn, panelW, _scale(10), COL.FRAME, COL.FG);
 }
 
 /**
@@ -482,9 +482,6 @@ function drawTabSection(gr, sec) {
  */
 function updateLayoutMetrics() {
     if (!albumData) return;
-
-    panelW = window.Width;
-    panelH = window.Height;
 
     // 1. 测量宽度 (基于 title section padding，统一所有文本区域测量宽度)
     const titleP = SEC.title.padding;
@@ -572,11 +569,11 @@ function updateLayoutMetrics() {
  * 预测量 Tab 按钮尺寸 (用于 updateLayoutMetrics 中定位)
  */
 function calcElementsBtnSize() {
-    const pM = _measureText(elements.descBtn.displayText, TS.tab, window.Width);
+    const pM = _measureText(elements.descBtn.displayText, TS.tab, panelW);
     elements.descBtn.w = pM.Width;
     elements.descBtn.h = pM.Height;
 
-    const dM = _measureText(elements.tracklistBtn.displayText, TS.tab, window.Width);
+    const dM = _measureText(elements.tracklistBtn.displayText, TS.tab, panelW);
     elements.tracklistBtn.w = dM.Width;
     elements.tracklistBtn.h = dM.Height;
 }
@@ -592,15 +589,15 @@ function createTextBuffer() {
     if (!albumData || SEC.scrollText.content.w <= 0 || SEC.scrollText.content.h <= 0) return;
 
     currentText = isShowingTracklist
-        ? (albumData.tracklist || "暂无曲目信息 (需TAG (TRACKLIST)支持)")
-        : (albumData.description || "暂无专辑简介 (需TAG (ALBUMDESCRIPTION)支持)");
+        ? (albumData.tracklist || "No tracklist available (requires TRACKLIST tag)")
+        : (albumData.description || "No description available (requires ALBUMDESCRIPTION tag)");
 
     const measured = _measureText(currentText, TS.body, SEC.scrollText.content.w);
     fullTextH = Math.max(1, Math.min(Math.ceil(measured.Height), _scale(2000)));
 
     maxScrollY = Math.max(0, fullTextH - SEC.scrollText.content.h);
     if (scrollY > maxScrollY) scrollY = maxScrollY;
-    scrollText.ensure(currentText, window.Width, fullTextH);
+    scrollText.ensure(currentText, panelW, fullTextH);
 }
 
 
@@ -707,6 +704,8 @@ function scheduleEnsureFromPaint() {
  */
 function on_size() {
     if (window.Width <= 0 || window.Height <= 0) return;
+    panelW = window.Width;
+    panelH = window.Height;
     
     calcElementsBtnSize();
     updateLayoutMetrics();
@@ -718,10 +717,10 @@ function on_size() {
  */
 function on_paint(gr) {
     gr.SetSmoothingMode(0);
-    if (!window.IsTransparent) gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
+    if (!window.IsTransparent) gr.FillSolidRect(0, 0, panelW, panelH, COL.BG);
 
     if (!albumData) {
-        _drawEmptyState(gr, errorText, TS.body.font, TS.body.color, window.Width, window.Height);
+        _drawEmptyState(gr, errorText, TS.body.font, TS.body.color, panelW, panelH);
         return;
     }
 
@@ -855,7 +854,7 @@ function on_mouse_wheel(step) {
     if (!currentText || maxScrollY <= 0) return;
     scrollY -= step * SCROLL_STEP;
     scrollY = Math.max(0, Math.min(scrollY, maxScrollY));
-    window.RepaintRect(0, SEC.scrollText.rect.y, window.Width, window.Height - SEC.scrollText.rect.y);
+    window.RepaintRect(0, SEC.scrollText.rect.y, panelW, panelH - SEC.scrollText.rect.y);
 }
 
 // [核心] 状态机：on_mouse_move — hover/点击命中测试 + 局部重绘
@@ -925,7 +924,7 @@ function on_mouse_lbtn_up(x, y) {
         if (window.IsTransparent) {
             window.Repaint();
         } else {
-            window.RepaintRect(0, elements.descBtn.y, window.Width, window.Height - elements.descBtn.y);
+            window.RepaintRect(0, elements.descBtn.y, panelW, panelH - elements.descBtn.y);
         }
         return;
     }
@@ -933,7 +932,7 @@ function on_mouse_lbtn_up(x, y) {
         isShowingTracklist = true;
         scrollY = 0;
         createTextBuffer();
-        window.RepaintRect(0, elements.descBtn.y, window.Width, window.Height - elements.descBtn.y);
+        window.RepaintRect(0, elements.descBtn.y, panelW, panelH - elements.descBtn.y);
         return;
     }
 }
@@ -961,7 +960,7 @@ function on_playlist_items_selection_change() {
     } else {
         currentAlbumKey = null;
         albumData = null;
-        errorText = "请选择或播放歌曲...";
+        errorText = "Select or play a track...";
         window.Repaint();
     }
 }

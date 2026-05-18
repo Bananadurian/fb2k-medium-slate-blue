@@ -76,38 +76,41 @@ const PANEL_CFG = {
   coverMode: "fit",
 
   background: {
-    // 背景模式：
+    // 背景模式: "theme" | "cover-color" | "cover-image" | "custom"
     // - "theme": 仅使用主题背景色
     // - "cover-color": 使用封面提色（无封面回退主题色）
     // - "cover-image": 使用封面图作为背景（无封面回退主题色）
+    // - "custom": 使用 custom.color1/color2 填充（无需封面/meta，支持 _argb 半透明）
     mode: "theme",
+
     // 封面获取优先级：按顺序尝试，首个成功即返回。
     // 0=front 1=back 2=disc 3=icon 4=artist
     albumArtFetchPriority: [4, 0],
-    // 渐变仅在 theme / cover-color 参与底色绘制时生效；cover-image 下不参与底图绘制。
-    gradientEnabled: true,
-    // 渐变角度，推荐 [0, 360]。
-    gradientAngle: 90,
-    // 渐变跨度：2=第1色与第2色，5=第1色与第5色（不足则回退最后可用色）。
-    gradientSpan: 10,
-    // 仅在 mode="cover-image" 生效：
-    // - "cover": 铺满区域，可能裁切
-    // - "fit": 完整显示，可能留边
-    imageScaleMode: "cover",
-    // 仅在 mode="cover-image" 生效，范围 [0, 200]，越大越模糊。
-    imageBlurRadius: 100,
-    // 仅在 mode="cover-image" 生效，最小 1；越大占用越多内存但重建更少。
-    imageCacheSize: 3,
-    // 背景形状："rect"=矩形；"round-rect"=圆角矩形。
-    shapeType: "round-rect",
-    // 圆角半径（像素，<=0 等同矩形）。
-    shapeRadius: THEME.LAYOUT.CORNER_RADIUS,
-    // 遮罩在所有 mode 都生效。
+
+    // ===== 渐变（theme / cover-color / custom 生效，cover-image 不参与底图绘制）=====
+    gradientEnabled: true,                  // 是否启用渐变
+    gradientAngle: 90,                      // 渐变角度 [0, 360]
+    gradientSpan: 10,                       // 渐变跨度 (>=2)；2=第1/2色，N=第1/N色
+
+    // ===== 形状（全模式生效）=====
+    shapeType: "round-rect",                // "rect" | "round-rect"
+    shapeRadius: THEME.LAYOUT.CORNER_RADIUS, // 圆角半径 (px)，<=0 等同矩形
+
+    // ===== 背景图（仅 cover-image 生效）=====
+    imageScaleMode: "cover",                // "cover"=铺满区域，可能裁切 | "fit"=完整显示，可能留边
+    imageBlurRadius: 100,                   // 模糊半径 [0, 200]
+    imageCacheSize: 3,                      // 图片缓存条目数 (>=1)
+
+    // ===== 遮罩（全模式生效，可与 fill alpha 叠加）=====
     maskEnabled: false,
-    // 遮罩 RGB 颜色（alpha 由下方 alpha 控制）。
-    maskColor: _rgb(0, 0, 0),
-    // 遮罩透明度，范围 [0, 255]；0=透明，255=不透明。
-    maskAlpha: 255,
+    maskColor: _rgb(0, 0, 0),              // 遮罩 RGB 颜色
+    maskAlpha: 255,                         // 遮罩透明度 [0, 255]；0=透明
+
+    // ===== custom 模式专用（仅在 mode="custom" 生效）=====
+    // custom: {
+    //     color1: _argb(255, 30, 35, 45),  // ARGB 填充色1（必填）
+    //     color2: _argb(255, 40, 45, 55),  // ARGB 填充色2（可选，不设=单色无渐变）
+    // },
   },
 };
 
@@ -142,7 +145,7 @@ let transparentTrackRepaintTimer = null;
 let lastTransparentNotifyEpoch = 0;
 let lastTransparentNotifyTs = 0;
 
-const backgroundAuto = createPanelBackgroundLayer({
+const bgLayer = createPanelBackgroundLayer({
   background: {
     mode: PANEL_CFG.background.mode,
     gradient: {
@@ -164,6 +167,7 @@ const backgroundAuto = createPanelBackgroundLayer({
       color: PANEL_CFG.background.maskColor,
       alpha: PANEL_CFG.background.maskAlpha,
     },
+    custom: PANEL_CFG.background.custom,
     cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
     keyTf: THEME.TF.COVER_KEY,
   },
@@ -184,8 +188,8 @@ const backgroundAuto = createPanelBackgroundLayer({
     return fetchAlbumArt(metadb);
   },
 });
-backgroundAuto.setThemeColor(THEME.COL.BG);
-backgroundAuto.sync();
+bgLayer.setThemeColor(THEME.COL.BG);
+bgLayer.sync();
 
 // ==========================================
 // 3. 业务逻辑 (Business Logic)
@@ -245,7 +249,7 @@ function updatePanelData(metadb) {
     currentTrackKey = "";
     currentImgRounded = null;
     recalculateLayout(null);
-    backgroundAuto.sync();
+    bgLayer.sync();
     window.Repaint();
     return;
   }
@@ -272,14 +276,14 @@ function updatePanelData(metadb) {
 
     if (isCoverImageMode()) {
       if (cached.rawImg) {
-        backgroundAuto.sync(metadb, cached.rawImg);
+        bgLayer.sync(metadb, cached.rawImg);
       } else {
-        backgroundAuto.sync();
+        bgLayer.sync();
       }
     } else if (cached.bgColors) {
-      backgroundAuto.getController().applyColors(cached.bgColors);
+      bgLayer.getController().applyColors(cached.bgColors);
     } else {
-      backgroundAuto.sync();
+      bgLayer.sync();
     }
 
     recalculateLayout(currentImgRounded);
@@ -291,7 +295,7 @@ function updatePanelData(metadb) {
 
   if (rawImg) {
     if (!isCoverImageMode()) {
-      backgroundAuto.getController().updateFromMetadb(metadb, rawImg);
+      bgLayer.getController().updateFromMetadb(metadb, rawImg);
     }
 
     recalculateLayout(rawImg);
@@ -305,13 +309,13 @@ function updatePanelData(metadb) {
 
     coverCache.set(key, {
       imgRounded: currentImgRounded || null,
-      bgColors: backgroundAuto.getController().getColors(),
+      bgColors: bgLayer.getController().getColors(),
       rawImg: isCoverImageMode() ? rawImg : null,
       artMissing: false,
     });
 
     if (isCoverImageMode()) {
-      backgroundAuto.sync(metadb, rawImg);
+      bgLayer.sync(metadb, rawImg);
     }
 
     if (!isCoverImageMode() && typeof rawImg.Dispose === "function") {
@@ -322,11 +326,11 @@ function updatePanelData(metadb) {
     recalculateLayout(null);
     coverCache.set(key, {
       imgRounded: null,
-      bgColors: backgroundAuto.getController().getColors(),
+      bgColors: bgLayer.getController().getColors(),
       rawImg: null,
       artMissing: true,
     });
-    backgroundAuto.sync();
+    bgLayer.sync();
   }
 
   window.Repaint();
@@ -355,14 +359,13 @@ function on_size() {
   panelW = window.Width;
   panelH = window.Height;
   recalculateLayout(currentImgRounded);
-  backgroundAuto.onResize();
+  bgLayer.onResize();
 }
 
 function on_paint(gr) {
   if (!window.IsTransparent) {
-    backgroundAuto.paint(gr);
+    bgLayer.paint(gr);
   }
-
   if (currentImgRounded) {
     gr.DrawImage(
       currentImgRounded,
@@ -424,8 +427,9 @@ function on_playlist_items_selection_change() {
 /** @returns {void} */
 function on_colours_changed() {
   _refreshThemeColors();
-  backgroundAuto.setThemeColor(THEME.COL.BG);
-  backgroundAuto.getController().resetToThemeColor();
+  bgLayer.setThemeColor(THEME.COL.BG);
+  bgLayer.setMaskColor(THEME.COL.MASK);
+  bgLayer.getController().resetToThemeColor();
   window.Repaint();
 }
 
@@ -470,7 +474,7 @@ function on_notify_data(name, info) {
 function on_script_unload() {
   clearTransparentTrackRepaintTimers();
   coverCache.clear();
-  backgroundAuto.clearCache();
+  bgLayer.clearCache();
   currentImgRounded = null;
   currentMetadb = null;
   currentTrackKey = "";

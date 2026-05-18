@@ -44,13 +44,20 @@ const BG_SOURCE_EXPLICIT_NO_ART = "explicit-no-art";
 
 /**
  * @typedef {Object} PanelBackgroundControllerConfig
- * @property {"theme"|"cover-color"|"cover-image"} [mode="cover-color"] - 背景模式
+ * @property {"theme"|"cover-color"|"cover-image"|"custom"} [mode="cover-color"] - 背景模式
  * @property {PanelBackgroundGradientConfig} [gradient]
  * @property {PanelBackgroundMaskConfig} [mask]
  * @property {PanelBackgroundImageConfig} [image]
  * @property {PanelBackgroundShapeConfig} [shape]
+ * @property {PanelBackgroundCustomConfig} [custom]
  * @property {number} [cacheSize=5] - 颜色缓存条目数，最小值 1
  * @property {FbTitleFormat} [keyTf] - 曲目缓存键格式器
+ */
+
+/**
+ * @typedef {Object} PanelBackgroundCustomConfig
+ * @property {number} [color1] - 自定义填充色1 (ARGB, 默认 0x000000)
+ * @property {number} [color2] - 自定义填充色2 (ARGB, 默认等于 color1)
  */
 
 /**
@@ -150,7 +157,7 @@ function createPanelBackgroundController(cfg) {
     const maskEnabled = !!maskCfg.enabled;
     const maskAlpha = _clamp(Math.round(maskCfg.alpha || 0), 0, 255);
     const maskRgb = typeof maskCfg.color === "number" ? maskCfg.color : _rgb(0, 0, 0);
-    const maskColor = _argb(
+    let maskColor = _argb(
         maskAlpha,
         (maskRgb >> 16) & 0xff,
         (maskRgb >> 8) & 0xff,
@@ -228,6 +235,12 @@ function createPanelBackgroundController(cfg) {
     /** @param {number} color - 仅更新主题基色，不会立即触发重绘或重算 */
     function setThemeColor(color) {
         if (typeof color === "number") themeColor = color;
+    }
+
+    /** @param {number} color - 更新遮罩 RGB 颜色值（alpha 保持创建时设定） */
+    function setMaskColor(color) {
+        if (typeof color !== "number") return;
+        maskColor = _argb(maskAlpha, (color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff);
     }
 
     function resetToThemeColor() {
@@ -492,6 +505,7 @@ function createPanelBackgroundController(cfg) {
 
     return {
         setThemeColor,
+        setMaskColor,
         resetToThemeColor,
         updateFromMetadb,
         updateBackgroundImage,
@@ -515,9 +529,13 @@ function createPanelBackgroundAutoController(opts) {
     const safeOpts = opts || {};
     const backgroundCfg = safeOpts.background || {};
     const mode =
-        backgroundCfg.mode === "theme" || backgroundCfg.mode === "cover-image"
+        backgroundCfg.mode === "theme" || backgroundCfg.mode === "cover-image" || backgroundCfg.mode === "custom"
             ? backgroundCfg.mode
             : "cover-color";
+
+    const customCfg = backgroundCfg.custom || {};
+    const customColor1 = typeof customCfg.color1 === "number" ? customCfg.color1 : _rgb(0, 0, 0);
+    const customColor2 = typeof customCfg.color2 === "number" ? customCfg.color2 : customColor1;
 
     const controller = createPanelBackgroundController(backgroundCfg);
     const getPreferredMetadb =
@@ -623,6 +641,16 @@ function createPanelBackgroundAutoController(opts) {
             lastSizeW = -1;
             lastSizeH = -1;
             controller.resetToThemeColor();
+            return;
+        }
+
+        if (mode === "custom") {
+            lastSyncedRawImg = null;
+            lastAutoFetchMissTrackKey = "";
+            lastCoverImageRenderSig = "";
+            lastSizeW = -1;
+            lastSizeH = -1;
+            controller.applyColors({ c1: customColor1, c2: customColor2 });
             return;
         }
 
@@ -822,6 +850,7 @@ function createPanelBackgroundAutoController(opts) {
     return {
         paint: controller.paint,
         setThemeColor: controller.setThemeColor,
+        setMaskColor: controller.setMaskColor,
         sync,
         syncWithRaw,
         syncNoArt,
@@ -875,6 +904,7 @@ function createPanelBackgroundLayer(opts) {
         syncNoArt: auto.syncNoArt,
         onResize: auto.onResize,
         setThemeColor: auto.setThemeColor,
+        setMaskColor: auto.setMaskColor,
         clearCache: auto.clearCache,
         getController: auto.getController,
     };

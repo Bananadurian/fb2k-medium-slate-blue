@@ -65,6 +65,10 @@ const BG_MODE_COVER_COLOR = "cover-color";
 /** @const {string} 封面图片模式 */
 const BG_MODE_COVER_IMAGE = "cover-image";
 
+// 同步策略：
+// - SYNC_MODE_AUTO: 使用标准 auto-fetch 路径（sync / sync(metadb)）
+// - SYNC_MODE_WITH_RAW: 调用方提供 raw 图（syncWithRaw），用于验证“无重复取图”路径
+// - SYNC_MODE_NO_ART: 显式声明无图（syncNoArt），用于验证 no-art 回退路径
 /** @const {string} 自动同步策略 */
 const SYNC_MODE_AUTO = "auto";
 /** @const {string} 原生图片同步策略 */
@@ -91,45 +95,41 @@ const SYNC_MODE_NO_ART = "no-art";
  * @property {string} syncMode 封面获取同步模式
  */
 const PANEL_CFG = {
-    // 背景模式：
-    // - BG_MODE_THEME: 使用主题背景色
-    // - BG_MODE_COVER_COLOR: 使用封面提色（无封面回退主题色）
-    // - BG_MODE_COVER_IMAGE: 使用封面图背景（无封面回退主题色）
+    // 背景模式: "theme" | "cover-color" | "cover-image" | "custom"
+    // - "theme": 使用主题背景色
+    // - "cover-color": 使用封面提色（无封面回退主题色）
+    // - "cover-image": 使用封面图背景（无封面回退主题色）
+    // - "custom": 使用 custom.color1/color2 填充（无需封面/meta，支持 _argb 半透明）
     mode: BG_MODE_THEME,
 
-    // 渐变仅在 mode=theme/cover-color 时参与底色绘制。
-    gradientEnabled: true,
-    // 渐变角度，推荐 [0, 360]。
-    gradientAngle: 90,
-    // 渐变跨度：2=第1色与第2色，5=第1色与第5色（不足时回退最后可用色）。
-    gradientSpan: 8,
+    // ===== 渐变（theme / cover-color / custom 生效，cover-image 不参与底图绘制）=====
+    gradientEnabled: true,                  // 是否启用渐变
+    gradientAngle: 90,                      // 渐变角度 [0, 360]
+    gradientSpan: 8,                        // 渐变跨度 (>=2)；2=第1/2色，N=第1/N色
 
-    // 背景形状："rect"=矩形；"round-rect"=圆角矩形。
-    shapeType: "round-rect",
-    // 圆角半径（像素，<=0 等同矩形）。
-    shapeRadius: THEME.LAYOUT.CORNER_RADIUS,
-    // 背景内边距（像素）；用于控制背景与面板边缘的间距。
-    padding: {top:_scale(8), right:0, bottom:_scale(8), left:0},
+    // ===== 形状（全模式生效）=====
+    shapeType: "round-rect",                // "rect" | "round-rect"
+    shapeRadius: THEME.LAYOUT.CORNER_RADIUS, // 圆角半径 (px)，<=0 等同矩形
+    padding: {top:_scale(8), right:0, bottom:_scale(8), left:0}, // 背景绘制内边距 (px)
 
-    // 仅在 mode=cover-image 生效："cover"=铺满可能裁切；"fit"=完整显示可能留边。
-    imageScaleMode: "cover",
-    // 仅在 mode=cover-image 生效，范围 [0, 200]，越大越模糊。
-    imageBlurRadius: 150,
-    // 仅在 mode=cover-image 生效，最小 1；越大占用更多内存但重建更少。
-    imageCacheSize: 3,
+    // ===== 背景图（仅 cover-image 生效）=====
+    imageScaleMode: "cover",                // "cover"=铺满裁切 | "fit"=完整留边
+    imageBlurRadius: 150,                   // 模糊半径 [0, 200]
+    imageCacheSize: 3,                      // 图片缓存条目数 (>=1)
 
-    // 遮罩在所有 mode 都生效。
-    maskEnabled: false,
-    // 遮罩 RGB 颜色（alpha 由 maskAlpha 控制）。
-    maskColor: THEME.COL.MASK,
-    // 遮罩透明度，范围 [0, 255]；0=透明，255=不透明。
-    maskAlpha: 255,
+    // ===== 遮罩（全模式生效，可与 fill alpha 叠加）=====
+    maskEnabled: true,
+    maskColor: THEME.COL.PLAYLIST_MASK,     // 遮罩 RGB 颜色
+    maskAlpha: 255,                         // 遮罩透明度 [0, 255]；0=透明
 
-    // 同步策略：
-    // - SYNC_MODE_AUTO: 使用标准 auto-fetch 路径（sync / sync(metadb)）
-    // - SYNC_MODE_WITH_RAW: 调用方提供 raw 图（syncWithRaw），用于验证“无重复取图”路径
-    // - SYNC_MODE_NO_ART: 显式声明无图（syncNoArt），用于验证 no-art 回退路径
+    // ===== 同步策略 =====
     syncMode: SYNC_MODE_AUTO,
+
+    // ===== custom 模式专用（仅在 mode="custom" 生效）=====
+    // custom: {
+    //     color1: _argb(255, 30, 35, 45),  // ARGB 填充色1（必填）
+    //     color2: _argb(255, 40, 45, 55),  // ARGB 填充色2（可选，不设=单色无渐变）
+    // },
 };
 
 // --- 状态变量 ---
@@ -203,7 +203,7 @@ function clearStartupKickTimers() {
 }
 
 /**
- * 启动或重置播放时的“强效刷新”序列，用于修复波形条等组件启动变灰的问题。
+ * 启动或重置播放时的"强效刷新"序列，用于修复波形条等组件启动变灰的问题。
  */
 function triggerStartupChildRefreshKick() {
     if (bgStartupKickDone || bgStartupKickTimer) return;
@@ -252,6 +252,7 @@ function recreateBackgroundLayer() {
                 color: PANEL_CFG.maskColor,
                 alpha: PANEL_CFG.maskAlpha,
             },
+            custom: PANEL_CFG.custom,
             cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
             keyTf: THEME.TF.COVER_KEY,
         },
@@ -352,7 +353,7 @@ function resolveSubPanel(subPanelState) {
  * 1) 整体采用三行：上 30% / 中 20% / 下 50%。
  *
  * 说明：
- * - 此函数只负责“目标坐标”计算，调用方再做差异比较和 Move。
+ * - 此函数只负责"目标坐标"计算，调用方再做差异比较和 Move。
  * - 保持原有 Math.round 时机，避免像素级偏移。
  */
 function computeSubPanelRect(panelKey, layoutContext) {
@@ -553,7 +554,10 @@ function on_playback_stop(reason) {
  */
 function on_colours_changed() {
     _refreshThemeColors();
-    if (bgLayer) bgLayer.setThemeColor(THEME.COL.BG);
+    if (bgLayer) {
+        bgLayer.setThemeColor(THEME.COL.BG);
+        bgLayer.setMaskColor(THEME.COL.PLAYLIST_MASK);
+    }
     scheduleBackgroundSync();
 }
 

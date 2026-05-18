@@ -24,6 +24,9 @@ File IO, component detection, album art sync/async, system color, duration forma
 ### 2.5 `window`
 Repaint, color/font retrieval, cursor, popup menu, tooltip, script definition, timers.
 
+- `window.GetProperty(name, default_val)` — 获取持久化属性值。若属性不存在且 `default_val` 非 `undefined`/`null`，则自动创建并写入默认值。属性名首尾空白会被裁剪。属性值按面板实例保存，跨 fb2k 重启保留。
+- `window.SetProperty(name, val)` — 设置持久化属性值。若 `val` 为 `undefined` 或 `null`，则删除该属性。属性名首尾空白会被裁剪。属性值按面板实例保存，跨 fb2k 重启保留。
+
 ### 2.6 JSplitter extension
 - Panel APIs: `GetPanel`, `GetPanelByIndex`
 - Runtime button APIs: `CreateButton`, `RadioButtons`, `GetButton`, `RemoveButton`

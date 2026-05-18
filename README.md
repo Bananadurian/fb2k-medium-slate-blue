@@ -2,7 +2,7 @@
 
 ## 1. 简介
 
-![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI3_v1.1.0.png)
+![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-1.png)
 
 **fb2k-medium-slate-blue**（Medium Slate Blue）是一个基于 [**foobar2000-x64_v2.2.x**](https://www.foobar2000.org/download)、[**Columns UI**](https://github.com/reupen/columns_ui) 定制版本。
 
@@ -17,28 +17,24 @@
 3. 下载或克隆仓库，把 `\fb2k-medium-slate-blue` 重名名为 `\profile` 复制到 foobar2000 **安装目录**中即可；
 
 > 新安装的 foobar2000 的便携版**不要启动**，此时不会生成 `\profile` 目录，
->
 > 直接复制 `\profile` 到 foobar2000 安装目录即可！没有覆盖文件操作可以减少出错的情况！！！！
->
 > 安装目录参考:
->
 > 便携安装版的用户配置：`xx\foobar2000\profile`，
->
 > 非便携版本在 Win 用户的路径中：`C:\Users\用户名\AppData\Roaming\foobar2000\profile`
 
 ## 3. 电台封面
 
-利用 [foo\_external\_tags](https://wiki.hydrogenaud.io/index.php?title=Foobar2000:Components/External_Tags_(foo_external_tags)) 插件把电台的名字、专辑、艺人信息等信息补全。
+利用 [foo_external_tags](<https://wiki.hydrogenaud.io/index.php?title=Foobar2000:Components/External_Tags_(foo_external_tags)>) 插件把电台的名字、专辑、艺人信息等信息补全。
 
 1. 下载电台封面到一个指定文件夹中（建议封面命名和电台名字一致，方便后续使用）；
 
 2. 打开 `Foobar -> Preferences -> Display -> Album art -> Front cover`，添加电台封面所在路径，
-	
-	示例参数：
-	
-	利用电台Url标识设置路径：`$if($strstr(%path%,'://'),E:\Music\_Extras\Radio\%title%.*)`；
-	
-	固定路径：`E:\Music\_Extras\Radio\%title%.*`（优先级*最低*，不然会覆盖同名歌曲）。
+
+   示例参数：
+
+   利用电台Url标识设置路径：`$if($strstr(%path%,'://'),E:\Music\_Extras\Radio\%title%.*)`；
+
+   固定路径：`E:\Music\_Extras\Radio\%title%.*`（优先级*最低*，不然会覆盖同名歌曲）。
 
 3. 需要显示封面的地方选择 `Front cover` 即可显示（`Artist` 设置类似）。
 
@@ -50,26 +46,36 @@
 
 ## 5. 版本记录
 
-> 仅记录UI大变化的版本。
+### 1.3.0
 
-### 5.1. UI3 (当前版本)
+> 2026-05-18
 
-#### 5.1.1. v1.1.0
+- JSplitter代替SMP
+- JSplitter脚本全部重构并新增背景色等功能
+- ESlyric新增多项自定义布局
+- 其它...
 
-2026-01-14：
+![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-1.png)
+![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-2.png)
+![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-3.png)
+![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-4.png)
+
+### 1.2.1
+
+> 2026-01-14
 
 - 调整布局：
-	- 歌词面板独立；
-	- 频谱插件更换为Winamp Spectrum Analyzer visualization；
-	- 其它细节；
+  - 歌词面板独立；
+  - 频谱插件更换为Winamp Spectrum Analyzer visualization；
+  - 其它细节；
 - 配色优化。
 - 脚本优化。
 
-![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI3_v1.1.0.png)
+![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.2.1.png)
 
-#### 5.1.2. v1.0.0
+### 1.2.0
 
-2026-01-01 主要内容：
+> 2026-01-01
 
 - `JSpanel3`脚本全部使用`SMP`脚本重构替换，优化性能！
 
@@ -77,15 +83,15 @@
 
 - 引入Coverflow面板。
 
-![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI3_v1.0.0.png)
+![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.2.0.png)
 
-### 5.2. UI2
+### 1.1.0
 
-![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI2.png)
+![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.1.0.png)
 
-### 5.3. UI1
+### 1.0.0
 
-![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/UI1.png)
+![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.0.0.png)
 
 ## 6. 附录
 
@@ -98,4 +104,3 @@
 - `goom`: [What a GOOM! Visualisation](https://www.foobar2000.org/components/view/foo_vis_goom)配置。
 
 - `milkdrop2`: [MilkDrop 2 Visualisation](https://www.foobar2000.org/components/view/foo_vis_milk2)配置。
-

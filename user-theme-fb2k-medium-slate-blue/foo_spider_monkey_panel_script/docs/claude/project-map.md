@@ -1,7 +1,7 @@
 # Project Map
 
 ## 1. Script Inventory
-- `info+rating.js`: metadata, rating, AQ badge, source icon
+- `track_info.js`: metadata, rating, AQ badge, source icon
 - `album_info.js`: album view + cover carousel + tabs
 - `biography.js`: artist profile/discography + links
 - `playback_buttons.js`: transport controls
@@ -9,7 +9,7 @@
 - `title_playlist.js`: playlist title bar
 - `title_library.js`: library title bar
 - `cover_panel.js`: cover display + background controller
-- `tab_container.js`: JSplitter tab container (canonical template)
+- `_tab_container.js`: JSplitter tab container (canonical template)
 - `tab_container_detail.js`: JSplitter tab container (detail panels variant)
 - `tab_container_playlist.js`: JSplitter tab container (playlist variant)
 - `bg_panel.js`: background controller validation panel

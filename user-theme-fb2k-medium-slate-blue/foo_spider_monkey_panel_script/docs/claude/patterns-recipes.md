@@ -38,7 +38,7 @@ Typical `on_script_unload` responsibilities:
 
 Rule: if bitmap lifecycle is cache-owned with eviction disposal, do not dispose same bitmap again elsewhere.
 
-## 5. Background Controller Pattern (`lib/background.js`, `cover_panel.js`, `tab_container.js`, `bg_panel.js`)
+## 5. Background Controller Pattern (`lib/background.js`, `cover_panel.js`, `_tab_container.js`, `bg_panel.js`)
 - Integration entry: prefer `createPanelBackgroundLayer(...)`.
 - Architecture layering:
   - `createPanelBackgroundController(...)` as low-level rendering/cache primitive
@@ -49,7 +49,7 @@ Rule: if bitmap lifecycle is cache-owned with eviction disposal, do not dispose 
   - `syncWithRaw(metadb, rawImg)` to avoid duplicate fetch when caller already has art
   - `syncNoArt(metadb)` when caller explicitly confirms no art
 - Compatibility rule: legacy `sync(metadb?, rawImg?)` remains callable during migration and internally bridges to the standard API.
-- Keep panel-side config style aligned (`cover_panel.js` / `tab_container.js` / `bg_panel.js`) using flat fields (e.g. `gradientEnabled`, `imageScaleMode`, `shapeType`, `maskAlpha`), then map into `background.gradient/image/shape/mask` when calling `createPanelBackgroundLayer(...)`.
+- Keep panel-side config style aligned (`cover_panel.js` / `_tab_container.js` / `bg_panel.js`) using flat fields (e.g. `gradientEnabled`, `imageScaleMode`, `shapeType`, `maskAlpha`), then map into `background.gradient/image/shape/mask` when calling `createPanelBackgroundLayer(...)`.
 - This keeps panel configs readable while preserving the stable background controller input contract.
 - Reuse rule: when panel already has `rawImg` (e.g. `cover_panel.js`), prefer `syncWithRaw(...)`.
 - Paint order: background first, then foreground cover/fallback text.
@@ -91,7 +91,7 @@ Rule: if bitmap lifecycle is cache-owned with eviction disposal, do not dispose 
   - `METADB_RESOLVE_MODE.SELECTION_ONLY`
   - `resolveMetadbByMode(mode, opts?)`
 - Recommended mapping:
-  - background owners (`bg_panel.js`, `tab_container.js`) -> `PLAYING_FIRST`
+  - background owners (`bg_panel.js`, `_tab_container.js`) -> `PLAYING_FIRST`
   - selection-driven content panels (`cover_panel.js`, `album_info.js`, `biography.js`) -> `SELECTION_FIRST`
   - startup/init now-playing probe -> `PLAYING_ONLY`
 - Optional `opts` shape: `{ now?: FbMetadbHandle|null, selection?: FbMetadbHandle|null }`.
@@ -125,7 +125,7 @@ function on_paint(gr) {
 #### 5.6.3 Applied examples in this repo
 - `playback_buttons.js`: panel background clear is gated.
 - `control_buttons.js`: panel background clear is gated.
-- `info+rating.js`: panel background clear + rating-area clear patch are gated.
+- `track_info.js`: panel background clear + rating-area clear patch are gated.
 - `cover_panel.js`: `backgroundAuto.paint(gr)` is gated to non-transparent mode.
 
 ### 5.7 Transparent stack timing recipe (`bg_panel_container_control.js` + transparent child panels)
@@ -137,7 +137,7 @@ function on_paint(gr) {
 - **Shared constants** in `lib/data.js`: `NOTIFY.TRANSPARENT_SYNC` (channel name + version), `NOTIFY.SOURCE` (unique sender identifiers). Do not redefine `TRANSPARENT_SYNC_NOTIFY` / `BG_TRANSPARENT_SYNC_NOTIFY` locally.
 - Baseline sender/consumer split (current project):
   - sender: `bg_panel_container_control.js`
-  - consumers: `playback_buttons.js`, `control_buttons.js`, `cover_panel.js`, `info+rating.js`
+  - consumers: `playback_buttons.js`, `control_buttons.js`, `cover_panel.js`, `track_info.js`
   - consumers filter `source === NOTIFY.SOURCE.BG_PANEL_CONTAINER_CONTROL`.
 
 #### 5.7.1 Notify contract (`NOTIFY.TRANSPARENT_SYNC`)
@@ -180,7 +180,7 @@ function on_paint(gr) {
 - `bg_panel.js` is the dedicated validation panel for new background APIs.
 - Right-click menu is intentionally removed; change `PANEL_CFG` manually for deterministic testing.
 - Recommended manual matrix:
-  - mode: `theme` / `cover-color` / `cover-image`
+  - mode: `theme` / `cover-color` / `cover-image` / `custom`
   - shape: `rect` / `round-rect`
   - fill: gradient on/off
   - sync mode: `SYNC_MODE_AUTO` / `SYNC_MODE_WITH_RAW` / `SYNC_MODE_NO_ART`
@@ -251,7 +251,7 @@ Each section object MUST pre-declare `rect: {x:0,y:0,w:0,h:0}` and `content: {x:
 - Non-fill sections use `rect.h = getContentHeight() + padding.top + padding.bottom`
 - Invisible sections (`visible === false`): `rect.h = 0`, content zeroed
 - No return value — dimensions readable via `SEC.*.rect` / `SEC.*.content`
-- **CRITICAL: `rect` and `content` are write-once by `layoutSections()`. Never mutate them in `syncLayout()` or any per-track path.** Computing tight-fit hit-test bounds from the stable base rect is fine; use a separate state variable (e.g. `elements.badgeGroup` in `album_info.js`, `trackText.*` in `info+rating.js`). Mutating `content.x` and re-reading it on the next call causes cumulative drift.
+- **CRITICAL: `rect` and `content` are write-once by `layoutSections()`. Never mutate them in `syncLayout()` or any per-track path.** Computing tight-fit hit-test bounds from the stable base rect is fine; use a separate state variable (e.g. `elements.badgeGroup` in `album_info.js`, `trackText.*` in `track_info.js`). Mutating `content.x` and re-reading it on the next call causes cumulative drift.
 
 Full JSDoc with section shape spec: `lib/utils.js` `layoutSections()`.
 
@@ -279,7 +279,7 @@ No spacer sections — gaps between adjacent sections controlled by neighboring 
 ### 10.7 Applied examples
 - `album_info.js`: 8 sections (cover, title, badge, artist, genres, dateLang, tab, scrollText)
 - `biography.js`: 8 sections (cover, title, aliases, genres, born, links, tab, scrollText)
-- `info+rating.js`: 6 sections (spacer, title, artist, album, stars, badge) — centered compact layout via getter-based `visible`
+- `track_info.js`: 6 sections (spacer, title, artist, album, stars, badge) — centered compact layout via getter-based `visible`
 
 ## 11. Text Style Preset Pattern (`lib/theme.js`, `lib/interaction.js`, `lib/utils.js`)
 

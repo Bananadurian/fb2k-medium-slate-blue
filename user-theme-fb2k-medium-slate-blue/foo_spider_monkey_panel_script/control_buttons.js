@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file control_buttons.js
  * @author XYSRe
  * @created 2025-12-12
@@ -215,6 +215,8 @@ class VolumeControl {
 const buttons = {};
 const volumeBar = new VolumeControl();
 let currentHoverBtn = null;
+let panelW = window.Width;
+let panelH = window.Height;
 
 // 透明同步通知 freshness 窗口与兜底延迟 — 通道定义见 lib/data.js NOTIFY.TRANSPARENT_SYNC
 let transparentTrackRepaintTimer = null;
@@ -422,11 +424,13 @@ function createButtons() {
 createButtons();
 
 function on_size() {
-    const hw = window.Width, hh = window.Height;
-    if (hw <= 0 || hh <= 0) return;
+    if (window.Width <= 0 || window.Height <= 0) return;
+    panelW = window.Width;
+    panelH = window.Height;    
+
     const cfg = BTN_LAYOUT;
-    let x = hw;
-    const cy = Math.floor(hh / 2);
+    let x = panelW;
+    const cy = Math.floor(panelH / 2);
     cfg.items.forEach(it => {
         const w = it.w || cfg.iconSize;
         const m = it.margin !== undefined ? it.margin : cfg.itemGap;
@@ -446,7 +450,7 @@ function on_size() {
 
 function on_paint(gr) {
     if (!window.IsTransparent) {
-        gr.FillSolidRect(0, 0, window.Width, window.Height, THEME.COL.BG);
+        gr.FillSolidRect(0, 0, panelW, panelH, THEME.COL.BG);
     }
     for (let key in buttons) {
         buttons[key].paint(gr);

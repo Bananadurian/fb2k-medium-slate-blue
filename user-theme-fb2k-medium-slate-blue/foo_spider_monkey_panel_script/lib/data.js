@@ -279,10 +279,10 @@ const NOTIFY = {
     // 发送方唯一标识 — 跨通知通道复用
     SOURCE: {
         BG_PANEL_CONTAINER_CONTROL: "bg_panel_container_control",
-        TAB_CONTAINER:              "tab_container",
+        _TAB_CONTAINER:              "_tab_container",
         TAB_CONTAINER_DETAIL:       "tab_container_detail",
         TAB_CONTAINER_PLAYLIST:     "tab_container_playlist",
-        INFO_RATING:                "info_rating",
+        TRACK_INFO:                 "track_info",
     },
     // 通知通道定义
     TRANSPARENT_SYNC:    { name: "fb2k.theme.transparent_sync", version: 1 },

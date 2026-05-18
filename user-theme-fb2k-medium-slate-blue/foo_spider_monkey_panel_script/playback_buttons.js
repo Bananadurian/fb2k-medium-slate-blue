@@ -90,6 +90,8 @@ const BTN_LAYOUT = {
 
 const buttons = {};
 let currentHoverBtn = null;
+let panelW = window.Width;
+let panelH = window.Height;
 
 // 透明同步通知 freshness 窗口与兜底延迟 — 通道定义见 lib/data.js NOTIFY.TRANSPARENT_SYNC
 let transparentTrackRepaintTimer = null;
@@ -200,13 +202,15 @@ createButtons();
  * @returns {void}
  */
 function on_size() {
-    const hw = window.Width, hh = window.Height;
-    if (hw <= 0 || hh <= 0) return;
+    if (window.Width <= 0 || window.Height <= 0) return;
+    panelW = window.Width;
+    panelH = window.Height;
+
     const cfg = BTN_LAYOUT;
     const items = cfg.items;
     const totalW = items.reduce((s, it) => s + cfg.sizes[it.size], 0) + cfg.itemGap * (items.length - 1);
-    let x = Math.round((hw - totalW) / 2);
-    const cy = Math.round(hh / 2);
+    let x = Math.round((panelW - totalW) / 2);
+    const cy = Math.round(panelH / 2);
     items.forEach(it => {
         const btn = buttons[it.key];
         const s = cfg.sizes[it.size];
@@ -222,7 +226,7 @@ function on_size() {
  */
 function on_paint(gr) {
     if (!window.IsTransparent) {
-        gr.FillSolidRect(0, 0, window.Width, window.Height, THEME.COL.BG);
+        gr.FillSolidRect(0, 0, panelW, panelH, THEME.COL.BG);
     }
     for (let key in buttons) {
         buttons[key].paint(gr);

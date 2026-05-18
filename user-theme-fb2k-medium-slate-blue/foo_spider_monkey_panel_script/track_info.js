@@ -1,5 +1,5 @@
 ﻿/**
- * @file info+rating.js
+ * @file track_info.js
  * @author XYSRe
  * @created 2025-12-16
  * @updated 2026-05-14
@@ -14,7 +14,7 @@ include("lib/data.js");
 include("lib/interaction.js");
 include("lib/theme.js");
 
-window.DefineScript("Info And Rating", {
+window.DefineScript("Track Info", {
   author: "XYSRe",
   version: "2.0.0",
   options: { grab_focus: THEME.CFG.GRAB_FOCUS },
@@ -59,6 +59,8 @@ let hoverRating = 0; // 鼠标悬停时的临时评分 (0表示无悬停)
 // 每个 section 需预置 rect/content 空对象，由 layoutSections() 写入坐标
 // 文本通过 CENTER_LINE_FLAGS/LEFT_LINE_FLAGS 在 content 内居中
 let spacerH = 0;
+let panelW = window.Width;
+let panelH = window.Height;
 const SECTIONS = [
     {
         name: "spacer",
@@ -388,7 +390,7 @@ function updateContent() {
     currentSourceIcon.tooltip = "";
   }
 
-  if (window.Width > 0) {
+  if (panelW > 0) {
     syncLayout();
     window.Repaint();
   }
@@ -413,9 +415,9 @@ function syncLayout() {
   trackText.artist.y = SEC.artist.content.y;
 
   // 专辑信息: 专辑名称 @年份 (过长截断)
-  trackText.year.w = trackText.year.text ? _measureText(trackText.year.text, TS.labelCenter, window.Width).Width : 0;
+  trackText.year.w = trackText.year.text ? _measureText(trackText.year.text, TS.labelCenter, panelW).Width : 0;
   // + _scale(1) 是因为文本有计算误差，这里放大了一点尺寸
-  const albumW = _measureText(trackText.album.text, TS.labelCenter, window.Width).Width + _scale(1);  
+  const albumW = _measureText(trackText.album.text, TS.labelCenter, panelW).Width + _scale(1);  
   let albumTotalW = albumW + SEC.album.yearGap + trackText.year.w;
   trackText.album.w = albumTotalW > SEC.album.content.w ? SEC.album.content.w - SEC.album.yearGap - trackText.year.w : albumW;
   albumTotalW = trackText.album.w + SEC.album.yearGap + trackText.year.w;
@@ -447,7 +449,7 @@ function syncLayout() {
 
   if (currentAQBadge) {
     const p = THEME.CFG.AQ_BADGE.PADDING;
-    const m = _measureText(currentAQBadge.label, TS.labelCenter, window.Width);
+    const m = _measureText(currentAQBadge.label, TS.labelCenter, panelW);
     badgeElement.w = m.Width + p.left + p.right;
   } else {
     badgeElement.w = 0;
@@ -484,15 +486,17 @@ function syncLayout() {
  */
 function on_size() {
   if (window.Width <= 0 || window.Height <= 0) return;
+  panelW = window.Width;
+  panelH = window.Height;
 
   // Phase 1: 计算内容总高度 → spacer → 布局
   const contentH = SECTIONS.reduce(function(s, sec) {
     if (!sec.visible) return s;
     return s + sec.getContentHeight() + sec.padding.top + sec.padding.bottom;
   }, 0);
-  spacerH = Math.max(0, Math.round((window.Height - contentH) / 2));
+  spacerH = Math.max(0, Math.round((panelH - contentH) / 2));
 
-  layoutSections(SECTIONS, window.Width, window.Height);
+  layoutSections(SECTIONS, panelW, panelH);
   // 初始加载
   syncLayout();
 }
@@ -502,7 +506,7 @@ function on_size() {
  */
 function on_paint(gr) {
   if (!window.IsTransparent) {
-    gr.FillSolidRect(0, 0, window.Width, window.Height, COL.BG);
+    gr.FillSolidRect(0, 0, panelW, panelH, COL.BG);
   }
   gr.SetTextRenderingHint(5);
   for (const sec of SECTIONS) {
@@ -652,7 +656,7 @@ function on_mouse_lbtn_up(x, y) {
     fb.RunMainMenuCommand("View/Show now playing in playlist");
     window.NotifyOthers(NOTIFY.SWITCH_DETAIL_TAB.name, {
       v: NOTIFY.SWITCH_DETAIL_TAB.version,
-      source: NOTIFY.SOURCE.INFO_RATING,
+      source: NOTIFY.SOURCE.TRACK_INFO,
       tab: "Biography",
     });
     return;
@@ -661,7 +665,7 @@ function on_mouse_lbtn_up(x, y) {
     fb.RunMainMenuCommand("View/Show now playing in playlist");
     window.NotifyOthers(NOTIFY.SWITCH_DETAIL_TAB.name, {
       v: NOTIFY.SWITCH_DETAIL_TAB.version,
-      source: NOTIFY.SOURCE.INFO_RATING,
+      source: NOTIFY.SOURCE.TRACK_INFO,
       tab: "Album",
     });
     return;
