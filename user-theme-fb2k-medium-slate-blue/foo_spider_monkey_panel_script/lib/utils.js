@@ -1,6 +1,6 @@
 /**
  * @file utils.js
- * @author XYSRe
+ * @author XRE
  * @created 2026-04-27
  * @updated 2026-05-18
  * @version 2.1.0

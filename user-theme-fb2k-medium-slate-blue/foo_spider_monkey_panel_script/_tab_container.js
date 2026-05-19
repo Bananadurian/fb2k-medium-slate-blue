@@ -1,6 +1,6 @@
 ﻿/**
  * @file _tab_container.js
- * @author XYSRe
+ * @author XRE
  * @created 2026-05-02
  * @updated 2026-05-18
  * @version 2.1.0
@@ -16,9 +16,9 @@ include("lib/theme.js");
 include("lib/interaction.js");
 include("lib/background.js");
 
-window.DefineScript("tab_container", {
-    author: "XYSRe",
-    version: "1.2.0",
+window.DefineScript("_tab_container", {
+    author: "XRE",
+    version: "2.1.0",
     options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 

@@ -1,6 +1,6 @@
 /**
  * @file title_bar_shared.js
- * @author XYSRe
+ * @author XRE
  * @created 2026-05-04
  * @updated 2026-05-18
  * @version 2.1.0

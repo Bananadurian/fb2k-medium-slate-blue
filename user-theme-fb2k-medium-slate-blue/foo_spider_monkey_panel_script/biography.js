@@ -1,6 +1,6 @@
 ﻿/**
  * @file biography.js
- * @author XYSRe
+ * @author XRE
  * @created 2025-12-23
  * @updated 2026-05-18
  * @version 2.1.0
@@ -19,8 +19,8 @@ include("lib/flag.js");
 
 
 window.DefineScript("Biography", {
-    author: "XYSRe",
-    version: "2.0.0",
+    author: "XRE",
+    version: "2.1.0",
     options: { grab_focus: THEME.CFG.GRAB_FOCUS }
 });
 

@@ -1,6 +1,6 @@
 /**
  * @file helpers.js
- * @author XYSRe
+ * @author XRE
  * @created 2025-12-15
  * @updated 2026-05-18
  * @version 2.1.0

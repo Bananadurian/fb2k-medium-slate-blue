@@ -1,6 +1,6 @@
 /**
  * @file cover_panel.js
- * @author XYSRe
+ * @author XRE
  * @created 2025-12-16
  * @updated 2026-05-18
  * @version 2.1.0
@@ -15,6 +15,12 @@ include("lib/utils.js");
 include("lib/data.js");
 include("lib/theme.js");
 include("lib/background.js");
+
+window.DefineScript("cover_panel", {
+    author: "XRE",
+    version: "2.1.0",
+    options: { grab_focus: THEME.CFG.GRAB_FOCUS },
+});
 
 // ==========================================
 // 1. 面板配置

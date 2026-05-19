@@ -1,6 +1,6 @@
 /**
  * @file rating.js
- * @author XYSRe
+ * @author XRE
  * @created 2025-12-16
  * @updated 2026-05-18
  * @version 2.1.0
@@ -10,7 +10,7 @@
 "use strict";
 
 window.DefineScript("Rating", {
-  author: "XYSRe",
+  author: "XRE",
   version: "v1.0.0",
   options: { grab_focus: false },
 });

@@ -1,6 +1,6 @@
 ﻿/**
  * @file bg_panel.js
- * @author XYSRe
+ * @author XRE
  * @created 2026-05-08
  * @updated 2026-05-18
  * @version 2.1.0
@@ -19,8 +19,8 @@ include("lib/theme.js");
 include("lib/background.js");
 
 window.DefineScript("bg_panel", {
-    author: "XYSRe",
-    version: "1.1.1",
+    author: "XRE",
+    version: "2.1.0",
     options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 

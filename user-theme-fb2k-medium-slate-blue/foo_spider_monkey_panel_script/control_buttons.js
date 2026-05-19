@@ -1,6 +1,6 @@
 ﻿/**
  * @file control_buttons.js
- * @author XYSRe
+ * @author XRE
  * @created 2025-12-12
  * @updated 2026-05-18
  * @version 2.1.0
@@ -17,8 +17,8 @@ include("lib/interaction.js");
 include("lib/theme.js");
 
 window.DefineScript("Control Buttons", {
-    author: "XYSRe",
-    version: "2.0.0",
+    author: "XRE",
+    version: "2.1.0",
     options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 

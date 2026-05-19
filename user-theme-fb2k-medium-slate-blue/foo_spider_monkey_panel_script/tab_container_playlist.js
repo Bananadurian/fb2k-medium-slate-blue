@@ -1,6 +1,6 @@
 ﻿/**
  * @file tab_container_playlist.js
- * @author XYSRe
+ * @author XRE
  * @created 2026-05-12
  * @updated 2026-05-18
  * @version 2.1.0
@@ -17,8 +17,8 @@ include("lib/interaction.js");
 include("lib/background.js");
 
 window.DefineScript("tab_container_playlist", {
-    author: "XYSRe",
-    version: "1.0.0",
+    author: "XRE",
+    version: "2.1.0",
     options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 

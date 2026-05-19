@@ -1,6 +1,6 @@
 ﻿/**
  * @file track_info.js
- * @author XYSRe
+ * @author XRE
  * @created 2025-12-16
  * @updated 2026-05-18
  * @version 2.1.0
@@ -15,8 +15,8 @@ include("lib/interaction.js");
 include("lib/theme.js");
 
 window.DefineScript("Track Info", {
-  author: "XYSRe",
-  version: "2.0.0",
+  author: "XRE",
+  version: "2.1.0",
   options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 
