@@ -133,13 +133,14 @@ Buttons created by `window.CreateButton(...)` are JSplitter-owned runtime object
 
 ## 6. Quick Project Map
 Active scripts:
-- `track_info.js`, `album_info.js`, `biography.js`
+- `track_info.js`, `album_info.js`, `biography.js`, `biography_v2.js` (v3.0.0: MBID-driven, JSON Schema v3.0)
 - `playback_buttons.js`, `control_buttons.js`
 - `title_playlist.js`, `title_library.js`
 - `cover_panel.js`, `bg_panel_container_control.js`, `_tab_container.js`, `tab_container_detail.js`, `bg_panel.js`, `bg_panel_container_playlistview.js`, `tab_container_playlist.js`
 
 Shared libs:
 - `lib/utils.js`, `lib/data.js`, `lib/interaction.js`, `lib/theme.js`, `lib/background.js`, `lib/title_bar_shared.js`, `lib/flag.js`
+- `lib/json_schema_adapter.js` — JSON Schema 路径映射模板 (JSON_SCHEMA_MAP), 点路径取值, 数据归一化
 
 ### 6.1 File naming convention
 
