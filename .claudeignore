@@ -1,0 +1,14 @@
+configuration/
+dsp-presets/
+Free Encoder Pack/
+milkdrop2/
+wispan/
+user-components-x64/*
+!user-components-x64/foo_uie_jsplitter/
+config.fb2k-dsp
+config.sqlite
+external-tags.db
+radio.sqlite
+user-theme-fb2k-medium-slate-blue/foo_spider_monkey_panel_script/old/
+user-theme-fb2k-medium-slate-blue/foo_spider_monkey_panel_script/simple/
+**/test*.js
