@@ -161,7 +161,8 @@ Example covers: `fb2k-medium-slate-blue/imgs/RadioCover/`
 - **foo_enhanced_playcount** — Play statistics
 - **foo_vis_*** — Visualization plugins (wispan, milkdrop2)
 - **Sarasa Gothic** font family — UI typography
-- 主题版本：`fb2k-medium-slate-blue/VERSION`
+- 主题版本：`fb2k-medium-slate-blue/VERSION`、`fb2k-medium-slate-blue/CHANGELOG.md`
+- 依赖组件版本：`fb2k-medium-slate-blue/COMPONENT_VERSIONS.md`
 
 ---
 
@@ -183,5 +184,5 @@ Example covers: `fb2k-medium-slate-blue/imgs/RadioCover/`
   - `patterns-recipes.md` — 项目专属代码模式与配方
   - `project-map.md` — 项目结构与依赖图
   - `api-reference.md` — SMP/JSplitter API 参考（链接到权威 JSDoc）
-- 任务追踪：`TODO.md`（仓库根目录）
+- 任务追踪：`fb2k-medium-slate-blue/TODO.md`
 - JSDoc API 源码：`user-components-x64/foo_uie_jsplitter/docs/html/index.html`

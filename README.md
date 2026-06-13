@@ -2,25 +2,23 @@
 
 ## 1. 简介
 
-![](/fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-1.png)
+![](fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-1.png)
+
+> 更多截图见 [CHANGELOG](fb2k-medium-slate-blue/CHANGELOG.md)。
 
 **fb2k-medium-slate-blue**（Medium Slate Blue）是一个基于 [**foobar2000-x64_v2.2.x**](https://www.foobar2000.org/download)、[**Columns UI**](https://github.com/reupen/columns_ui) 定制版本。
 
-> 仅在WIN11测试。
+> 仅在 WIN11 测试。推荐字体：更纱黑体 [Sarasa-Gothic](https://github.com/be5invis/Sarasa-Gothic)。
 
 ## 2. 使用
 
-1. 下载 **64bit** 的 [Foobar2000](https://www.foobar2000.org/download);
+1. 下载 **64bit** 的 [Foobar2000](https://www.foobar2000.org/download)，推荐**便携**方式安装
+2. **不要启动** foobar2000，此时不会生成 `/profile` 目录
+3. 下载或克隆仓库，将 `/fb2k-medium-slate-blue` 重命名为 `/profile`，复制到安装目录
 
-2. 安装foobar2000，推荐使用 **便携** 方式安装;
-
-3. 下载或克隆仓库，把 `\fb2k-medium-slate-blue` 重名名为 `\profile` 复制到 foobar2000 **安装目录**中即可；
-
-> 新安装的 foobar2000 的便携版**不要启动**，此时不会生成 `\profile` 目录，
-> 直接复制 `\profile` 到 foobar2000 安装目录即可！没有覆盖文件操作可以减少出错的情况！！！！
-> 安装目录参考:
-> 便携安装版的用户配置：`xx\foobar2000\profile`，
-> 非便携版本在 Win 用户的路径中：`C:\Users\用户名\AppData\Roaming\foobar2000\profile`
+> 安装目录参考：
+> 便携版：`xx/foobar2000/profile`
+> 非便携版：`C:\Users\用户名\AppData\Roaming\foobar2000\profile`
 
 ## 3. 电台封面
 
@@ -38,76 +36,15 @@
 
 3. 需要显示封面的地方选择 `Front cover` 即可显示（`Artist` 设置类似）。
 
-> `/fb2k-medium-slate-blue/imgs/RadioCover`：示例电台封面。
+> `fb2k-medium-slate-blue/imgs/RadioCover`：示例电台封面。
 
-## 4. 字体
+## 4. 版本记录
 
-更纱黑体：[be5invis/Sarasa-Gothic](https://github.com/be5invis/Sarasa-Gothic)
+详见 [`fb2k-medium-slate-blue/CHANGELOG.md`](fb2k-medium-slate-blue/CHANGELOG.md)。版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
-## 5. 版本记录
+## 5. 附录
 
-> 版本号遵循 [SemVer](https://semver.org/lang/zh-CN/) (MAJOR.MINOR.PATCH-prerelease)。
-
-### 1.3.0-alpha.1
-
-> 2026-06-13
-
-- 文档体系重构：12 文件 → 4 文件，消除冗余
-- 目录重命名：`user-theme-fb2k-medium-slate-blue` → `fb2k-medium-slate-blue`，`foo_spider_monkey_panel_script` → `js`
-- JS 文件头部清理：仅保留 `@description` + `@requires`
-- 代码规范：`var` → `let`/`const`，沉淀至 `smp-copilot.md`
-- 正式启用 SemVer 版本管理
-
-### 1.3.0
-
-> 2026-05-18
-
-- JSplitter代替SMP
-- JSplitter脚本全部重构并新增背景色等功能
-- ESlyric新增多项自定义布局
-- 其它...
-
-![](/fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-1.png)
-![](/fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-2.png)
-![](/fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-3.png)
-![](/fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-4.png)
-
-### 1.2.1
-
-> 2026-01-14
-
-- 调整布局：
-  - 歌词面板独立；
-  - 频谱插件更换为Winamp Spectrum Analyzer visualization；
-  - 其它细节；
-- 配色优化。
-- 脚本优化。
-
-![](/fb2k-medium-slate-blue/imgs/Screenshots/1.2.1.png)
-
-### 1.2.0
-
-> 2026-01-01
-
-- `JSpanel3`脚本全部使用`SMP`脚本重构替换，优化性能！
-
-- 新增基于`SMP`的艺人、专辑面板，艺人数据来自本地创建的艺人`Json`数据，未引入`last.fm`，专辑数据来自标签！
-
-- 引入Coverflow面板。
-
-![](/fb2k-medium-slate-blue/imgs/Screenshots/1.2.0.png)
-
-### 1.1.0
-
-![](/fb2k-medium-slate-blue/imgs/Screenshots/1.1.0.png)
-
-### 1.0.0
-
-![](/fb2k-medium-slate-blue/imgs/Screenshots/1.0.0.png)
-
-## 6. 附录
-
-### 6.1. 部分文件夹说明
+### 5.1. 部分文件夹说明
 
 - `eslyric-data`: ESlyric配置。
 

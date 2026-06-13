@@ -31,6 +31,9 @@ user-components-x64/foo_uie_jsplitter/docs/html/index.html
 
 所有源文件位于：`user-components-x64/foo_uie_jsplitter/docs/js/`
 
+### 组件版本记录
+- `../COMPONENT_VERSIONS.md` — JSplitter 版本更新记录，含各版本 API 新增/修复清单
+
 ### 官方 SMP 文档
 - https://theqwertiest.github.io/foo_spider_monkey_panel/assets/generated_files/docs/html/index.html
 

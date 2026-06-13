@@ -177,6 +177,21 @@ let console = {
      * @param {...*} var_args
      */
     log: function (...var_args) { }, // (void)
+
+    /**
+     * Returns array of console log lines
+     *  
+     * @param {boolean=} [with_timestamp=false] To return console lines with timestamps or not
+     * @return {Array<string>} 
+     */
+    GetLines: function (with_timestamp) { },
+
+    /**
+     * Clears console backlog<br>
+     * NOTE: Limitation of foobar2000 versions < 2.0: clears only JSplitter's internal backlog.
+     * 
+     */
+    ClearBacklog: function () { },
 };
 
 /**
@@ -429,7 +444,7 @@ let fb = {
      * @param {boolean=} [options.show_text=true] If true, will add track count text.
      * @param {boolean=} [options.use_album_art=true] If true, will use album art of the focused item from dragged tracks (if available)
      * @param {boolean=} [options.use_theming=true] If true, will use Windows drag window style. Album art and custom image are resized to fit when Windows style is active.
-     * @param {?GdiBitmap=} [options.custom_image=undefined] Custom dragging image. Will be also displayed if use_album_art is true, but there is no album art available.
+     * @param {GdiBitmap=} [options.custom_image=undefined] (or {@link D2DBitmap} if {@link window.DrawMode} == 1). Custom dragging image. Will be also displayed if use_album_art is true, but there is no album art available.
      * @return {number} Effect that was returned in {@link module:Callbacks.on_drag_drop on_drag_drop}.
      *
      * @sourceFile ../../component/samples/basic/DragnDrop.js
@@ -439,6 +454,44 @@ let fb = {
     /** @method */
     Exit: function () { }, // (void)
 
+    /**
+     * For future development purposes (e.g. verbose console output)
+     * 
+     * @method
+     */
+    EnableAdvancedLogging: function () { }, 
+
+    /**
+     * Returns all main menu items recursivley.<br>
+     * It is a JSON array in string form so you need to use JSON.parse on the result.<br>
+     * Every item of the array is object with the following properties:<br>
+     * <b>Checked</b>: boolean<br>
+     * <b>Disabled</b>: boolean<br>
+     * <b>FullPath</b>: string, the same full path you'd supply to fb.RunMainMenuCommand<br>
+     * <b>HiddenByDefault</b>: boolean<br>
+     * <b>Radio</b>: boolean<br>
+     * <b>Type</b>: string ("Fixed" or "Dynamic")<br>
+     * <b>Visible</b>: boolean<br>
+     * 
+     * @return {string} 
+     * 
+     * @example
+     * const menuCommands = JSON.parse(fb.EnumerateMainMenuCommands());
+     * 
+     * // list all checked commands in the console
+     * menuCommands
+     *     .filter(command => command.Checked)
+     *     .forEach(({ FullPath }) => console.log(FullPath));
+     */
+    EnumerateMainMenuCommands: function () { }, 
+
+    /**
+     * Returns array of active DSPs names.
+     * 
+     * @return {Array<string>} 
+     */
+    GetActiveDSPs: function () { }, 
+    
     /**
      * @param {number} requested_length 
      * @param {number=} [offset=0] 
@@ -638,6 +691,13 @@ let fb = {
     IsLibraryEnabled: function () { }, // (boolean)
 
     /**
+     * Returns true if the library has already been initialized by this time
+     * 
+     * @return {boolean}
+     */
+    IsLibraryInitialised: function () { }, // (boolean)
+    
+    /**
      * Performance note: don't use in `on_paint`.
      *
      * @param {string} command Path to main menu item
@@ -774,8 +834,12 @@ let fb = {
      */
     SetOutputDevice: function (output, device) { }, // (void)
 
-    /** @method */
-    ShowConsole: function () { }, // (void)
+    /**
+     * Shows foobar2000 console window or close it (if show=false).
+     *
+     * @param {boolean=} [show=true]
+     */
+    ShowConsole: function (show) { }, // (void)
 
     /**
      * Opens the Library>Search window populated with the query you set.
@@ -790,6 +854,11 @@ let fb = {
      * @param {string} image_path path of image file
      */
     ShowPictureViewer(image_path) { }, // (void)
+
+    /**
+     * Opens the "Playlist Search" window
+     */
+    ShowPlaylistSearchUI: function () { }, // (void)
 
     /**
      * @param {string} message
@@ -840,6 +909,35 @@ let fb = {
 let gdi = {
 
     /**
+     * Creates a drawing brush of the specified type. The meaning of the brush's input parameters depends on its type.<br>
+     * For type == {@link module:Flags.BrushType BrushType.Solid}:<br>
+     * - param1: brush colour in ARGB<br>
+     * For type == {@link module:Flags.BrushType BrushType.LinearGradient}:<br>
+     * - param1: start point coords of linear gradient in form of Array(2) (for ex.: [0, 0])<br>
+     * - param2: end point coords of linear gradient in form of Array(2) (for ex.: [100, 0])<br>
+     * - param3: gradient stops specified as an array with alternating position and color values for each stop (for ex.: [0.0, 0xFF000000, 0.5, 0xFFFF0000, 1.0, 0xFFFFFFFF])<br>
+     * - param4: wrap mode responsible for how the gradient is repeated when drawing. See {@link module:Flags.BrushWrapMode BrushWrapMode}. Default is {@link module:Flags.BrushWrapMode BrushWrapMode.Tile}<br>
+     * For type == {@link module:Flags.BrushType BrushType.RadialGradient}:<br>
+     * - param1: center point coords of radial gradient in form of Array(2) (for ex.: [50, 50])<br>
+     * - param2: radius values for X and Y axes in form of Array(2) (for ex.: [50, 50])<br>
+     * - param3: gradient stops specified as an array with alternating position and color values for each stop (for ex.: [0.0, 0xFF000000, 0.5, 0xFFFF0000, 1.0, 0xFFFFFFFF])<br>
+     * - param4: wrap mode responsible for how the gradient is repeated when drawing. See {@link module:Flags.BrushWrapMode BrushWrapMode}. Default is {@link module:Flags.BrushWrapMode BrushWrapMode.Tile}<br>
+     * For type == {@link module:Flags.BrushType BrushType.Bitmap}:<br>
+     * - param1: GdiBitmap object used for drawing by brush<br>
+     * - param2: wrap mode responsible for how the image is repeated when drawing. See {@link module:Flags.BrushWrapMode BrushWrapMode}
+     * 
+     * @param {BrushType} type
+     * @param {*} param1
+     * @param {*=} [param2=undefined]
+     * @param {*=} [param3=undefined]
+     * @param {*=} [param4=undefined]
+     * @return {GdiBrush} Brush object used in Draw/Fill methods
+     * 
+     * @sourceFile ../../component/samples/basic/Brushes.js
+     */
+    Brush: function (type, param1, param2, param3, param4) { }, // (GdiBrush)
+
+    /**
      * @param {number} w
      * @param {number} h
      * @return {GdiBitmap}
@@ -859,20 +957,8 @@ let gdi = {
      *   "bgr24"   24bpp BGR<br>
      *   "rgb24"   24bpp RGB<br>
      * @returns {GdiBitmap} null if was an error (for example pixelData array length is not suitable for the specified parameters)
-     * @example
-     * const img = gdi.Image(`${fb.ComponentPath}\\samples\\d2d\\images\\Field.jpg`);
      * 
-     * let imgPixelData = img.GetPixelData();
-     * 
-     * utils.WriteBinaryFile("D:\\Field.bin", imgPixelData);
-     * 
-     * let rData = utils.ReadBinaryFile("D:\\Field.bin");
-     * 
-     * let rImg = gdi.CreateImageFromPixelData(rData, 2208, 1242);
-     * 
-     * function on_paint(gr) {
-     *     gr.DrawImage(rImg, 0, 0, img.Width, img.Height, 0, 0, img.Width, img.Height);
-     * }
+     * @sourceFile ../../component/samples/basic/CreateImageFromPixelData.js
      */
     CreateImageFromPixelData: function(pixelData, width, height, format = "bgra32") { }, // (GdiBitmap)
 
@@ -924,7 +1010,27 @@ let gdi = {
      *
      * @sourceFile ../../component/samples/basic/LoadImageAsyncV2.js
      */
-    LoadImageAsyncV2: function (window_id, path) { }
+    LoadImageAsyncV2: function (window_id, path) { },
+
+    /**
+     * Loads rasterized image from SVG file or XML string
+     *
+     * @param {string} path_or_xml string containing SVG file path or raw XML
+     * @param {number=} [max_width=0] If specified rasterizes with width = max_width and height according to the proportions, otherwise uses "width" and "height" attributes in SVG header if exist
+     * @return {?GdiBitmap} Rasterized bitmap, null in case of error
+     * 
+     * @example
+     * const svg_file = fb.ComponentPath + 'samples\\svg\\android.svg';
+     * 
+     * const original = gdi.LoadSVG(svg_file);
+     * const large = gdi.LoadSVG(svg_file, 512); // set optional max_width
+     * 
+     * function on_paint(gr) {
+     *     gr.DrawImage(original, 0, 0, original.Width, original.Height, 0, 0, original.Width, original.Height);
+     *     gr.DrawImage(large, original.Width, 0, large.Width, large.Height, 0, 0, large.Width, large.Height);
+     * }
+     */
+    LoadSVG: function (path_or_xml, max_width) { }
 };
 
 /**
@@ -1160,6 +1266,15 @@ let plman = {
 
     /**
      * @param {number} playlistIndex
+     * @return {Array<number>}
+     *
+     * @example
+     * let selected_indexes = plman.GetPlaylistSelectedIndexes(plman.ActivePlaylist);
+     */
+    GetPlaylistSelectedIndexes: function (playlistIndex) { }, // (FbMetadbHandleList)
+
+    /**
+     * @param {number} playlistIndex
      * @return {FbMetadbHandleList}
      *
      * @example
@@ -1193,6 +1308,11 @@ let plman = {
      */
     InsertPlaylistItemsFilter: function (playlistIndex, base, handle_list, select) { }, // (void) select = false
 
+    /**
+     * @param {number} playlistIndex
+     */
+    InvertSelection: function (playlistIndex) { },
+    
     /**
      * @param {number} playlistIndex
      * @return {boolean}
@@ -1258,6 +1378,14 @@ let plman = {
     MovePlaylistSelection: function (playlistIndex, delta) { }, // (boolean)
 
     /**
+     * Unlike {@link plman.MovePlaylistSelection}, this has full support for non-contiguous selections and all you have to do is supply the new position index.
+     * 
+     * @param {number} playlistIndex
+     * @param {number} new_pos
+     */
+    MovePlaylistSelectionV2: function (playlistIndex, new_pos) { }, 
+
+    /**
      * @param {number} playlistIndex
      * @return {number}
      *
@@ -1314,6 +1442,22 @@ let plman = {
      * @return {boolean}
      */
     RenamePlaylist: function (playlistIndex, name) { }, // (boolean)
+
+    /**
+     * @param {number} playlistIndex
+     * @param {number} playlistItemIndex
+     * @param {FbMetadbHandle|FbMetadbHandleList} handle_or_handles
+     */
+    ReplacePlaylistItem: function (playlistIndex, playlistItemIndex, handle_or_handles) { },
+
+    /**
+     * This selects playlist items in a similar manner to the foobar2000 native playlist search.
+     * 
+     * @param {number} playlistIndex
+     * @param {string} query
+     * @return {Array<number>} Array of selected indexes
+     */
+    SelectQueryItems: function (playlistIndex, query) { }, 
 
     /**
      * Workaround so you can use the Edit menu or run {@link fb.RunMainMenuCommand}("Edit/Something...")
@@ -1405,6 +1549,16 @@ let plman = {
      * fb.ShowAutoPlaylistUI(plman.ActivePlaylist);
      */
     ShowAutoPlaylistUI: function (playlistIndex) { }, // (boolean)
+
+    /**
+     * Shows popup window letting you set various locks on playlist with specified index
+     *
+     * @param {number} playlistIndex
+     *
+     * @example
+     * fb.ShowPlaylistLockUI(plman.ActivePlaylist);
+     */
+    ShowPlaylistLockUI: function (playlistIndex) { },
 
     /**
      * @param {number} playlistIndex Index of playlist to alter.
@@ -1791,11 +1945,11 @@ let utils = {
      *
      * @sourceFile ../../component/samples/basic/GetAlbumArtAsync.js
      */
-    GetAlbumArtAsync: function (window_id, handle, art_id, need_stub, only_embed, no_load) { }, // (void) [, art_id][, need_stub][, only_embed][, no_load]
+    GetAlbumArtAsync: function (window_id, handle, art_id, need_stub, only_embed, no_load) { },
 
     /**
      * @typedef {Object} ArtPromiseResult
-     * @property {?GdiBitmap} image null on failure
+     * @property {?GdiBitmap} image (or {@link D2DBitmap} if {@link window.DrawMode} == 1). Null on failure
      * @property {string} path path to image file (or track file if image is embedded)
      */
 
@@ -1822,12 +1976,12 @@ let utils = {
      *
      * @param {string} rawpath Path to track file
      * @param {number=} [art_id=0] See {@link module:Flags.AlbumArtId AlbumArtId} enum
-     * @return {GdiBitmap}
+     * @return {GdiBitmap} (or {@link D2DBitmap} if {@link window.DrawMode} == 1) 
      *
      * @example
      * let img = utils.GetAlbumArtEmbedded(fb.GetNowPlaying().RawPath, 0);
      */
-    GetAlbumArtEmbedded: function (rawpath, art_id) { }, // (GdiBitmap) [, art_id]
+    GetAlbumArtEmbedded: function (rawpath, art_id) { },
 
     /**
      * Load art image for the track.<br>
@@ -1837,16 +1991,28 @@ let utils = {
      * @param {FbMetadbHandle} handle
      * @param {number=} [art_id=0] See {@link module:Flags.AlbumArtId AlbumArtId} enum
      * @param {boolean=} [need_stub=true]
-     * @return {GdiBitmap}
+     * @return {GdiBitmap} (or {@link D2DBitmap} if {@link window.DrawMode} == 1)
      *
      * @sourceFile ../../component/samples/basic/GetAlbumArtV2.js
      */
-    GetAlbumArtV2: function (handle, art_id, need_stub) { }, // (GdiBitmap) [, art_id][, need_stub]
+    GetAlbumArtV2: function (handle, art_id, need_stub) { },
 
     /**
      * @return {string} Returns an empty string if clipboard contents are not text.
      */
     GetClipboardText: function () { },
+
+    /**
+     * Gets string code for display country flag with "Twemoji Mozilla" font<br>
+     * <b>ATTENTION!</b> Country flags are displayed correctly only in Direct2D draw mode; GDI+ does not render "Twemoji Mozilla" color glyphs.
+     * @param {string} country_or_code Case is not important. You can supply the code or full name. A few examples (full list see in file below):<br>
+     * "by" "Belarus"<br>
+     * "gb" "United Kingdom"<br>
+     * "cn" "China"<br>
+     * @return {string} Country string code 
+     * @sourceFile ../../component/docs/countries.json
+     */
+    GetCountryFlag: function (country_or_code) { },
 
     /**
      * Gets "last modified" attribute for file
@@ -1934,6 +2100,7 @@ let utils = {
      * @param {string} caption
      * @param {string=} [default_val='']
      * @param {boolean=} [error_on_cancel=false] If set to true, use try/catch like Example2.
+     * @param {string=} [help_text=''] If not empty, a Help button will show in the dialog. If <b>help_text</b> begins with "http://" or "https://", it will launch a web browser otherwise it will open a popup window containing the text
      * @return {string}
      *
      * @example
@@ -1952,7 +2119,7 @@ let utils = {
      *     // Dialog was closed by pressing Esc, Cancel or the Close button.
      * }
      */
-    InputBox: function (window_id, prompt, caption, default_val, error_on_cancel) { }, // (string)
+    InputBox: function (window_id, prompt, caption, default_val, error_on_cancel, help_text) { }, // (string)
 
     /**
      * @param {string} path
@@ -2004,6 +2171,42 @@ let utils = {
      * @return {string} MD5 value for input file content in hex format string. If it was an error while reading file returns empty string. If file is empty returns "d41d8cd98f00b204e9800998ecf8427e"
      */
     MD5FromFile: function (path) { }, // (uint)
+
+    /**
+     * Shows system message box with specified parameters<br>
+     * 
+     * @param {string} msg
+     * @param {string=} [title="JSplitter"]
+     * @param {MessageBoxButtons=} [buttons=MessageBoxButtons.OK] See {@link module:Flags.MessageBoxButtons MessageBoxButtons}
+     * @param {MessageBoxIcon=} [icon=MessageBoxIcon.Information] See {@link module:Flags.MessageBoxIcon MessageBoxIcon}
+     * @param {MessageBoxDefaultButton=} [default_button=MessageBoxDefaultButton.Button1] See {@link module:Flags.MessageBoxDefaultButton MessageBoxDefaultButton}
+     * @param {string=} [help_text=""] If not empty, a Help button will show in the dialog. If <b>help_text</b> begins with "http://" or "https://", it will launch a web browser otherwise it will open a popup window containing the text
+     * @return {number} Result of message box. See {@link module:Flags.DialogResult DialogResult}
+     */
+    MessageBox: function (msg, title, buttons, icon, default_button, help_text) { }, // (string)
+
+    /**
+     * Parses an HTML string and returns a lightweight DOM-like document.<br>
+     *<br>
+     * This parser is backed by the native HTML parser. It does not use ActiveX, MSHTML, a browser engine, or external resource loading.<br>
+     *<br>
+     * Notes:<br>
+     * - The input must be HTML text, not a file path.<br>
+     * - The returned API is DOM-like, but it is not a full browser DOM.<br>
+     * - CSS, layout, visibility, scripts, network loading, and browser events are not processed.<br>
+     * - <b>innerText</b> is currently an alias of <b>textContent</b>.<br>
+     * - The method returns null if the document could not be created.<br>
+     *
+     * @param {string} html HTML source text.
+     * @return {?HtmlDocument} Parsed document, or null on failure.
+     *
+     * @example
+     * const doc = utils.ParseHtml("<html><body><p>Hello <b>world</b></p></body></html>");
+     * if (doc) console.log(doc.body.textContent); // "Hello world"
+     * 
+     * @sourceFile ../../component/samples/basic/ParseHtml.js
+     */
+    ParseHtml: function (html) { },
 
     /**
      * Check if the supplied string matches the pattern.<br>
@@ -2065,20 +2268,8 @@ let utils = {
      * Read a file as raw binary.
      * @param {string} path Absolute file path
      * @returns {Uint8Array} File bytes, or null if was an error
-     * @example
-     * const img = gdi.Image(`${fb.ComponentPath}\\samples\\d2d\\images\\Field.jpg`);
      * 
-     * let imgPixelData = img.GetPixelData();
-     * 
-     * utils.WriteBinaryFile("D:\\Field.bin", imgPixelData);
-     * 
-     * let rData = utils.ReadBinaryFile("D:\\Field.bin");
-     * 
-     * let rImg = gdi.CreateImageFromPixelData(rData, 2208, 1242);
-     * 
-     * function on_paint(gr) {
-     *     gr.DrawImage(rImg, 0, 0, img.Width, img.Height, 0, 0, img.Width, img.Height);
-     * }
+     * @sourceFile ../../component/samples/basic/CreateImageFromPixelData.js
      */
     ReadBinaryFile: function(path) { },
 
@@ -2096,6 +2287,130 @@ let utils = {
      */
     ReadINI: function (filename, section, key, default_val) { }, // (string) [, default_val]
     
+    /**
+     * Runs a file, executable, URL, or document through the Windows shell.<br>
+     * This method uses ShellExecuteEx, so it supports shell verbs, file associations, URLs, and elevation through "runas".<br>
+     * Unlike {@link utils.RunCmdAsync RunCmdAsync}, this method does not capture stdout or stderr.<br>
+     * If wait is true, the call blocks until the launched process exits.<br>
+     *
+     * @param {string} target
+     * File, executable, URL, or document to run/open.<br>
+     * This value must not be empty.<br>
+     *
+     * @param {string|string[]} [args]
+     * Command line arguments.<br>
+     * If a string is passed, it is appended as-is.<br>
+     * If an array is passed, each item is quoted automatically when needed.<br>
+     * For documents, URLs, or shell verbs that do not use parameters, this can be omitted.<br>
+     *
+     * @param {string} [workingDir=""]
+     * Working directory for the process.<br>
+     * Pass an empty string to use the default working directory.<br>
+     *
+     * @param {string} [verb=""]
+     * Shell verb to use.<br>
+     * Pass an empty string to use the default verb.<br>
+     * Common values are "open", "edit", "print", and "runas".<br>
+     * Use "runas" to request elevation through UAC.<br>
+     *
+     * @param {number} [show=ShowWindow.Hide]
+     * Window display mode.<br>
+     * Use one of the ShowWindow values, for example ShowWindow.Hide or ShowWindow.Show.<br>
+     *
+     * @param {boolean} [wait=false]
+     * Whether to wait for the launched process to exit.<br>
+     * If false, success only means that ShellExecuteEx accepted the request.<br>
+     * If true, success is true only when the process handle is available, the process exits normally, and its exit code is 0.<br>
+     * Be careful: wait=true blocks the current script until the process exits.<br>
+     *
+     * @returns {RunResult}
+     * Result object.<br>
+     *
+     * @example
+     * // Open a URL with the default browser.
+     * const result = utils.Run("https://www.foobar2000.org");
+     *
+     * @example
+     * // Run a command and wait for its exit code.
+     * const result = utils.Run(
+     *     "cmd.exe",
+     *     '/c "exit /b 7"',
+     *     "",
+     *     "",
+     *     ShowWindow.Hide,
+     *     true
+     * );
+     *
+     * console.log(result.success);    // false
+     * console.log(result.exit_code);  // 7
+     *
+     * @example
+     * // Run elevated.
+     * const result = utils.Run(
+     *     "notepad.exe",
+     *     undefined,
+     *     "",
+     *     "runas",
+     *     ShowWindow.Show,
+     *     false
+     * );
+     */
+    Run(target, args, working_dir, verb, show, wait) { },
+
+    /**
+     * Runs an external process asynchronously.<br>
+     * Standard output and standard error are captured separately.<br>
+     * The method returns a task id immediately, and the result is delivered later through the async command callback/event.<br>
+     * If the process does not finish before timeoutMs, the whole process tree is terminated.<br>
+     * Pass 0 as timeoutMs to wait indefinitely.<br>
+     *
+     * @param {string} app
+     * Full path or executable name to run.<br>
+     * If only an executable name is specified, it is resolved by the system search rules.<br>
+     *
+     * @param {string|string[]} [args]
+     * Command line arguments.<br>
+     * If a string is passed, it is appended to the command line as-is.<br>
+     * If an array is passed, each item is quoted automatically when needed.<br>
+     *
+     * @param {string} [workingDir=""]
+     * Working directory for the process.<br>
+     * Pass an empty string to use the current working directory.<br>
+     *
+     * @param {number} [show=ShowWindow.Hide]
+     * Window display mode.<br>
+     * Use one of the ShowWindow values.<br>
+     * The default value is ShowWindow.Hide.<br>
+     *
+     * @param {number} [timeoutMs=0]
+     * Maximum time to wait for the process, in milliseconds.<br>
+     * Pass 0 to wait indefinitely.<br>
+     * On timeout, success is false, exit_code is 0xFFFFFFFF, and stderr contains a timeout message.<br>
+     *
+     * @returns {number}
+     * Task id of the asynchronous operation.<br>
+     * The task id can be used to match the returned result with the original RunCmdAsync call.<br>
+     *
+     * @example
+     * const taskId = utils.RunCmdAsync("cmd.exe", ["/c", "echo", "hello"]);
+     *
+     * @example
+     * const taskId = utils.RunCmdAsync(
+     *     "cmd.exe",
+     *     '/c "exit /b 7"'
+     * );
+     *
+     * @example
+     * const taskId = utils.RunCmdAsync(
+     *     "cmd.exe",
+     *     '/c "ping 127.0.0.1 -n 11 >nul"',
+     *     "",
+     *     ShowWindow.Hide,
+     *     5000
+     * );
+     */
+    RunCmdAsync(app, args, working_dir, show, timeout_ms) { },
+
     /**
      * @param {string} text
      */
@@ -2125,7 +2440,7 @@ let utils = {
      * Html code must be IE compatible, meaning:<br>
      * - JavaScript features are limited by IE (see {@link https://www.w3schools.com/js/js_versions.asp}).<br>
      * - Objects passed to `data` are limited to standard JavaScript objects:<br>
-     *   - No extensions from Spider Monkey Panel (e.g. no FbMetadbHandle or GdiBitmap).<br>
+     *   - No extensions from Spider Monkey Panel (e.g. no FbMetadbHandle or GdiBitmap/D2DBitmap etc.).<br>
      *<br>
      * There are also additional limitations:<br>
      * - options.data may contain only the following types:<br>
@@ -2477,6 +2792,13 @@ let window = {
     Width: undefined, // (uint) (read)
 
     /**
+     * Clears all current panel properties set by {@link window.SetProperty}, {@link window.SetProperties} or {@link window.ImportProperties}
+     *
+     * @param {boolean=} [reload_panel=false] If true, reloads panel script after clearing
+     */
+    ClearProperties: function (reload_panel) { }, // (void)
+
+    /**
      * See {@link clearTimeout}.
      *
      * @param {number} timerID
@@ -2528,6 +2850,13 @@ let window = {
      * Default text editor can be changed via `Edit` button on the main tab of {@link window.ShowConfigureV2}.
      */
     EditScript: function () { },
+
+    /**
+     * Exports all current panel properties set by {@link window.SetProperty} to file
+     * @param {string} fileName
+     * @return {boolean} If false, then an error occurred during export
+     */
+    ExportProperties: function (fileName) { },
 
     /**
      * @return {MenuObject}
@@ -2597,6 +2926,16 @@ let window = {
     GetFontDUI: function (type) { }, // (GdiFont)
 
     /**
+     * Get all current panel properties set by {@link window.SetProperty}, {@link window.SetProperties} or {@link window.ImportProperties}
+     *
+     * @return {Map} Map of panel properties
+     * @example
+     * const props = window.GetProperties();
+     * for(const [key, value] of props) console.log(`Key = ${key}, Value = ${value}`);
+     */
+    GetProperties: function () { },
+
+    /**
      * Get value of property.<br>
      * If property does not exist and default_val is not undefined and not null,
      * it will be created with the value of default_val.<br>
@@ -2608,6 +2947,15 @@ let window = {
      * @return {*}
      */
     GetProperty: function (name, default_val) { }, // (VARIANT) [, default_val]
+
+    /**
+     * Imports panel properties from file and (optionally) reloads the panel script<br>
+     * DOES clear all existing panel properties.
+     * @param {string} fileName
+     * @param {boolean=} [reload_panel=false] If true, reloads panel script
+     * @return {boolean} If false, then an error occurred during import. Also, if an error occurs during import, the panel does not reload.
+     */
+    ImportProperties: function (fileName, reload_panel) { },
 
     /**
      * This will trigger {@link module:Callbacks.on_notify_data on_notify_data}(name, info) in other panels.<br>
@@ -2628,10 +2976,10 @@ let window = {
     NotifyOthers: function (name, info) { }, // (void)
 
     /**
-     * Reload panel.
-     * @method
+     * Reloads panel.
+     * @param {boolean=} [clear_properties=false] If true, all panel properties will be cleared before reload
      */
-    Reload: function () { }, // (void)
+    Reload: function (clear_properties) { }, // (void)
 
     /**
      * Performance note: don't force the repaint unless it's really necessary -
@@ -2674,6 +3022,19 @@ let window = {
      * @return {number}
      */
     SetInterval: function (func, delay) { }, // (uint)
+
+    /**
+     * Set panel properties from input map and (optionally) reloads the panel script<br>
+     * Does NOT clear existing properties before setting.
+     *
+     * @param {Map} values Map of values to set
+     * @param {reload_panel=} [reload_panel=false] If true, reloads panel script after setting
+     * 
+     * @example
+     * const values = new Map([["First value", 1], ["Second value", 2], ["Third value", 3]]);
+     * window.SetProperties(values);
+     */
+    SetProperties: function (values, reload_panel) { }, // (void)
 
     /**
      * Set property value.<br>
@@ -2738,6 +3099,12 @@ let window = {
      * @return {PanelObject}
      */
     GetPanel: function (caption) { }, // (PanelObject)
+
+    /**
+     * Get child panels count in JSplitter
+     * @return {number}
+     */
+    GetPanelCount: function () { }, // (uint)
 
     /**
      * Get an object for accessing the panel by index. the order depends on the position in the window stack: the bottommost window will have index 0.
@@ -3106,28 +3473,62 @@ function FbMetadbHandleList(arg) {
     this.AddRange = function (handle_list) { }; // (void)
 
     /**
-     * Errors such as invalid path, corrupt image, target file type not supporting
-     * embedded art, etc should all silently fail. A progress dialog will be shown for larger file
-     * selections.<br>
-     * Any existing artwork of the specified type will be overwritten - there is no need to remove it first.
+     * Embeds covers of the specified type, loaded from the specified file, into media files<br>
+     * Any existing artwork of the specified type will be overwritten!<br>
+     * Embedding covers is an asynchronous operation, so its result is not controlled here in any way. However, all the work of the method up to this point (reading file, creating art data) will return false in case of an error.
      *
-     * @param {FbMetadbHandleList} image_path path to an existing image
-     * @param {number=} [art_id=0] See {@link module:Flags.AlbumArtId AlbumArtId}
-     *
+     * @param {string} image_path path to an existing image
+     * @param {AlbumArtId=} [art_id=AlbumArtId.front] See {@link module:Flags.AlbumArtId AlbumArtId}
+     * @return {boolean} Returns false if any error occurred before the embedding started, otherwise true
+     * 
      * @example
-     * let handle_list = plman.GetPlaylistItems(plman.ActivePlaylist);
+     * include(`${fb.ComponentPath}docs\\Flags.js`);
+     * 
+     * const handle_list = plman.GetPlaylistItems(plman.ActivePlaylist);
      * if (handle_list.Count > 0) {
-     *    let img_path = 'C:\\path\\to\\image.jpg';
-     *    handle_list.AttachImage(img_path, 0);
+     *    const img_path = 'C:\\path\\to\\image.jpg';
+     *    handle_list.AttachImage(img_path, AlbumArtId.front);
      * }
      *
      * @example
+     * include(`${fb.ComponentPath}docs\\Flags.js`);
+     * 
      * // since there is no handle method, do this for a single item
-     * let handle_list = new FbMetadbHandleList(fb.GetFocusItem());
-     * let img_path = "C:\\path\\to\\image.jpg";
-     * handle_list.AttachImage(img_path, 0);
+     * const handle_list = new FbMetadbHandleList(fb.GetFocusItem());
+     * const img_path = "C:\\path\\to\\image.jpg";
+     * handle_list.AttachImage(img_path, AlbumArtId.front);
      */
-    this.AttachImage = function (image_path, art_id) { }; //(void)
+    this.AttachImage = function (image_path, art_id) { }; //(bool)
+
+    /**
+     * Embeds covers of the specified type from exisiting GdiBitmap or D2DBitmap object. Supports JPEG, WEBP and PNG codecs for encoding image before embedding.<br>
+     * Any existing artwork of the specified type will be overwritten!<br>
+     * Embedding covers is an asynchronous operation, so its result is not controlled here in any way. However, all the work of the method up to this point (encoding, creating art data) will return false in case of an error.
+     * 
+     * @param {GdiBitmap} image (or {@link D2DBitmap} if {@link window.DrawMode} == 1). Image to attach
+     * @param {AlbumArtId=} [art_id=AlbumArtId.front] See {@link module:Flags.AlbumArtId AlbumArtId}
+     * @param {AttachImage2Codec=} [codec=AttachImage2Codec.Jpeg] See {@link module:Flags.AttachImage2Codec AttachImage2Codec}
+     * @param {float=} [quality=70.0] <b>NOTE</b>: For WebP quality 100 means lossless WebP; values below 100 use lossy WebP. For PNG quality is ignored because PNG codec is always lossless. 
+     * @return {boolean} Returns false if any error occurred before the embedding started, otherwise true
+     * 
+     * @example
+     * include(`${fb.ComponentPath}docs\\Flags.js`);
+     * 
+     * const handle_list = plman.GetPlaylistItems(plman.ActivePlaylist);
+     * if (handle_list.Count > 0) {
+     *    const img = gdi.Image("C:\\path\\to\\image.jpg");
+     *    handle_list.AttachImage2(img, AlbumArtId.front, AttachImage2Codec.WebP, 60);
+     * }
+     *
+     * @example
+     * * include(`${fb.ComponentPath}docs\\Flags.js`);
+     * 
+     * // since there is no handle method, do this for a single item
+     * const handle_list = new FbMetadbHandleList(fb.GetFocusItem());
+     * const img = gdi.Image("C:\\path\\to\\image.jpg");
+     * handle_list.AttachImage2(img, AlbumArtId.front, AttachImage2Codec.WebP, 60);
+     */
+    this.AttachImage2 = function (image, art_id, codec, quality) { }; //(bool)
 
     /**
      * Faster than {@link FbMetadbHandleList#Find Find}.
@@ -3190,7 +3591,20 @@ function FbMetadbHandleList(arg) {
      * handle_list.OrderByRelativePath();
      * let relative_paths = handle_list.GetLibraryRelativePaths();
      */
-    this.GetLibraryRelativePaths = function () { }; //(Array)
+    this.GetLibraryRelativePaths = function () { }; // (Array)
+
+    /**
+     * Provides all the information viewable on the Details tab in the main Properties dialog. This can be technical/location info as well as database fields from 3rd party components if present.<br>
+     * This returns a JSON object in string form so you need to use JSON.parse on the result.<br>
+     *
+     * @return {string}
+     *
+     * @example
+     * const handle_list = plman.GetPlaylistItems(plman.ActivePlaylist);
+     * const str = handle_list.GetOtherInfo();
+     * console.log(str);
+     */
+    this.GetOtherInfo = function () { }; // (string)
 
     /**
      * @param {number} index
@@ -3952,6 +4366,117 @@ function GdiFont(name, size_px, style) {
 }
 
 /**
+ * Object used for drawing as alternative for simple colour.<br>
+ * Can also be used to reuse brushes for drawing instead of creating them every time for any primitive drawing operation (if just a color is specified in the Draw/Fill methods, a brush is always created).<br>
+ * Created by {@link gdi.Brush}
+ * @constructor
+ * @param {GdiBrush} arg
+ * 
+ * @sourceFile ../../component/samples/basic/Brushes.js
+ */
+function GdiBrush(arg) {
+
+    /**
+     * Brush type.<br>
+     * See {@link module:Flags.BrushType BrushType}
+     * @type {BrushType}
+     * @readonly
+     */
+    this.Type = undefined;// (uint) (read)
+
+    /**
+     * Wrap mode responsible for how the brush gradient or image is repeated when drawing<br>
+     * See {@link module:Flags.BrushWrapMode BrushWrapMode}
+     * @type {BrushWrapMode} 
+     * @readonly
+     */
+    this.WrapMode = undefined;// (uint) (read, write)
+
+    /**
+     * Applies translation matrix to the current GdiBrush matrix.<br>
+     * For more information see {@link https://learn.microsoft.com/en-us/windows/win32/api/d2d1helper/nf-d2d1helper-matrix3x2f-translation(d2d1_size_f)}
+     *
+     * @param {number} dx
+     * @param {number} dy
+     */
+    this.Translate = function(dx, dy) {}
+
+    /**
+     * Applies rotation matrix to the current GdiBrush matrix.<br>
+     * For more information see {@link https://learn.microsoft.com/en-us/windows/win32/api/d2d1helper/nf-d2d1helper-matrix3x2f-rotation}
+     *
+     * @param {float} angle Angle of rotation in degrees
+     * @param {number=} [cx=0] Rotation center point x coord
+     * @param {number=} [cy=0] Rotation center point y coord
+     */
+    this.Rotate = function(angle, cx, cy) {}
+
+    /**
+     * Applies scale matrix to the current GdiBrush matrix.<br>
+     * For more information see {@link https://learn.microsoft.com/en-us/windows/win32/api/d2d1helper/nf-d2d1helper-matrix3x2f-scale(d2d1_size_f_d2d1_point_2f)}
+     *
+     * @param {float} sx The x-axis scale factor
+     * @param {float=} [sy=0] The y-axis scale factor. If zero sx will be used as sy
+     * @param {number=} [cx=0] Scale center point x coord
+     * @param {number=} [cy=0] Scale center point y coord
+     */
+    this.Scale = function(sz, sy, cx, cy) {}
+    
+    /**
+     * Applies skew matrix to the current GdiBrush matrix.<br>
+     * For more information see {@link https://learn.microsoft.com/en-us/windows/win32/api/d2d1helper/nf-d2d1helper-matrix3x2f-skew}
+     *
+     * @param {float} angleX The x-axis skew angle, which is measured in degrees counterclockwise from the y-axis.
+     * @param {float} angleY The y-axis skew angle, which is measured in degrees clockwise from the x-axis.
+     * @param {number=} [cx=0] Skew center point x coord
+     * @param {number=} [cy=0] Skew center point y coord
+     */
+    this.Skew = function(angleX, angleY, cx, cy) {}
+
+    /**
+     * Saves current GdiBrush matrix in internal stack. To restore the matrix use {@link GdiGraphics#PopTransform PopTransform}.
+     */
+    this.PushTransform = function() {}
+
+    /**
+     * Restores GdiBrush matrix from internal stack pushed previously by {@link GdiGraphics#PushTransform PushTransform}.
+     */
+    this.PopTransform = function() {}
+
+    /**
+     * Gets GdiBrush current transformation matrix of 3x2 size (Float32Array(6))<br>
+     * Matrix3x2 helper class from the component/docs/Matrix.js will be useful
+     * @return {Float32Array}
+     * 
+     * @sourceFile ../../component/docs/Matrix.js
+     */
+    this.GetTransform = function() {}
+
+    /**
+     * Replaces the current GdiBrush matrix with specified transformation matrix of 3x2 size.<br>
+     * Matrix3x2 helper class from the component/docs/Matrix.js will be useful
+     * @param {Float32Array} matrix Array that presents 3x2 matrix for transformation (length = 6)
+     * 
+     * @sourceFile ../../component/docs/Matrix.js
+     */
+    this.SetTransform = function(matrix) {}
+
+    /**
+     * Resets current GdiBrush matrix to original identity matrix.
+     */
+    this.ResetTransform = function () {}
+
+    /**
+     * Applies specified transformation matrix of 3x2 size to the current GdiBrush matrix.<br>
+     * Matrix3x2 helper class from the component/docs/Matrix.js will be useful
+     * @param {Float32Array} matrix Array that presents 3x2 matrix for transformation (length = 6)
+     * 
+     * @sourceFile ../../component/docs/Matrix.js
+     */
+    this.ApplyTransform = function(matrix) {}    
+}
+
+/**
  * Typically used inside `on_paint`.<br>
  *
  * Note: there are many different ways to get colours:
@@ -3993,9 +4518,9 @@ function GdiGraphics() {
      * @param {number} w
      * @param {number} h
      * @param {number} line_width
-     * @param {number} colour
+     * @param {*} colour_or_brush colour ARGB or {@link GdiBrush} object
      */
-    this.DrawEllipse = function (x, y, w, h, line_width, colour) { }; // (void)
+    this.DrawEllipse = function (x, y, w, h, line_width, colour_or_brush) { }; // (void)
 
     /**
      * @param {GdiBitmap} img
@@ -4018,30 +4543,30 @@ function GdiGraphics() {
      * @param {number} x2
      * @param {number} y2
      * @param {number} line_width
-     * @param {number} colour
+     * @param {*} colour_or_brush colour ARGB or {@link GdiBrush} object
      */
-    this.DrawLine = function (x1, y1, x2, y2, line_width, colour) { }; // (void)
+    this.DrawLine = function (x1, y1, x2, y2, line_width, colour_or_brush) { }; // (void)
 
     /**
-     * @param {number} colour
+     * @param {*} colour_or_brush colour ARGB or {@link GdiBrush} object
      * @param {number} line_width
      * @param {Array<Array<number>>} points
      */
-    this.DrawPolygon = function (colour, line_width, points) { }; // (void)
+    this.DrawPolygon = function (colour_or_brush, line_width, points) { }; // (void)
 
     /**
      * Should be only used when {@link GdiGraphics#GdiDrawText GdiDrawText} is not applicable.
      *
      * @param {string} str
      * @param {GdiFont} font
-     * @param {number} colour
+     * @param {*} colour_or_brush colour ARGB or {@link GdiBrush} object
      * @param {number} x
      * @param {number} y
      * @param {number} w
      * @param {number} h
      * @param {number=} [flags=0] See {@link module:Flags.StringFormatFlags StringFormatFlags} flags
      */
-    this.DrawString = function (str, font, colour, x, y, w, h, flags) { }; // (void) [, flags]
+    this.DrawString = function (str, font, colour_or_brush, x, y, w, h, flags) { }; // (void) [, flags]
 
     /**
      * @param {number} x
@@ -4049,9 +4574,9 @@ function GdiGraphics() {
      * @param {number} w
      * @param {number} h
      * @param {number} line_width
-     * @param {number} colour
+     * @param {*} colour_or_brush colour ARGB or {@link GdiBrush} object
      */
-    this.DrawRect = function (x, y, w, h, line_width, colour) { }; // (void)
+    this.DrawRect = function (x, y, w, h, line_width, colour_or_brush) { }; // (void)
 
     /**
      * @param {number} x
@@ -4061,9 +4586,9 @@ function GdiGraphics() {
      * @param {number} arc_width
      * @param {number} arc_height
      * @param {number} line_width
-     * @param {number} colour
+     * @param {*} colour_or_brush colour ARGB or {@link GdiBrush} object
      */
-    this.DrawRoundRect = function (x, y, w, h, arc_width, arc_height, line_width, colour) { }; // (void)
+    this.DrawRoundRect = function (x, y, w, h, arc_width, arc_height, line_width, colour_or_brush) { }; // (void)
 
     /**
      * @param {string} str
@@ -4086,9 +4611,9 @@ function GdiGraphics() {
      * @param {number} y
      * @param {number} w
      * @param {number} h
-     * @param {number} colour
+     * @param {*} colour_or_brush colour ARGB or {@link GdiBrush} object
      */
-    this.FillEllipse = function (x, y, w, h, colour) { }; // (void)
+    this.FillEllipse = function (x, y, w, h, colour_or_brush) { }; // (void)
 
     /**
      * Note: this may appear buggy depending on rectangle size. The easiest fix is
@@ -4119,11 +4644,11 @@ function GdiGraphics() {
     this.FillGradRectV2 = function (x, y, w, h, angle, stops) { };
 
     /**
-     * @param {number} colour
+     * @param {*} colour_or_brush colour ARGB or {@link GdiBrush} object
      * @param {number} fillmode 0 alternate, 1 winding.
      * @param {Array<Array<number>>} points
      */
-    this.FillPolygon = function (colour, fillmode, points) { }; // (void)
+    this.FillPolygon = function (colour_or_brush, fillmode, points) { }; // (void)
 
     /**
      * @param {number} x
@@ -4132,18 +4657,18 @@ function GdiGraphics() {
      * @param {number} h
      * @param {number} arc_width
      * @param {number} arc_height
-     * @param {number} colour
+     * @param {*} colour_or_brush colour ARGB or {@link GdiBrush} object
      */
-    this.FillRoundRect = function (x, y, w, h, arc_width, arc_height, colour) { }; // (void)
+    this.FillRoundRect = function (x, y, w, h, arc_width, arc_height, colour_or_brush) { }; // (void)
 
     /**
      * @param {number} x
      * @param {number} y
      * @param {number} w
      * @param {number} h
-     * @param {number} colour
+     * @param {*} colour_or_brush colour ARGB or {@link GdiBrush} object
      */
-    this.FillSolidRect = function (x, y, w, h, colour) { }; // (void)
+    this.FillSolidRect = function (x, y, w, h, colour_or_brush) { }; // (void)
 
     /**
      * @param {GdiRawBitmap} img
@@ -4211,6 +4736,89 @@ function GdiGraphics() {
      * @return {MeasureStringInfo}
      */
     this.MeasureString = function (str, font, x, y, w, h, flags) { }; // (MeasureStringInfo) [, flags]
+
+    /**
+     * Applies translation matrix to the current GdiGraphics matrix.<br>
+     * For more information see {@link https://learn.microsoft.com/en-us/windows/win32/api/d2d1helper/nf-d2d1helper-matrix3x2f-translation(d2d1_size_f)}
+     *
+     * @param {number} dx
+     * @param {number} dy
+     */
+    this.Translate = function(dx, dy) {}
+
+    /**
+     * Applies rotation matrix to the current GdiGraphics matrix.<br>
+     * For more information see {@link https://learn.microsoft.com/en-us/windows/win32/api/d2d1helper/nf-d2d1helper-matrix3x2f-rotation}
+     *
+     * @param {float} angle Angle of rotation in degrees
+     * @param {number=} [cx=0] Rotation center point x coord
+     * @param {number=} [cy=0] Rotation center point y coord
+     */
+    this.Rotate = function(angle, cx, cy) {}
+
+    /**
+     * Applies scale matrix to the current GdiGraphics matrix.<br>
+     * For more information see {@link https://learn.microsoft.com/en-us/windows/win32/api/d2d1helper/nf-d2d1helper-matrix3x2f-scale(d2d1_size_f_d2d1_point_2f)}
+     *
+     * @param {float} sx The x-axis scale factor
+     * @param {float=} [sy=0] The y-axis scale factor. If zero sx will be used as sy
+     * @param {number=} [cx=0] Scale center point x coord
+     * @param {number=} [cy=0] Scale center point y coord
+     */
+    this.Scale = function(sz, sy, cx, cy) {}
+    
+    /**
+     * Applies skew matrix to the current GdiGraphics matrix.<br>
+     * For more information see {@link https://learn.microsoft.com/en-us/windows/win32/api/d2d1helper/nf-d2d1helper-matrix3x2f-skew}
+     *
+     * @param {float} angleX The x-axis skew angle, which is measured in degrees counterclockwise from the y-axis.
+     * @param {float} angleY The y-axis skew angle, which is measured in degrees clockwise from the x-axis.
+     * @param {number=} [cx=0] Skew center point x coord
+     * @param {number=} [cy=0] Skew center point y coord
+     */
+    this.Skew = function(angleX, angleY, cx, cy) {}
+
+    /**
+     * Saves current GdiGraphics matrix in internal stack. To restore the matrix use {@link GdiGraphics#PopTransform PopTransform}.
+     */
+    this.PushTransform = function() {}
+
+    /**
+     * Restores current GdiGraphics matrix from internal stack pushed previously by {@link GdiGraphics#PushTransform PushTransform}.
+     */
+    this.PopTransform = function() {}
+
+    /**
+     * Gets GdiGraphics current transformation matrix of 3x2 size (Float32Array(6))
+     * Matrix helpers from the component/docs/Matrix.js will be useful
+     * @return {Float32Array}
+     * 
+     * @sourceFile ../../component/docs/Matrix.js
+     */
+    this.GetTransform = function() {}
+
+    /**
+     * Replaces the current GdiGraphics matrix with specified transformation matrix of 3x2 size.<br>
+     * Matrix helpers from the component/docs/Matrix.js will be useful
+     * @param {Float32Array} matrix Array that presents 3x2 matrix for transformation (length = 6)
+     * 
+     * @sourceFile ../../component/docs/Matrix.js
+     */
+    this.SetTransform = function(matrix) {}
+
+    /**
+     * Resets current GdiGraphics matrix to original identity matrix.
+     */
+    this.ResetTransform = function () {}
+
+    /**
+     * Applies specified transformation matrix of 3x2 size to the current GdiGraphics matrix.<br>
+     * Matrix helpers from the component/docs/Matrix.js will be useful
+     * @param {Float32Array} matrix Array that presents 3x2 matrix for transformation (length = 6)
+     * 
+     * @sourceFile ../../component/docs/Matrix.js
+     */
+    this.ApplyTransform = function(matrix) {}
 
     /**
      * @constructor
@@ -4513,4 +5121,472 @@ function ThemeManager() {
      * @param {number=} [stateid=0]
      */
     this.SetPartAndStateID = function (partid, stateid) { }; // (void)
+}
+
+/**
+ * Object returned by {@link utils.Run}.<br>
+ *
+ * @constructor
+ * @hideconstructor
+ */
+function RunResult() {
+
+    /**
+     * true if the operation completed successfully.<br>
+     * If <b>wait</b> argument of {@link utils.Run} is false, this means that <b>ShellExecuteEx</b> successfully accepted the request.<br>
+     * If <b>wait</b> is true, this means that <b>ShellExecuteEx</b> accepted the request, a process handle was available, and the process exited with code 0.<br>
+     *
+     * @type {boolean}
+     * @readonly
+     */
+    this.OK = false; // (bool) (read)
+
+    /**
+     * Process exit code.<br>
+     * This value is meaningful only when <b>wait</b> argument of {@link utils.Run} is true and the launched process handle was available.<br>
+     * If <b>wait</b> is false, this value is usually 0.<br>
+     * A non-zero value usually means that the launched process reported an error.<br>
+     *
+     * @type {number}
+     * @readonly
+     */
+    this.ExitCode = 0; // (uint) (read)
+
+    /**
+     * Win32 error code returned by <b>GetLastError</b> WinAPI function.<br>
+     * This is 0 on success.<br>
+     * When <b>OK</b> is false, it may contain the reason why <b>ShellExecuteEx</b>, waiting for the process, or retrieving the process exit code failed.<br>
+     * Note that a launched process returning a non-zero exit code does not necessarily set this value.<br>
+     *
+     * @type {number}
+     * @readonly
+     */
+    this.Win32Error = 0; // (uint) (read)
+
+    /**
+     * Native <b>ShellExecute/ShellExecuteEx</b> result code.<br>
+     * Values greater than 32 usually indicate a successful shell-level operation.<br>
+     * Values less than or equal to 32 indicate a shell-level error, such as file not found, access denied, no association, or invalid executable format.<br>
+     * This value describes the shell operation itself, not the launched process exit code.<br>
+     *
+     * @type {number}
+     * @readonly
+     */
+    this.ShellCode = 0; // (long) (read)
+}
+
+/**
+ * Object returned by {@link utils.ParseHtml}<br>
+ *<br>
+ * Lightweight DOM-like HTML document backed by the native HTML parser.<br>
+ *<br>
+ * Notes:<br>
+ * - This is not a full browser DOM.<br>
+ * - Scripts, CSS, layout, external resources and browser events are not processed.<br>
+ * - <b>innerText</b> is currently an alias of <b>textContent</b>.<br>
+ *
+ * @hideconstructor
+ */
+class HtmlDocument {
+    /**
+     * Root document element, usually the &lt;html&gt; element.<br>
+     * Alias of {@link HtmlDocument#documentElement documentElement}.
+     *
+     * @type {?HtmlNode}
+     * @readonly
+     *
+     * @example
+     * let doc = utils.ParseHtml("<html><body>Hello</body></html>");
+     * if (doc) console.log(doc.root.tagName); // "html"
+     */
+    root = undefined; // (read)
+
+    /**
+     * Root document element, usually the &lt;html&gt; element.
+     *
+     * @type {?HtmlNode}
+     * @readonly
+     *
+     * @example
+     * let doc = utils.ParseHtml("<html><body>Hello</body></html>");
+     * if (doc) console.log(doc.documentElement.tagName); // "html"
+     */
+    documentElement = undefined; // (read)
+
+    /**
+     * The document &lt;head&gt; element.
+     *
+     * @type {?HtmlNode}
+     * @readonly
+     *
+     * @example
+     * let doc = utils.ParseHtml("<html><head><title>Test</title></head></html>");
+     * if (doc && doc.head) console.log(doc.head.innerHTML); // "<title>Test</title>"
+     */
+    head = undefined; // (read)
+
+    /**
+     * The document &lt;body&gt; element.
+     *
+     * @type {?HtmlNode}
+     * @readonly
+     *
+     * @example
+     * let doc = utils.ParseHtml("<html><body><p>Hello</p></body></html>");
+     * if (doc && doc.body) console.log(doc.body.innerHTML); // "<p>Hello</p>"
+     */
+    body = undefined; // (read)
+
+    /**
+     * Text content of the document body.<br>
+     * If the document has no body, this falls back to the root element text.<br>
+     * Whitespace is returned as it exists in the parsed text nodes.
+     *
+     * @type {string}
+     * @readonly
+     *
+     * @example
+     * let doc = utils.ParseHtml("<html><body><p>Hello <b>world</b></p></body></html>");
+     * if (doc) console.log(doc.textContent); // "Hello world"
+     */
+    textContent = undefined; // (read)
+
+    /**
+     * Alias of {@link HtmlDocument#textContent textContent}.<br>
+     * Since this parser has no browser layout engine, <b>innerText</b> does not emulate CSS visibility, rendered line wrapping, or layout-dependent text extraction.
+     *
+     * @type {string}
+     * @readonly
+     */
+    innerText = undefined; // (read)
+
+    /**
+     * Serialized HTML markup inside the document body.<br>
+     * If the document has no body, this falls back to the root element.
+     *
+     * @type {string}
+     * @readonly
+     *
+     * @example
+     * let doc = utils.ParseHtml("<html><body><p>Hello <b>world</b></p></body></html>");
+     * if (doc) console.log(doc.innerHTML); // "<p>Hello <b>world</b></p>"
+     */
+    innerHTML = undefined; // (read)
+
+    /**
+     * Serialized outer HTML of the root element.
+     *
+     * @type {string}
+     * @readonly
+     *
+     * @example
+     * let doc = utils.ParseHtml("<html><body><p>Hello</p></body></html>");
+     * if (doc) console.log(doc.outerHTML); // "<html><head></head><body><p>Hello</p></body></html>"
+     */
+    outerHTML = undefined; // (read)
+
+    /**
+     * Returns the first element matching a CSS selector.
+     * 
+     * @method
+     * @param {string} selector CSS selector.
+     * @return {?HtmlNode} First matching node, or `null` if nothing matches.
+     *
+     * @example
+     * let doc = utils.ParseHtml("<html><body><p class='name'>Test Artist</p></body></html>");
+     * let node = doc ? doc.querySelector(".name") : null;
+     * if (node) console.log(node.textContent); // "Test Artist"
+     */
+    querySelector = function (selector) { }; //
+
+    /**
+     * Returns all elements matching a CSS selector.<br>
+     * The returned value is a regular JavaScript array.
+     *
+     * @method
+     * @param {string} selector CSS selector.
+     * @return {Array<HtmlNode>} Array of matching nodes. Empty array if nothing matches.
+     *
+     * @example
+     * let doc = utils.ParseHtml("<ul><li class='album'>A</li><li class='album'>B</li></ul>");
+     * let albums = doc ? doc.querySelectorAll(".album") : [];
+     * console.log(albums.length); // 2
+     */
+    querySelectorAll = function (selector) { }; //
+
+    /**
+     * Returns all descendant elements with the specified tag name.<br>
+     * Use "*" to return all descendant elements.
+     * 
+     * @method
+     * @param {string} tagName Tag name, for example "a", "div", "section" or "*".
+     * @return {Array<HtmlNode>} Array of matching nodes. Empty array if nothing matches.
+     *
+     * @example
+     * const doc = utils.ParseHtml("<p><a href='https://example.com'>Link</a></p>");
+     * const links = doc ? doc.getElementsByTagName("a") : [];
+     * console.log(links.length); // 1
+     */
+    getElementsByTagName = function (tagName) { }; //
+}
+
+/**
+ * Lightweight DOM-like HTML node.<br>
+ *<br>
+ * HtmlNode can represent an element node, text node, comment node, or another parsed DOM node type. Some operations, such as attributes and class checks, only make sense for element nodes.<br>
+ * <b>NOTE</b>: HtmlNode objects keep the underlying native document alive while they exist.
+ *
+ * @hideconstructor
+ */
+class HtmlNode {
+    /**
+     * Whether this node is an element node.<br>
+     * Element nodes are tags such as &lt;div&gt;, &lt;a&gt;, &lt;p&gt;, &lt;body&gt;.<br>
+     * Text nodes and comments are not element nodes.
+     *
+     * @type {boolean}
+     * @readonly
+     *
+     * @example
+     * const doc = utils.ParseHtml("<p>Hello <b>world</b></p>");
+     * const p = doc ? doc.querySelector("p") : null;
+     * if (p) {
+     *     console.log(p.isElement); // true
+     *     console.log(p.firstChild ? p.firstChild.isElement : null); // false
+     * }
+     */
+    isElement = undefined; // (read)
+
+    /**
+     * Lowercase tag name for element nodes.<br>
+     * For non-element nodes, this is an empty string.
+     *
+     * @type {string}
+     * @readonly
+     *
+     * @example
+     * const doc = utils.ParseHtml("<BODY><P>Hello</P></BODY>");
+     * if (doc) console.log(doc.body.tagName); // "body"
+     */
+    tagName = undefined; // (read)
+
+    /**
+     * Value of the <b>class</b> attribute.<br>
+     * For non-element nodes, or elements without a class attribute, this is an empty string.
+     *
+     * @type {string}
+     * @readonly
+     *
+     * @example
+     * const doc = utils.ParseHtml("<p class='album featured'>Title</p>");
+     * if (doc) {
+     *     const p = doc.querySelector("p");
+     *     console.log(p.className); // "album featured"
+     * }
+     */
+    className = undefined; // (read)
+
+    /**
+     * Text content of this node and its descendants.<br>
+     * Whitespace is returned as it exists in parsed text nodes.
+     *
+     * @type {string}
+     * @readonly
+     *
+     * @example
+     * const doc = utils.ParseHtml("<p>Hello <b>world</b></p>");
+     * if (doc) {
+     *     const p = doc.querySelector("p");
+     *     console.log(p ? p.textContent : null); // "Hello world"
+     * }
+     */
+    textContent = undefined; // (read)
+
+    /**
+     * Alias of {@link HtmlNode#textContent textContent}.<br>
+     * Since this parser has no browser layout engine, <b>innerText</b> does not emulate CSS visibility, rendered line wrapping, or layout-dependent text extraction.
+     *
+     * @type {string}
+     * @readonly
+     */
+    innerText = undefined; // (read)
+
+    /**
+     * Serialized HTML markup inside this node.
+     *
+     * @type {string}
+     * @readonly
+     *
+     * @example
+     * const doc = utils.ParseHtml("<p>Hello <b>world</b></p>");
+     * const p = doc.querySelector("p");
+     * console.log(p.innerHTML); // "Hello <b>world</b>"
+     */
+    innerHTML = undefined; // (read)
+
+    /**
+     * Serialized HTML markup of this node itself.
+     *
+     * @type {string}
+     * @readonly
+     *
+     * @example
+     * const doc = utils.ParseHtml("<p>Hello <b>world</b></p>");
+     * const p = doc.querySelector("p");
+     * console.log(p.outerHTML); // "<p>Hello <b>world</b></p>"
+     */
+    outerHTML = undefined; // (read)
+
+    /**
+     * First child node.<br>
+     * <b>Important</b>: this can be a text node or comment, not necessarily an element.<br>
+     * Whitespace-only text nodes are preserved. Use JSON.stringify(node.textContent) while debugging if you need to see line breaks, tabs, and spaces explicitly.
+     *
+     * Use {@link HtmlNode#children children}[0] or {@link HtmlNode#querySelector querySelector}
+     * when you need an element.
+     *
+     * @type {?HtmlNode}
+     * @readonly
+     *
+     * @example
+     * const doc = utils.ParseHtml("<li>text before link <a href='https://example.com'>Link</a></li>");
+     * const li = doc.querySelector("li");
+     *
+     * console.log(JSON.stringify(li.firstChild.textContent)); // "text before link "
+     *
+     * const a = li.querySelector("a");
+     * console.log(a.getAttribute("href")); // "https://example.com"
+     */
+    firstChild = undefined; // (read)
+
+    /**
+     * All child nodes, including element nodes, text nodes and comments.
+     *
+     * @type {Array<HtmlNode>}
+     * @readonly
+     *
+     * @example
+     * const doc = utils.ParseHtml("<p>Hello <b>world</b></p>");
+     * const p = doc.querySelector("p");
+     * console.log(p.childNodes.length); // 2
+     */
+    childNodes = undefined; // (read)
+
+    /**
+     * Child element nodes only.<br>
+     * Text nodes and comments are skipped.
+     *
+     * @type {Array<HtmlNode>}
+     * @readonly
+     *
+     * @example
+     * const doc = utils.ParseHtml("<p>Hello <b>world</b></p>");
+     * const p = doc.querySelector("p");
+     * console.log(p.children.length); // 1
+     * console.log(p.children[0].tagName); // "b"
+     */
+    children = undefined; // (read)
+
+    /**
+     * Returns an attribute value.<br>
+     * For missing attributes or non-element nodes, returns an empty string.
+     * 
+     * @method
+     * @param {string} name Attribute name.
+     * @return {string} Attribute value, or empty string.
+     *
+     * @example
+     * const doc = utils.ParseHtml("<a href='https://example.com'>Link</a>");
+     * const a = doc.querySelector("a");
+     * console.log(a.getAttribute("href")); // "https://example.com"
+     */
+    getAttribute = function (name) { }; //
+
+    /**
+     * Checks whether an element has an attribute.<br>
+     * For non-element nodes, returns false.
+     * 
+     * @method
+     * @param {string} name Attribute name.
+     * @return {boolean}
+     *
+     * @example
+     * const doc = utils.ParseHtml("<a href='https://example.com'>Link</a>");
+     * const a = doc.querySelector("a");
+     * console.log(a.hasAttribute("href")); // true
+     * console.log(a.hasAttribute("title")); // false
+     */
+    hasAttribute = function (name) { }; //
+
+    /**
+     * Checks whether the element has a CSS class token.<br>
+     * This checks class tokens, not arbitrary substrings.<br>
+     * For example, <b>hasClass("album")</b> matches <b>class="album featured"</b>, but not <b>class="album-list"</b>.<br>
+     * For non-element nodes, returns false.<br>
+     * 
+     * @method
+     * @param {string} className Class token to check.
+     * @return {boolean}
+     *
+     * @example
+     * const doc = utils.ParseHtml("<li class='album featured'>Title</li>");
+     * const li = doc.querySelector("li");
+     *
+     * console.log(li.hasClass("album")); // true
+     * console.log(li.hasClass("featured")); // true
+     * console.log(li.hasClass("album-list")); // false
+     */
+    hasClass = function (className) { }; //
+
+    /**
+     * Returns the first descendant element matching a CSS selector.
+     * 
+     * @method
+     * @param {string} selector CSS selector.
+     * @return {?HtmlNode} First matching node, or `null` if nothing matches.
+     *
+     * @example
+     * const doc = utils.ParseHtml("<li>text <a href='https://example.com'>Link</a></li>");
+     * const li = doc.querySelector("li");
+     * const a = li.querySelector("a[href]");
+     *
+     * if (a) {
+     *     console.log(a.getAttribute("href")); // "https://example.com"
+     * }
+     */
+    querySelector = function (selector) { }; //
+
+    /**
+     * Returns all descendant elements matching a CSS selector.<br>
+     * The returned value is a regular JavaScript array.
+     * 
+     * @method
+     * @param {string} selector CSS selector.
+     * @return {Array<HtmlNode>} Array of matching nodes. Empty array if nothing matches.
+     *
+     * @example
+     * const doc = utils.ParseHtml("<ul><li class='album'>A</li><li class='album featured'>B</li></ul>");
+     * const list = doc.querySelector("ul");
+     * const albums = list.querySelectorAll(".album");
+     *
+     * console.log(albums.length); // 2
+     */
+    querySelectorAll = function (selector) { }; //
+
+    /**
+     * Returns all descendant elements with the specified tag name.<br>
+     * Use "*" to return all descendant elements.
+     * 
+     * @method
+     * @param {string} tagName Tag name, for example "a", "div", "section" or "*".
+     * @return {Array<HtmlNode>} Array of matching nodes. Empty array if nothing matches.
+     *
+     * @example
+     * const doc = utils.ParseHtml("<p><a href='https://example.com'>One</a><a href='/two'>Two</a></p>");
+     * const p = doc.querySelector("p");
+     * const links = p.getElementsByTagName("a");
+     *
+     * console.log(links.length); // 2
+     */
+    getElementsByTagName = function (tagName) { }; //
 }

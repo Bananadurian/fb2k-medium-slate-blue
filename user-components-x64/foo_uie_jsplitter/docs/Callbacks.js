@@ -34,6 +34,15 @@ function on_char(code) { }
 function on_colours_changed() { }
 
 /**
+ * Called when new records are appended to foobar2000 console log.<br>
+ * Note: Can used with {@link console.GetLines} or {@link console.ClearBacklog}<br>
+ * CAUTION: Don't call {@link console.log} in this callback
+ * 
+ * @memberof module:Callbacks
+ */
+function on_console_refresh() { }
+
+/**
  * Called when "cursor follow playback" state is changed.
  *
  * @memberof module:Callbacks
@@ -116,7 +125,7 @@ function on_font_changed() { }
  * @memberof module:Callbacks
  * @param {FbMetadbHandle} handle
  * @param {number} art_id See {@link module:Flags.AlbumArtId AlbumArtId} flags
- * @param {?GdiBitmap} image null on failure
+ * @param {?GdiBitmap} image (or {@link D2DBitmap} if {@link window.DrawMode} == 1). Null on failure
  * @param {string} image_path path to image file (or music file if image is embedded)
  */
 function on_get_album_art_done(handle, art_id, image, image_path) { }
@@ -184,7 +193,7 @@ function on_library_items_removed(handle_list) { }
  *
  * @memberof module:Callbacks
  * @param {number} cookie the return value from the {@link gdi.LoadImageAsync} call
- * @param {?GdiBitmap} image null on failure (invalid path/not an image)
+ * @param {?GdiBitmap} image (or {@link D2DBitmap} if {@link window.DrawMode} == 1). Null on failure (invalid path/not an image)
  * @param {string} image_path the path that was originally supplied to {@link gdi.LoadImageAsync}
  */
 function on_load_image_done(cookie, image, image_path) { }
@@ -677,3 +686,20 @@ function on_http_request_done(task_id, success, response_text, status, response_
  * @param {PerformanceObserver} observer The observer object that is receiving the above entries.
  */
 function PerformanceObserverCallback (entries, observer) { }
+
+/**
+ * Called when a process started by {@link utils.RunCmdAsync} finishes.<br>
+ * <br>
+ * The success argument means that the process was started successfully and its exit code was obtained.<br>
+ * A non-zero exit_code does not make success false; it is the process result.<br>
+ * <br>
+ * If the process times out, success is false, exit_code is 0xFFFFFFFF, and stderr contains the timeout message.
+ *
+ * @memberof module:Callbacks
+ * @param {number} task_id Task ID returned by {@link utils.RunCmdAsync}.
+ * @param {boolean} success True if the process was started and its exit code was obtained.
+ * @param {number} exit_code Process exit code.
+ * @param {string} stdout Standard output captured from the process.
+ * @param {string} stderr Standard error captured from the process, or an error message if the process could not be started.
+ */
+function on_run_cmd_async_done(task_id, success, exit_code, stdout, stderr) { }

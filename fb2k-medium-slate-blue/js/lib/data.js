@@ -243,13 +243,23 @@ class LRUCache {
      * @param {*} value
      */
     set(key, value) {
-        if (!this._map.has(key) && this._map.size >= this._maxSize) {
+        if (this._map.has(key)) {
+            this._map.delete(key);
+        } else if (this._map.size >= this._maxSize) {
             const oldestKey = this._map.keys().next().value;
             const oldestValue = this._map.get(oldestKey);
             this._map.delete(oldestKey);
             if (this._onEvict) this._onEvict(oldestValue, oldestKey);
         }
         this._map.set(key, value);
+    }
+
+    invalidate(key) {
+        if (!this._map.has(key)) return false;
+        const value = this._map.get(key);
+        this._map.delete(key);
+        if (this._onEvict) this._onEvict(value, key);
+        return true;
     }
 
     clear() {

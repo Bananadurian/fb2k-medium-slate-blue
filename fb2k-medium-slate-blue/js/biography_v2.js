@@ -58,12 +58,12 @@ const TS = THEME.TEXT;
 
 // [图标资源]
 const LINK_ICONS = {
+  default: _loadImage(IMGS_LINKS_DIR + "default.png"),
   Aliases: _loadImage(IMGS_LINKS_DIR + "user-round.png"),
   Genres: _loadImage(IMGS_LINKS_DIR + "circle-small.png"),
   Country: _loadImage(IMGS_LINKS_DIR + "locate.png"),
   Born: _loadImage(IMGS_LINKS_DIR + "calendar.png"),
   Links: _loadImage(IMGS_LINKS_DIR + "milestone.png"),
-  default: _loadImage(IMGS_LINKS_DIR + "default.png"),
   "official website": _loadImage(IMGS_LINKS_DIR + "house.png"),
   soundcloud: _loadImage(IMGS_LINKS_DIR + "soundcloud.png"),
   bandcamp: _loadImage(IMGS_LINKS_DIR + "bandcamp.png"),
@@ -83,7 +83,9 @@ const LINK_ICONS = {
 };
 
 // [UI组件] TitleFormat 与 Tooltip
-const MBID_TF = fb.TitleFormat("$meta(MUSICBRAINZ_ARTISTID,0)");
+const MBID_TF = fb.TitleFormat(
+  "$if2($meta(MUSICBRAINZ_ARTISTID),$meta(MUSICBRAINZ ARTIST ID))",
+);
 const albumTf = fb.TitleFormat(" ▸ [%date%]: [%album%] ['('$meta(EDITION)')']");
 
 let tooltip = _createDefaultTooltip();

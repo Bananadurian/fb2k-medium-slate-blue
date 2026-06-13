@@ -1303,6 +1303,190 @@ const CompositeMode = {
 };
 
 /**
+ * Brush types used in {@link gdi.Brush}, {@link d2d.Brush} and {@link GdiBrush#Type GdiBrush.Type}, {@link D2DBrush#Type D2DBrush.Type}
+ * @memberof module:Flags
+ * @default
+ */
+const BrushType = {
+    Solid: 0,
+    LinearGradient: 1,
+    RadialGradient: 2,
+    Bitmap: 3    
+};
+
+/**
+ * Brush wrap modes used in {@link GdiBrush#WrapMode GdiBrush.WrapMode} and {@link D2DBrush#WrapMode D2DBrush.WrapMode}<br>
+ * Behavior of the modes may differ between GDI+ and Direct2D<br>
+ * <b>Tile</b>: Specifies tiling without flipping.<br>
+ * <b>TileFlipX</b>: Specifies that tiles are flipped horizontally as you move from one tile to the next in a row.<br>
+ * <b>TileFlipY</b>: Specifies that tiles are flipped vertically as you move from one tile to the next in a column.<br>
+ * <b>TileFlipXY</b>: Specifies that tiles are flipped horizontally as you move along a row and flipped vertically as you move along a column.<br>
+ * <b>Clamp</b>: Specifies that no tiling takes place. In D2D mode extends the edges of the source out by clamping sample points outside the source to the edges. In GDI: simply stops the output and for linear gradient brushes is not valid parameter.
+ * 
+ * @memberof module:Flags
+ * @default
+ */
+const BrushWrapMode = {
+    Tile: 0,
+    TileFlipX: 1,
+    TileFlipY: 2,
+    TileFlipXY: 3,
+    Clamp: 4
+};
+
+/**
+ * Message box buttons used in {@link utils.MessageBox utils.MessageBox}<br>
+ * <b>OK</b>: The message box contains an OK button.<br>
+ * <b>OKCancel</b>: The message box contains OK and Cancel buttons.<br>
+ * <b>AbortRetryIgnore</b>: The message box contains Abort, Retry, and Ignore buttons.<br>
+ * <b>YesNoCancel</b>: The message box contains Yes, No, and Cancel buttons.<br>
+ * <b>YesNo</b>: The message box contains Yes and No buttons.<br>
+ * <b>RetryCancel</b>: The message box contains Retry and Cancel buttons.<br>
+ * <b>CancelTryContinue</b>: Specifies that the message box contains Cancel, Try Again, and Continue buttons.<br>
+ * 
+ * @memberof module:Flags
+ * @default
+ */
+const MessageBoxButtons = {
+    OK: 0,
+    OKCancel: 1,
+    AbortRetryIgnore: 2,
+    YesNoCancel: 3,
+    YesNo: 4,
+    RetryCancel: 5,
+    CancelTryContinue: 6
+};
+
+/**
+ * Message box icons used in {@link utils.MessageBox utils.MessageBox}<br>
+ * <b>None</b>: The message box contains no symbols.<br>
+ * <b>Error</b>: The message box contains a symbol consisting of white X in a circle with a red background.<br>
+ * <b>Stop</b>: The same as <b>Error</b>.<br>
+ * <b>Exclamation</b>: The message box contains a symbol consisting of an exclamation point in a triangle with a yellow background.<br>
+ * <b>Warning</b>: The same as <b>Exclamation</b>.<br>
+ * <b>Information</b>: The message box contains a symbol consisting of a lowercase letter i in a circle.<br>
+ * 
+ * @memberof module:Flags
+ * @default
+ */
+const MessageBoxIcon = {
+    None: 0	,
+    Error: 16,
+    Stop: 16,
+    Question: 32,
+    Warning: 48,
+    Information: 64	
+};
+
+/**
+ * Message box default button flags used in {@link utils.MessageBox utils.MessageBox}<br>
+ * 
+ * @memberof module:Flags
+ * @default
+ */
+const MessageBoxDefaultButton = {
+    Button1: 0,
+    Button2: 256,
+    Button3: 512,
+    Button4: 768
+};
+
+/**
+ * Dialog result codes used in {@link utils.MessageBox utils.MessageBox}<br>
+ * 
+ * @memberof module:Flags
+ * @default
+ */
+const DialogResult = {
+    None: 0,
+    OK: 1,
+    Cancel: 2,
+    Abort: 3,
+    Retry: 4,
+    Ignore:5,
+    Yes: 6,
+    No: 7,
+    TryAgain: 10,
+    Continue: 11
+};
+
+/**
+ * Image codecs used in {@link FbMetadbHandleList#AttachImage2 AttachImage2}<br>
+ * <b>Jpeg</b>: lossy, maximum compatibility<br>
+ * <b>WebP</b>: WebP lossless if quality = 100, otherwise WebP lossy<br>
+ * <b>Png</b>: always lossless, compatibility-first<br>
+ * @memberof module:Flags
+ * @default
+ */
+const AttachImage2Codec = {
+    Jpeg: 0,
+    WebP: 1,
+    Png: 2
+};
+
+/**
+ * Controls how the window is to be shown. Used in {@link utils.Run}<br>
+ * <b>Hide</b>: Hides the window and activates another window.<br>
+ * <b>Normal</b>: Activates and displays a window. If the window is minimized, maximized, or arranged, the system restores it to its original size and position. An application should specify this flag when displaying the window for the first time.<br>
+ * <b>Minimized</b>: Activates the window and displays it as a minimized window.<br>
+ * <b>Maximized</b>: Activates the window and displays it as a maximized window.<br>
+ * <b>NoActivate</b>: Displays a window in its most recent size and position. This value is similar to <b>Normal</b>, except that the window is not activated.<br>
+ * <b>Show</b>: Activates the window and displays it in its current size and position.<br>
+ * <b>Minimize</b>: Minimizes the specified window and activates the next top-level window in the Z order.<br>
+ * <b>MinNoActive</b>: Displays the window as a minimized window. This value is similar to <b>Minimized</b>, except the window is not activated.<br>
+ * <b>NA</b>: Displays the window in its current size and position. This value is similar to <b>Show</b>, except that the window is not activated.<br>
+ * <b>Restore</b>: Activates and displays the window. If the window is minimized, maximized, or arranged, the system restores it to its original size and position. An application should specify this flag when restoring a minimized window.<br>
+ * <b>Default</b>: Sets the show state based on the <b>ShowWindow</b> value specified in the <b>STARTUPINFO</b> structure passed to the <b>CreateProcess</b> function by the program that started the application.<br>
+ * <b>ForceMinimize</b>: Minimizes a window, even if the thread that owns the window is not responding. This flag should only be used when minimizing windows from a different thread.<br>
+ * @memberof module:Flags
+ * @default
+ */
+const ShowWindow = {
+    Hide: 0,
+    Normal: 1,
+    Minimized: 2,
+    Maximized: 3,
+    NoActivate: 4,
+    Show: 5,
+    Minimize: 6,
+    MinNoActive: 7,
+    NA: 8,
+    Restore: 9,
+    Default: 10,
+    ForceMinimize: 11
+};
+
+/**
+ * Used in {@link utils.Run}
+ * A string, referred to as a verb, that specifies the action to be performed.<br>
+ * The set of available verbs depends on the particular file or folder. Generally, the actions available from an object's shortcut menu are available verbs.<br>
+ * This parameter can be empty, in which case the default verb is used if available. If not, the ":::no-loc text="open"::" verb is used.<br>
+ * If neither verb is available, the system uses the first verb listed in the registry.<br>
+ * The following verbs are commonly used:<br>
+ * <b>Open</b>: Opens the file specified by the lpFile parameter. The file can be an executable file, a document file, or a folder.<br>
+ * <b>Edit</b>: Launches an editor and opens the document for editing. If <b>target</b> is not a document file, the function will fail.<br>
+ * <b>Explore</b>: Explores the folder specified by lpFile.<br>
+ * <b>Find</b>: Initiates a search starting from the specified directory.<br>
+ * <b>Openas</b>: Launches a picker UI allowing the user to select an app with which to open the file specified by the <b>target</b> parameter.<br>
+ * <b>Print</b>: Prints the document file specified by lpFile. If lpFile is not a document file, the function will fail.<br>
+ * <b>Properties</b>: Displays the file or folder's properties.<br>
+ * <b>RunAs</b>: Launches an application as Administrator. User Account Control (UAC) will prompt the user for consent to run the application elevated or enter the credentials of an administrator account used to run the application.<br>
+ * @memberof module:Flags
+ * @default
+ */
+const RunVerb = {
+    Default: "",
+    Open: "open",
+    Edit: "edit",
+    Explore: "explore",
+    Find: "find",
+    OpenAs: "openas",
+    Print: "print",
+    Properties: "properties",
+    RunAs: "runas"
+};
+
+/**
  * SupportColourFlagCUI = {
  *     text: 0x0,
  *     selection_text: 0x2,

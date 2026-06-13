@@ -1,5 +1,5 @@
 /**
- * Direct2D matrix helpers<br>
+ * Matrix helpers<br>
  * @module Matrix
 */
 
@@ -29,32 +29,32 @@ class Matrix3x2 {
     /**
      * Creates a translation transformation that has the specified x and y displacements.
      * @method
-     * @param {float} x
-     * @param {float} y
+     * @param {float} dx
+     * @param {float} dy
      * @return {Float32Array}
      */
-    static Translation(x, y) {
+    static Translation(dx, dy) {
         return new Float32Array([
             1, 0,
             0, 1,
-            x, y
+            dx, dy
         ]);
     }
 
     /**
      * Creates a scale transformation that has the specified scale factors and center point.
      * @method
-     * @param {float} x
-     * @param {float} y
+     * @param {float} sx
+     * @param {float} sy
      * @param {float} centerX
      * @param {float} centerY
      * @return {Float32Array}
      */
-    static Scale(x, y, centerX, centerY) {
+    static Scale(sx, sy, centerX, centerY) {
         return new Float32Array([
-            x, 0,
-            0, y,
-            centerX - x * centerX, centerY - y * centerY
+            sx, 0,
+            0, sy,
+            centerX - sx * centerX, centerY - sy * centerY
         ]);
     }
 
@@ -204,11 +204,11 @@ class Matrix4x4 {
      * @param {float} z
      * @return {Float32Array}
      */
-    static Scale(x, y, z) {
+    static Scale(sx, sy, sz) {
         return new Float32Array([
-            x, 0, 0, 0,
-            0, y, 0, 0,
-            0, 0, z, 0,
+            sx, 0, 0, 0,
+            0, sy, 0, 0,
+            0, 0, sz, 0,
             0, 0, 0, 1
         ]);
     }

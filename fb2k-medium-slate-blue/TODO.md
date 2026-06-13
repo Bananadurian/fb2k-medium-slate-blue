@@ -5,17 +5,16 @@
 - [ ] 添加更多图标适配更多链接（spotify, apple music, tidal, genius 等）
 - [ ] 链接区域根据链接数量动态适配行数，最多 2 行（当前只显示 1 行，多余被截断）
 - [ ] 国家信息考虑是否使用详细地址（`data.origin.birth_place.details_zh`）
-- [ ] 性能检查：V2 图片 LRU 缓存是否正常工作
+- [x] 性能检查：V2 图片 LRU 缓存是否正常工作
 - [ ] 选中的 TAB 使用白色而非主题色？视觉效果评估
 - [ ] 无艺人数据时显示按钮，点击调用 music-meta 自动获取
 - [ ] 添加右键菜单：调用 music-meta 更新数据、下载封面等
 - [ ] 封面查找后缀优化：当前 `_X_` 写死，考虑更通用的匹配方案
+- [ ] 点击查看大图（从 biography.js 迁移）
+- [ ] 伪透明模式：选中非当前播放歌曲并停止播放时，背景渲染异常（从 biography.js 迁移）
 - [x] `var` → `let`/`const` 重构（33 处），规范已沉淀至 smp-copilot.md §5
 
-## biography.js
-
-- [ ] 点击查看大图
-- [ ] 伪透明模式：选中非当前播放歌曲并停止播放时，背景渲染异常
+## biography.js — 已废弃，由 biography_v2.js 取代，任务迁移至下方
 
 ## album_info.js
 

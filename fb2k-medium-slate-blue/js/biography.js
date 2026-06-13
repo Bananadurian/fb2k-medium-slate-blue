@@ -1,5 +1,6 @@
 ﻿/**
  * @description 艺人资料面板: 封面轮播、风格/生日/地区、外部链接、简介/作品集切换。接入 THEME.TEXT 样式预设。
+ * @deprecated 已由 biography_v2.js 取代，仅保留兼容。计划删除，请勿继续维护此文件。
  */
 
 "use strict";
