@@ -19,8 +19,7 @@
 
 ## 2. Directory Layout
 - `lib/`: shared libs (`utils.js`, `data.js`, `interaction.js`, `theme.js`, `background.js`, `title_bar_shared.js`, `flag.js`, `json_schema_adapter.js`)
-- `old/`, `simple/`: archived / examples
-- `test1.js`, `test2.js`: local test copies
+- `test1.js`: local test copy
 
 ## 3. Library Dependency Chain
 `lib/utils.js`

@@ -38,13 +38,14 @@ profile/
 │   │   │   ├── title_bar_shared.js        # Title bar shared logic
 │   │   │   └── json_schema_adapter.js     # JSON schema mapping template
 │   │   ├── docs/                          # Documentation
-│   │   │   ├── api/                       # API reference
-│   │   │   └── claude/                    # Claude-specific docs
+│   │   │   ├── smp-copilot.md             # SMP coding rules & AI guide
+│   │   │   ├── patterns-recipes.md        # Code patterns & recipes
+│   │   │   ├── project-map.md             # Project structure map
+│   │   │   └── api-reference.md           # API reference (links to JSDoc)
 │   │   ├── *_panel.js                     # Panel scripts
 │   │   ├── *_container*.js                # Container scripts
 │   │   ├── *_buttons.js                   # Button panels
 │   │   ├── *_info.js                      # Info panels
-│   │   └── CLAUDE.md                      # SMP scripting guidelines
 │   └── imgs/                              # Theme assets
 │       ├── Flags/, js_panel3/, Links/, Lucide/, RadioCover/, Screenshots/
 ├── configuration/                         # Plugin configs
@@ -71,62 +72,16 @@ Excluded from indexing (.gitignore + .claudeignore):
 
 **Script Organization:**
 
-1. **Panel scripts** (`*.js`) — Standalone UI panels
-   - `track_info.js`, `album_info.js`, `biography.js` — Info panels
-   - `playback_buttons.js`, `control_buttons.js` — Control panels
-   - `cover_panel.js` — Album art panel
-   - `bg_panel.js` — Background decoration panel
-
-2. **Container scripts** (`*_container*.js`) — Manage sub-panel layout/visibility
-   - `_tab_container.js` — Tab-switching template
-   - `tab_container_detail.js` — Album/Biography/ESlyric tabs
-   - `tab_container_playlist.js` — Playlist tabs
-   - `bg_panel_container_control.js` — Background with playback controls
-   - `bg_panel_container_playlistview.js` — Background with playlist view
-
-3. **Shared libraries** (`lib/*.js`) — Must be included before panel scripts
-   - `theme.js` — THEME object (colors, fonts, layouts, text presets)
-   - `utils.js` — Utilities (DPI scaling, colors, text measurement, metadb resolution)
-   - `background.js` — Background controller system (album art blur/gradient)
-   - `interaction.js` — Mouse interaction helpers (hover, click, tooltip)
-   - `data.js` — Constants (text flags, notify types, metadb modes)
-   - `flag.js` — Country flag rendering
-   - `title_bar_shared.js` — Title bar utilities
+脚本分为 Panel（`*_panel.js`）、Container（`*_container*.js`）、Shared libs（`lib/*.js`）三类。
+完整清单与依赖链 → `docs/project-map.md`
 
 **Key Patterns:**
-
-- **SECTIONS layout** (`album_info.js`, `biography.js`, `track_info.js`)
-  - Single `SECTIONS` array with `{name, padding, rect, content, visible, getContentHeight(), draw(gr)}`
-  - `layoutSections(sections, panelW, panelH)` from `lib/utils.js` handles vertical stacking
-  - Name lookup via `const SEC = {}` map, not magic indices
-
-- **Text style presets** (`THEME.TEXT` in `lib/theme.js`)
-  - Use `const TS = THEME.TEXT` alias
-  - Presets: `body`, `bodyLine`, `title`, `titleLine`, `tab`, `boldCenter`, `label`, `empty`
-  - Helpers: `_drawText(gr, style, text, x, y, w, h)`, `_measureText(text, style, maxW)`
-
-- **Metadb resolution** (`lib/utils.js`)
-  - `resolveMetadbByMode(mode, opts)` for consistent track selection
-  - Modes: `PLAYING_FIRST`, `SELECTION_FIRST`, `PLAYING_ONLY`, `SELECTION_ONLY`
-
-- **Background controller** (`lib/background.js`)
-  - Entry: `createPanelBackgroundLayer(...)`
-  - Sync API: `sync()`, `syncWithRaw(metadb, rawImg)`, `syncNoArt(metadb)`
-  - Supports album art blur/gradient extraction
-
-- **Transparent mode** (`window.IsTransparent`)
-  - Child panels gate background clear: `if (!window.IsTransparent) { gr.FillSolidRect(...); }`
-  - Sync via `NOTIFY.TRANSPARENT_SYNC` from container
+- **SECTIONS 布局** | **THEME.TEXT 样式预设** | **resolveMetadbByMode()** | **Background 控制器** | **Transparent 模式**
+  规则摘要 → `docs/smp-copilot.md` §5 | 完整配方 → `docs/patterns-recipes.md`
 
 **Critical SMP Rules:**
-
-- ❌ Never call `.toArray()` on SMP collections (they're directly iterable)
-- ❌ Never create `gdi.Font` or `gdi.Image` inside `on_paint(gr)`
-- ✅ Pair `GdiBitmap.GetGraphics()` with `ReleaseGraphics()` in try/finally
-- ✅ Use `window.RepaintRect(...)` for localized updates (avoid full `window.Repaint()`)
-- ✅ Keep paint-cycle drawing-only (no state changes, no resource creation)
-
-**Full SMP guidelines:** See `user-theme-fb2k-medium-slate-blue/foo_spider_monkey_panel_script/CLAUDE.md`
+不可协商：❌ `.toArray()`  ❌ `on_paint` 内创建 GDI 对象  ✅ `GetGraphics()`/`ReleaseGraphics()` 配对  ✅ `RepaintRect` 优先  ✅ `on_paint` 纯绘制
+完整规则与 SMP 指南 → `docs/smp-copilot.md`
 
 ---
 
@@ -165,7 +120,7 @@ Excluded from indexing (.gitignore + .claudeignore):
 
 **Shared library changes:**
 - When editing `lib/*.js`, reload all dependent panels
-- Check `CLAUDE.md` in script directory for dependency rules
+- Check `docs/smp-copilot.md` for dependency rules
 
 ### Version Control
 
@@ -213,25 +168,19 @@ Example covers: `user-theme-fb2k-medium-slate-blue/imgs/RadioCover/`
 
 ### For SMP Script Development
 
-- **Always read** `user-theme-fb2k-medium-slate-blue/foo_spider_monkey_panel_script/CLAUDE.md` before modifying scripts
-- Follow existing patterns in `lib/*.js` libraries
-- Maintain Chinese/English mixed comment style
-- Use JSDoc comments for functions
-- Prefer performance (`RepaintRect` over full `Repaint`)
+- **Always read** `docs/smp-copilot.md` before modifying scripts
+- 遵循 `lib/*.js` 已有模式，中英混合注释，JSDoc，`RepaintRect` 优先
 
 ### File Naming Convention
-
-- `panel_*` — Standalone panel
-- `container_*` — Manages sub-panels
-- `*_buttons` — Button controls
-- `*_info` — Information display
-- Pattern: `{type}_{role}[_{variant}]`
+命名规范 `{type}_{role}[_{variant}]` → `docs/smp-copilot.md` §6.1
 
 ### External Documentation
 
 - Official SMP API: https://theqwertiest.github.io/foo_spider_monkey_panel/
 - Project docs: `user-theme-fb2k-medium-slate-blue/foo_spider_monkey_panel_script/docs/`
-  - `claude/api-quick-reference.md` — Quick API reference
-  - `claude/patterns-recipes.md` — Code patterns
-  - `claude/project-map.md` — Project structure
-  - `claude/compat-notes.md` — Compatibility notes
+  - `smp-copilot.md` — SMP 编码规则与模式（AI 编程指南）
+  - `patterns-recipes.md` — 项目专属代码模式与配方
+  - `project-map.md` — 项目结构与依赖图
+  - `api-reference.md` — SMP/JSplitter API 参考（链接到权威 JSDoc）
+- 任务追踪：`TODO.md`（仓库根目录）
+- JSDoc API 源码：`user-components-x64/foo_uie_jsplitter/docs/html/index.html`

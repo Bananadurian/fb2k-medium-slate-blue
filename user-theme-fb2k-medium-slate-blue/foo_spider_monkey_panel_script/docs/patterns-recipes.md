@@ -197,9 +197,11 @@ function on_paint(gr) {
 - Profiling first: use `performance.now()` around suspicious hot paths before changing rendering quality knobs.
 
 ### 6.1 Optional rendering/perf knobs (keep as opt-in)
-- `window.DrawMode = 1` (Direct2D) can be used as an optional acceleration experiment for draw-heavy panels.
-- Lower interpolation quality can be used in image-heavy views when frame rate is more important than sharpness.
-- Simpler text rendering modes can be used in text-dense panels when readability remains acceptable.
+- `window.DrawMode = 1` — Direct2D 硬件加速，将渲染从 CPU 转移到 GPU。绘图密集型面板可实验，非全局默认。
+- `gr.SetInterpolationMode(InterpolationMode.LowQuality)` — 降低封面缩放质量，帧率优先时使用。单次高质量渲染用 `7`（HighQualityBicubic）。
+- `gr.SetTextRenderingHint(TextRenderingHint.AntiAlias)` — 简化抗锯齿替代 ClearType，降低文本密集面板的边缘计算开销。
+- 坐标准则：传给 GdiGraphics 的坐标/宽高必须用 `Math.round()` 或 `Math.floor()` 取整，小数导致 GDI+ 错位。
+- 颜色准则：始终包含显式 alpha：`0xff000000 | (r << 16) | (g << 8) | b`。
 
 ### 6.2 Optional memory pressure control
 - `collectGarbage()` may be used as a targeted/manual relief step after large dataset or artwork churn.
@@ -208,7 +210,7 @@ function on_paint(gr) {
 ### 6.3 Project-specific defaults and caveats
 - This project’s first-line optimization remains partial repaint + cache reuse; quality downgrades are secondary.
 - Do not force global rendering switches in script docs as mandatory defaults; treat them as optional experiments per panel.
-- Keep compatibility guidance aligned with `docs/claude/compat-notes.md` and avoid recommending broad manual GC/dispose patterns as routine steps.
+- Keep compatibility guidance aligned with `smp-copilot.md` (§§2,4) and avoid recommending broad manual GC/dispose patterns as routine steps.
 
 ## 7. Title Bar Shared Controller Pattern
 `title_playlist.js` and `title_library.js` should remain thin wrappers over `createTitleBarController(cfg)`:
