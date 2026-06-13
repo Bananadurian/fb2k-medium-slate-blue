@@ -1,9 +1,4 @@
 ﻿/**
- * @file album_info.js
- * @author XRE
- * @created 2025-12-28
- * @updated 2026-05-18
- * @version 2.1.0
  * @description 专辑信息面板: 封面轮播、版本/来源/AQ标识、艺人、风格、日期、语言、简介/曲目切换。接入 THEME.TEXT 样式预设。
  */
 

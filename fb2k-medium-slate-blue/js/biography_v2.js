@@ -1,13 +1,9 @@
 ﻿/**
- * @file biography_v2.js
- * @author XRE
- * @created 2026-06-12
- * @version 3.0.0
  * @description 艺人资料面板(v2): MBID 驱动 + JSON Schema v3.0 + Cover glob 匹配。
  *              通过 JSON_SCHEMA_MAP 模板实现 schema 版本透明升级。
  */
 
-("use strict");
+"use strict";
 
 window.DrawMode = 1;
 
@@ -572,8 +568,8 @@ function parseArtistMbids(mbidStr) {
  * @returns {{mbid: string, jsonPath: string}|null}
  */
 function tryFindArtistFiles(mbids) {
-  for (var i = 0; i < mbids.length; i++) {
-    var jsonPath = JSON_DIR + mbids[i] + ".json";
+  for (let i = 0; i < mbids.length; i++) {
+    const jsonPath = JSON_DIR + mbids[i] + ".json";
     if (utils.IsFile(jsonPath)) return { mbid: mbids[i], jsonPath: jsonPath };
   }
   return null;
@@ -586,11 +582,11 @@ function tryFindArtistFiles(mbids) {
 function reloadArtistData(metadb) {
   if (!metadb) return;
 
-  var seq = ++reloadSeq;
+  const seq = ++reloadSeq;
   currentMetadb = metadb;
 
-  var mbidStr = MBID_TF.EvalWithMetadb(metadb);
-  var mbids = parseArtistMbids(mbidStr);
+  const mbidStr = MBID_TF.EvalWithMetadb(metadb);
+  const mbids = parseArtistMbids(mbidStr);
 
   if (mbids.length === 0) {
     currentMbid = null;
@@ -600,7 +596,7 @@ function reloadArtistData(metadb) {
     return;
   }
 
-  var fileInfo = tryFindArtistFiles(mbids);
+  const fileInfo = tryFindArtistFiles(mbids);
   if (!fileInfo) {
     currentMbid = null;
     artistData = null;
@@ -609,12 +605,12 @@ function reloadArtistData(metadb) {
     return;
   }
 
-  var mbid = fileInfo.mbid;
+  const mbid = fileInfo.mbid;
 
   // 同 MBID 快速返回，仅重载封面 (逻辑与旧版一致)
   if (currentMbid === mbid) {
     if (panelW > 0) {
-      var coverReloaded = false;
+      let coverReloaded = false;
       if (PANEL_CFG.showCover) {
         carousel.fallbackMetadb = metadb;
         if (!carousel.images || carousel.images.length === 0) {
@@ -623,10 +619,10 @@ function reloadArtistData(metadb) {
           carousel.index = 0;
         }
 
-        var count = carousel.images.length;
-        var index = ((carousel.index % count) + count) % count;
+        const count = carousel.images.length;
+        const index = ((carousel.index % count) + count) % count;
         if (!carousel.images[index]) {
-          var changed = ensureCarouselImageReady(
+          const changed = ensureCarouselImageReady(
             index,
             carousel,
             "same-artist-refresh",
@@ -661,7 +657,7 @@ function reloadArtistData(metadb) {
   currentText = "";
   fullTextH = 0;
 
-  var cacheEntry = getArtistCacheEntry(mbid, fileInfo.jsonPath);
+  const cacheEntry = getArtistCacheEntry(mbid, fileInfo.jsonPath);
   artistData = cacheEntry.json;
   updateCountryFlag();
   if (cacheEntry.jsonError) {
@@ -672,7 +668,7 @@ function reloadArtistData(metadb) {
 
   if (panelW > 0) {
     loadImagesFromCache(cacheEntry.imgPaths, metadb, seq);
-    var pathsSig =
+    const pathsSig =
       cacheEntry.imgPaths && cacheEntry.imgPaths.length > 0
         ? cacheEntry.imgPaths.join("||")
         : "fallback";
@@ -698,31 +694,31 @@ function reloadArtistData(metadb) {
  * @returns {Array<string>} 图片路径数组
  */
 function scanImagePaths(mbid) {
-  var paths = [];
-  var exts = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
-  var MAX_INDEX = 10;
+  const paths = [];
+  const exts = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+  const MAX_INDEX = 10;
   // 后缀模板: "" 匹配 {mbid}{ext}/{mbid}_{index}{ext};
   //           "_X_" 匹配手动添加的封面 {mbid}_X_{index}.{ext}
-  // var SUFFIXES = ["", "_X_"];
-  var SUFFIXES = ["_X_"];
+  // const SUFFIXES = ["", "_X_"];
+  const SUFFIXES = ["_X_"];
 
-  for (var s = 0; s < SUFFIXES.length; s++) {
-    var suffix = SUFFIXES[s];
+  for (let s = 0; s < SUFFIXES.length; s++) {
+    const suffix = SUFFIXES[s];
 
     // 无索引直接匹配: {mbid}{suffix}{ext}
     if (suffix === "") {
-      for (var e = 0; e < exts.length; e++) {
-        var fullPath = ARTIST_COVER_DIR + mbid + exts[e];
+      for (let e = 0; e < exts.length; e++) {
+        const fullPath = ARTIST_COVER_DIR + mbid + exts[e];
         if (utils.IsFile(fullPath)) paths.push(fullPath);
       }
     }
 
     // 索引匹配: {mbid}{suffix}{01..10}{ext}
-    for (var idx = 1; idx <= MAX_INDEX; idx++) {
-      var numStr = (idx < 10 ? "0" : "") + idx;
-      var found = false;
-      for (e = 0; e < exts.length; e++) {
-        fullPath = ARTIST_COVER_DIR + mbid + suffix + numStr + exts[e];
+    for (let idx = 1; idx <= MAX_INDEX; idx++) {
+      const numStr = (idx < 10 ? "0" : "") + idx;
+      let found = false;
+      for (let e = 0; e < exts.length; e++) {
+        const fullPath = ARTIST_COVER_DIR + mbid + suffix + numStr + exts[e];
         if (utils.IsFile(fullPath)) {
           paths.push(fullPath);
           found = true;
@@ -743,15 +739,15 @@ function scanImagePaths(mbid) {
  */
 function getArtistCacheEntry(mbid, jsonPath) {
   // 命中缓存：直接返回 (LRUCache.get 自动刷新到最新位置)
-  var cached = ARTIST_CACHE.get(mbid);
+  const cached = ARTIST_CACHE.get(mbid);
   if (cached !== undefined) return cached;
 
   // 未命中：读取并归一化 JSON
-  var jsonData = null;
-  var jsonErrorData = null;
-  var rawText = utils.ReadTextFile(jsonPath);
+  let jsonData = null;
+  let jsonErrorData = null;
+  const rawText = utils.ReadTextFile(jsonPath);
   try {
-    var rawJson = JSON.parse(rawText);
+    const rawJson = JSON.parse(rawText);
     jsonData = normalizeArtistData(rawJson);
   } catch (e) {
     jsonData = {
@@ -769,8 +765,8 @@ function getArtistCacheEntry(mbid, jsonPath) {
   }
 
   // 扫描封面路径 (MBID 前缀匹配)
-  var paths = scanImagePaths(mbid);
-  var entry = { json: jsonData, imgPaths: paths, jsonError: jsonErrorData };
+  const paths = scanImagePaths(mbid);
+  const entry = { json: jsonData, imgPaths: paths, jsonError: jsonErrorData };
 
   ARTIST_CACHE.set(mbid, entry);
   return entry;
@@ -1131,7 +1127,7 @@ function updateCountryFlag() {
     lastCountryCode = null;
     return;
   }
-  var code = artistData.countryCode || resolveCountryCode(artistData.country);
+  const code = artistData.countryCode || resolveCountryCode(artistData.country);
   if (code === lastCountryCode) return;
   lastCountryCode = code;
   currentCountryFlagImg = code ? loadFlagImage(code) : null;

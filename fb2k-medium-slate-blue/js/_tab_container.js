@@ -1,9 +1,4 @@
 ﻿/**
- * @file _tab_container.js
- * @author XRE
- * @created 2026-05-02
- * @updated 2026-05-18
- * @version 2.1.0
  * @description JSplitter Tab 单选切换控制器（支持图标与文字样式）
  */
 

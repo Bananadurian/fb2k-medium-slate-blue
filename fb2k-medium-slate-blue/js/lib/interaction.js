@@ -1,9 +1,4 @@
 /**
- * @file interaction.js
- * @author XRE
- * @created 2026-04-27
- * @updated 2026-05-18
- * @version 2.1.0
  * @description 共享 UI 交互组件 — Button、光标、滚动条、轮播、选项卡、文本缓冲、页码指示器、Tooltip 工厂、_drawText/_drawIcon 样式绘制
  * @requires lib/utils.js
  */

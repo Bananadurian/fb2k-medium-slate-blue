@@ -1,8 +1,4 @@
 /**
- * @file json_schema_adapter.js
- * @author XRE
- * @created 2026-06-12
- * @version 1.0.0
  * @description JSON Schema 适配器 — 可配置的路径映射模板，支持 schema 版本升级时只改模板即可。
  *              配合 biography_v2.js 使用，将嵌套的 v3.0 JSON 结构归一化为面板内部统一格式。
  */

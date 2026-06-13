@@ -1,9 +1,4 @@
 /**
- * @file cover_panel.js
- * @author XRE
- * @created 2025-12-16
- * @updated 2026-05-18
- * @version 2.1.0
  * @description 封面显示面板: 圆角渲染、背景控制器（主题色/封面提色/封面背景图）、同步封面加载 + LRU 缓存。
  */
 

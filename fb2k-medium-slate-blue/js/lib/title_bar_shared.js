@@ -1,9 +1,4 @@
 /**
- * @file title_bar_shared.js
- * @author XRE
- * @created 2026-05-04
- * @updated 2026-05-18
- * @version 2.1.0
  * @description 标题栏共享控制器: 统一标题渲染、布局、交互与回调透传
  * @requires lib/utils.js
  * @requires lib/interaction.js

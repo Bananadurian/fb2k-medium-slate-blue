@@ -47,7 +47,7 @@ try {
   详细 → `patterns-recipes.md` §4
 
 ## 5. Reuse-first Project Conventions
-优先使用 `lib/` 已有 helper，昂贵操作移出 `on_paint`。
+优先使用 `lib/` 已有 helper，昂贵操作移出 `on_paint`。禁止 `var`，统一 `let`/`const`（ES2019）。
 
 | 模式 | 规则摘要 | 详细配方 |
 |:---|:---|:---|
