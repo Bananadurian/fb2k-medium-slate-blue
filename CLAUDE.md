@@ -10,8 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a **portable foobar2000 profile directory** (`profile/`) that contains:
 - Configuration files (`.cfg`, `.sqlite`, `.db`)
-- Spider Monkey Panel scripts (`user-theme-fb2k-medium-slate-blue/foo_spider_monkey_panel_script/`)
-- Theme assets (icons, flags, screenshots in `user-theme-fb2k-medium-slate-blue/imgs/`)
+- Spider Monkey Panel scripts (`fb2k-medium-slate-blue/js/`)
+- Theme assets (icons, flags, screenshots in `fb2k-medium-slate-blue/imgs/`)
 - Plugin configurations for Columns UI, ESlyric, visualizations, etc.
 
 **Target Environment:**
@@ -26,8 +26,8 @@ This is a **portable foobar2000 profile directory** (`profile/`) that contains:
 
 ```
 profile/
-├── user-theme-fb2k-medium-slate-blue/
-│   ├── foo_spider_monkey_panel_script/    # Core SMP scripts
+├── fb2k-medium-slate-blue/
+│   ├── js/    # Core SMP scripts
 │   │   ├── lib/                           # Shared libraries
 │   │   │   ├── theme.js                   # Colors, fonts, layouts
 │   │   │   ├── utils.js                   # DPI, colors, text measurement
@@ -109,7 +109,7 @@ Excluded from indexing (.gitignore + .claudeignore):
 ### Working with SMP Scripts
 
 **Editing scripts:**
-1. Edit `.js` files in `user-theme-fb2k-medium-slate-blue/foo_spider_monkey_panel_script/`
+1. Edit `.js` files in `fb2k-medium-slate-blue/js/`
 2. In foobar2000: Right-click panel → Configure panel → Edit script or Reload
 3. Changes take effect immediately on reload
 
@@ -148,7 +148,7 @@ Uses `foo_external_tags` plugin to assign covers to radio streams:
 3. Add path pattern: `$if($strstr(%path%,'://'),E:\Music\_Extras\Radio\%title%.*)`
 4. Select "Front cover" source where covers should display
 
-Example covers: `user-theme-fb2k-medium-slate-blue/imgs/RadioCover/`
+Example covers: `fb2k-medium-slate-blue/imgs/RadioCover/`
 
 ---
 
@@ -177,7 +177,7 @@ Example covers: `user-theme-fb2k-medium-slate-blue/imgs/RadioCover/`
 ### External Documentation
 
 - Official SMP API: https://theqwertiest.github.io/foo_spider_monkey_panel/
-- Project docs: `user-theme-fb2k-medium-slate-blue/foo_spider_monkey_panel_script/docs/`
+- Project docs: `fb2k-medium-slate-blue/js/docs/`
   - `smp-copilot.md` — SMP 编码规则与模式（AI 编程指南）
   - `patterns-recipes.md` — 项目专属代码模式与配方
   - `project-map.md` — 项目结构与依赖图

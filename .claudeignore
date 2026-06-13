@@ -9,6 +9,5 @@ config.fb2k-dsp
 config.sqlite
 external-tags.db
 radio.sqlite
-user-theme-fb2k-medium-slate-blue/foo_spider_monkey_panel_script/old/
-user-theme-fb2k-medium-slate-blue/foo_spider_monkey_panel_script/simple/
+
 **/test*.js

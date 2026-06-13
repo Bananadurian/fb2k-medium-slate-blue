@@ -2,7 +2,7 @@
 
 ## 1. 简介
 
-![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-1.png)
+![](/fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-1.png)
 
 **fb2k-medium-slate-blue**（Medium Slate Blue）是一个基于 [**foobar2000-x64_v2.2.x**](https://www.foobar2000.org/download)、[**Columns UI**](https://github.com/reupen/columns_ui) 定制版本。
 
@@ -38,7 +38,7 @@
 
 3. 需要显示封面的地方选择 `Front cover` 即可显示（`Artist` 设置类似）。
 
-> `/user-theme-fb2k-medium-slate-blue/imgs/RadioCover`：示例电台封面。
+> `/fb2k-medium-slate-blue/imgs/RadioCover`：示例电台封面。
 
 ## 4. 字体
 
@@ -55,10 +55,10 @@
 - ESlyric新增多项自定义布局
 - 其它...
 
-![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-1.png)
-![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-2.png)
-![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-3.png)
-![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-4.png)
+![](/fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-1.png)
+![](/fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-2.png)
+![](/fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-3.png)
+![](/fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-4.png)
 
 ### 1.2.1
 
@@ -71,7 +71,7 @@
 - 配色优化。
 - 脚本优化。
 
-![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.2.1.png)
+![](/fb2k-medium-slate-blue/imgs/Screenshots/1.2.1.png)
 
 ### 1.2.0
 
@@ -83,15 +83,15 @@
 
 - 引入Coverflow面板。
 
-![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.2.0.png)
+![](/fb2k-medium-slate-blue/imgs/Screenshots/1.2.0.png)
 
 ### 1.1.0
 
-![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.1.0.png)
+![](/fb2k-medium-slate-blue/imgs/Screenshots/1.1.0.png)
 
 ### 1.0.0
 
-![](/user-theme-fb2k-medium-slate-blue/imgs/Screenshots/1.0.0.png)
+![](/fb2k-medium-slate-blue/imgs/Screenshots/1.0.0.png)
 
 ## 6. 附录
 
