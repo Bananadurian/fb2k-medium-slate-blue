@@ -46,6 +46,18 @@
 
 ## 5. 版本记录
 
+> 版本号遵循 [SemVer](https://semver.org/lang/zh-CN/) (MAJOR.MINOR.PATCH-prerelease)。
+
+### 1.3.0-alpha.1
+
+> 2026-06-13
+
+- 文档体系重构：12 文件 → 4 文件，消除冗余
+- 目录重命名：`user-theme-fb2k-medium-slate-blue` → `fb2k-medium-slate-blue`，`foo_spider_monkey_panel_script` → `js`
+- JS 文件头部清理：仅保留 `@description` + `@requires`
+- 代码规范：`var` → `let`/`const`，沉淀至 `smp-copilot.md`
+- 正式启用 SemVer 版本管理
+
 ### 1.3.0
 
 > 2026-05-18

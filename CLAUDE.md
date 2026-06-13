@@ -161,6 +161,7 @@ Example covers: `fb2k-medium-slate-blue/imgs/RadioCover/`
 - **foo_enhanced_playcount** — Play statistics
 - **foo_vis_*** — Visualization plugins (wispan, milkdrop2)
 - **Sarasa Gothic** font family — UI typography
+- 主题版本：`fb2k-medium-slate-blue/VERSION`
 
 ---
 
