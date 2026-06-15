@@ -10,6 +10,7 @@ include("lib/utils.js");
 include("lib/data.js");
 include("lib/interaction.js");
 include("lib/theme.js");
+include("lib/icons.js");
 
 window.DefineScript("Playback Buttons", {
     author: "XRE",
@@ -26,42 +27,6 @@ let tooltip = _createDefaultTooltip();
 // ============================================================================
 // 2. 资源定义
 // ============================================================================
-
-const images = {
-    stop: _loadImage(IMGS_LUCIDE_DIR + "stop.png"),
-    stop_after: _loadImage(IMGS_LUCIDE_DIR + "stop_after.png"),
-    stop_hover: _loadImage(IMGS_LUCIDE_DIR + "stop_hover.png"),
-
-    pause: _loadImage(IMGS_LUCIDE_DIR + "pause.png"),
-    pause_hover: _loadImage(IMGS_LUCIDE_DIR + "pause_hover.png"),
-
-    play: _loadImage(IMGS_LUCIDE_DIR + "play.png"),
-    play_hover: _loadImage(IMGS_LUCIDE_DIR + "play_hover.png"),
-
-    previous: _loadImage(IMGS_LUCIDE_DIR + "previous.png"),
-    previous_hover: _loadImage(IMGS_LUCIDE_DIR + "previous_hover.png"),
-
-    next: _loadImage(IMGS_LUCIDE_DIR + "next.png"),
-    next_hover: _loadImage(IMGS_LUCIDE_DIR + "next_hover.png"),
-
-    order_default: _loadImage(IMGS_LUCIDE_DIR + "order_other.png"),
-    order_default_hover: _loadImage(IMGS_LUCIDE_DIR + "order_other_hover.png"),
-    order_repeat: _loadImage(IMGS_LUCIDE_DIR + "order_repeat_playlist.png"),
-    order_repeat_hover: _loadImage(IMGS_LUCIDE_DIR + "order_repeat_playlist_hover.png"),
-    order_track: _loadImage(IMGS_LUCIDE_DIR + "order_repeat_track.png"),
-    order_track_hover: _loadImage(IMGS_LUCIDE_DIR + "order_repeat_track_hover.png"),
-    order_shuffle: _loadImage(IMGS_LUCIDE_DIR + "order_shuffle_tracks.png"),
-    order_shuffle_hover: _loadImage(IMGS_LUCIDE_DIR + "order_shuffle_tracks_hover.png"),
-
-    replay: _loadImage(IMGS_LUCIDE_DIR + "rotate-ccw.png"),
-    replay_hover: _loadImage(IMGS_LUCIDE_DIR + "rotate-ccw_hover.png"),
-    rewind: _loadImage(IMGS_LUCIDE_DIR + "rewind.png"),
-    rewind_hover: _loadImage(IMGS_LUCIDE_DIR + "rewind_hover.png"),
-    forward: _loadImage(IMGS_LUCIDE_DIR + "fast-forward.png"),
-    forward_hover: _loadImage(IMGS_LUCIDE_DIR + "fast-forward_hover.png"),
-    random: _loadImage(IMGS_LUCIDE_DIR + "dices.png"),
-    random_hover: _loadImage(IMGS_LUCIDE_DIR + "dices_hover.png"),
-};
 
 const BTN_LAYOUT = {
     itemGap: _scale(10),
@@ -94,20 +59,20 @@ let lastTransparentNotifyEpoch = 0;
 let lastTransparentNotifyTs = 0;
 
 const ORDER_CONFIG = {
-    0: { img: images.order_default, hover: images.order_default_hover, tip: "顺序播放" },
-    1: { img: images.order_repeat,  hover: images.order_repeat_hover,  tip: "列表循环" },
-    2: { img: images.order_track,   hover: images.order_track_hover,   tip: "单曲循环" },
-    3: { img: images.order_default, hover: images.order_default_hover, tip: "随机播放 (Random)" },
-    4: { img: images.order_shuffle, hover: images.order_shuffle_hover, tip: "随机乱序 (Shuffle)" },
-    default: { img: images.order_default, hover: images.order_default_hover, tip: "其他模式" }
+    0: { img: iconMgr.get('player', 'order_default'), hover: iconMgr.get('player', 'order_default_hover'), tip: "顺序播放" },
+    1: { img: iconMgr.get('player', 'order_repeat'),  hover: iconMgr.get('player', 'order_repeat_hover'),  tip: "列表循环" },
+    2: { img: iconMgr.get('player', 'order_track'),   hover: iconMgr.get('player', 'order_track_hover'),   tip: "单曲循环" },
+    3: { img: iconMgr.get('player', 'order_default'), hover: iconMgr.get('player', 'order_default_hover'), tip: "随机播放 (Random)" },
+    4: { img: iconMgr.get('player', 'order_shuffle'), hover: iconMgr.get('player', 'order_shuffle_hover'), tip: "随机乱序 (Shuffle)" },
+    default: { img: iconMgr.get('player', 'order_default'), hover: iconMgr.get('player', 'order_default_hover'), tip: "其他模式" }
 };
 
 /** 从 BTN_LAYOUT 配置创建所有按钮并同步初始状态 */
 function createButtons() {
     BTN_LAYOUT.items.forEach(it => {
         buttons[it.key] = new Button({
-            imgNormal: images[it.img],
-            imgHover:  images[it.img + "_hover"],
+            imgNormal: iconMgr.get('player', it.img),
+            imgHover:  iconMgr.get('player', it.img + '_hover'),
             func:      it.func,
             tipText:   it.tipText,
         });
@@ -118,18 +83,18 @@ function createButtons() {
 /** 同步播放/暂停按钮图标与提示文字 */
 function syncPlayPauseState() {
     if (fb.IsPlaying && !fb.IsPaused) {
-        buttons.play.updateState(images.pause, images.pause_hover, "暂停");
+        buttons.play.updateState(iconMgr.get('player', 'pause'), iconMgr.get('player', 'pause_hover'), "暂停");
     } else {
-        buttons.play.updateState(images.play, images.play_hover, "播放");
+        buttons.play.updateState(iconMgr.get('player', 'play'), iconMgr.get('player', 'play_hover'), "播放");
     }
 }
 
 /** 同步停止按钮图标（区分普通停止 / 稍后停止） */
 function syncStopState() {
     if (fb.StopAfterCurrent) {
-        buttons.stop.updateState(images.stop_after, images.stop_hover, "立即停止 (右键: 取消稍后停止)", () => fb.Stop());
+        buttons.stop.updateState(iconMgr.get('player', 'stop_after'), iconMgr.get('player', 'stop_hover'), "立即停止 (右键: 取消稍后停止)", () => fb.Stop());
     } else {
-        buttons.stop.updateState(images.stop, images.stop_hover, "停止播放 (右键: 稍后停止)", () => fb.Stop());
+        buttons.stop.updateState(iconMgr.get('player', 'stop'), iconMgr.get('player', 'stop_hover'), "停止播放 (右键: 稍后停止)", () => fb.Stop());
     }
 }
 
@@ -413,5 +378,4 @@ function on_notify_data(name, info) {
 
 function on_script_unload() {
     clearTransparentTrackRepaintTimers();
-    _disposeImageDict(images);
 }

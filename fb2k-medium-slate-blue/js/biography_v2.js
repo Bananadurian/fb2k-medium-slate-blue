@@ -13,6 +13,7 @@ include("lib/interaction.js");
 include("lib/theme.js");
 include("lib/flag.js");
 include("lib/json_schema_adapter.js");
+include("lib/icons.js");
 
 window.DefineScript("Biography", {
   author: "XRE",
@@ -55,41 +56,6 @@ const IMG_CYCLE_MS = THEME.LAYOUT.IMG_CYCLE_MS;
 
 const COL = THEME.COL;
 const TS = THEME.TEXT;
-
-// [图标资源]
-const LINK_ICONS = {
-  default: _loadImage(IMGS_LINKS_DIR + "default.png"),
-  Aliases: _loadImage(IMGS_LINKS_DIR + "user-round.png"),
-  Genres: _loadImage(IMGS_LINKS_DIR + "circle-small.png"),
-  Country: _loadImage(IMGS_LINKS_DIR + "locate.png"),
-  Born: _loadImage(IMGS_LINKS_DIR + "calendar.png"),
-  Links: _loadImage(IMGS_LINKS_DIR + "milestone.png"),
-  official_website: _loadImage(IMGS_LINKS_DIR + "house.png"),
-  soundcloud: _loadImage(IMGS_LINKS_DIR + "soundcloud.png"),
-  bandcamp: _loadImage(IMGS_LINKS_DIR + "bandcamp.png"),
-  instagram: _loadImage(IMGS_LINKS_DIR + "Instagram.png"),
-  x: _loadImage(IMGS_LINKS_DIR + "X.png"),
-  tiktok: _loadImage(IMGS_LINKS_DIR + "TikTok.png"),
-  youtube: _loadImage(IMGS_LINKS_DIR + "YouTube.png"),
-  discogs: _loadImage(IMGS_LINKS_DIR + "Discogs.png"),
-  allmusic: _loadImage(IMGS_LINKS_DIR + "ALLMUSIC.png"),
-  musicbrainz: _loadImage(IMGS_LINKS_DIR + "Musicbrainz.png"),
-  rate_your_music: _loadImage(IMGS_LINKS_DIR + "rateyourmusic.png"),
-  album_of_the_year: _loadImage(IMGS_LINKS_DIR + "aoty.png"),
-  pitchfork: _loadImage(IMGS_LINKS_DIR + "pitchfork.png"),
-  metacritic: _loadImage(IMGS_LINKS_DIR + "metacritic.png"),
-  fandom: _loadImage(IMGS_LINKS_DIR + "fandom.png"),
-  wikipedia: _loadImage(IMGS_LINKS_DIR + "wikipedia.png"),
-  last_fm: _loadImage(IMGS_LINKS_DIR + "default.png"),
-  wikidata: _loadImage(IMGS_LINKS_DIR + "default.png"),
-  spotify: _loadImage(IMGS_LINKS_DIR + "default.png"),
-  apple_music: _loadImage(IMGS_LINKS_DIR + "AppleMusic.png"),
-  amazon_music: _loadImage(IMGS_LINKS_DIR + "AmazonMusic.png"),
-  deezer: _loadImage(IMGS_LINKS_DIR + "Deezer.png"),
-  genius: _loadImage(IMGS_LINKS_DIR + "Genius.png"),
-  qobuz: _loadImage(IMGS_LINKS_DIR + "Qobuz.png"),
-  tidal: _loadImage(IMGS_LINKS_DIR + "Tidal.png"),
-};
 
 // [UI组件] TitleFormat 与 Tooltip
 const MBID_TF = fb.TitleFormat(
@@ -249,7 +215,7 @@ const SECTIONS = [
   {
     name: "aliases",
     padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-    icon: LINK_ICONS.Aliases,
+    icon: iconMgr.get('brands', 'Aliases'),
     iconGap: _scale(5),
     rect: { x: 0, y: 0, w: 0, h: 0 },
     content: { x: 0, y: 0, w: 0, h: 0 },
@@ -270,7 +236,7 @@ const SECTIONS = [
   {
     name: "genres",
     padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-    icon: LINK_ICONS.Genres,
+    icon: iconMgr.get('brands', 'Genres'),
     iconGap: _scale(5),
     rect: { x: 0, y: 0, w: 0, h: 0 },
     content: { x: 0, y: 0, w: 0, h: 0 },
@@ -292,9 +258,9 @@ const SECTIONS = [
     name: "born",
     // 双列: [Born-icon+born] [Country-icon+country]
     padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-    icon: LINK_ICONS.Born,
+    icon: iconMgr.get('brands', 'Born'),
     iconGap: _scale(5),
-    icon2: LINK_ICONS.Country,
+    icon2: iconMgr.get('brands', 'Country'),
     colGap: _scale(100),
     rect: { x: 0, y: 0, w: 0, h: 0 },
     content: { x: 0, y: 0, w: 0, h: 0 },
@@ -309,7 +275,7 @@ const SECTIONS = [
   {
     name: "links",
     padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-    icon: LINK_ICONS.Links,
+    icon: iconMgr.get('brands', 'Links'),
     iconGap: _scale(5),
     rect: { x: 0, y: 0, w: 0, h: 0 },
     content: { x: 0, y: 0, w: 0, h: 0 },
@@ -1141,7 +1107,7 @@ function updateCountryFlag() {
   const code = artistData.countryCode || resolveCountryCode(artistData.country);
   if (code === lastCountryCode) return;
   lastCountryCode = code;
-  currentCountryFlagImg = code ? loadFlagImage(code, "4x3") : null;
+  currentCountryFlagImg = code ? loadFlagImage(code) : null;
 }
 
 /**
@@ -1166,7 +1132,7 @@ function createLinkButtons() {
         y: 0, // 占位，updateLayoutMetrics 中计算实际值
         w: btnSize,
         h: btnSize,
-        img: LINK_ICONS[key] || LINK_ICONS["default"],
+        img: iconMgr.get('brands', key),
         isHover: false,
         tooltip: key,
       });
@@ -1377,7 +1343,6 @@ function on_script_unload() {
     });
   }
   scrollText.dispose();
-  _disposeImageDict(LINK_ICONS);
   _measureDispose();
   ARTIST_CACHE.clear();
 }

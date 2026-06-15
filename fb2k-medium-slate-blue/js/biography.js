@@ -12,7 +12,7 @@ include("lib/data.js");
 include("lib/interaction.js");
 include("lib/theme.js");
 include("lib/flag.js");
-
+include("lib/icons.js");
 
 window.DefineScript("Biography", {
     author: "XRE",
@@ -47,32 +47,6 @@ const COVER_IDENTIFIER = "_Cover_";    // 封面文件名特征匹配符
 const COL = THEME.COL;
 const TS = THEME.TEXT;
 
-
-// [图标资源]
-const LINK_ICONS = {
-    "Aliases":       _loadImage(IMGS_LINKS_DIR + "user-round.png"),
-    "Genres":       _loadImage(IMGS_LINKS_DIR + "circle-small.png"),
-    "Country":      _loadImage(IMGS_LINKS_DIR + "locate.png"),
-    "Born":         _loadImage(IMGS_LINKS_DIR + "calendar.png"),
-    "Links":        _loadImage(IMGS_LINKS_DIR + "milestone.png"),
-    "default":      _loadImage(IMGS_LINKS_DIR + "default.png"),
-    "official":     _loadImage(IMGS_LINKS_DIR + "house.png"),
-    "soundcloud":   _loadImage(IMGS_LINKS_DIR + "soundcloud.png"),
-    "bandcamp":     _loadImage(IMGS_LINKS_DIR + "bandcamp.png"),
-    "instagram":    _loadImage(IMGS_LINKS_DIR + "Instagram.png"),
-    "x":            _loadImage(IMGS_LINKS_DIR + "X.png"),
-    "tiktok":       _loadImage(IMGS_LINKS_DIR + "TikTok.png"),
-    "youtube":      _loadImage(IMGS_LINKS_DIR + "YouTube.png"),
-    "discogs":      _loadImage(IMGS_LINKS_DIR + "Discogs.png"),
-    "allmusic":     _loadImage(IMGS_LINKS_DIR + "ALLMUSIC.png"),
-    "musicbrainz":  _loadImage(IMGS_LINKS_DIR + "Musicbrainz.png"),
-    "rateyourmusic":_loadImage(IMGS_LINKS_DIR + "rateyourmusic.png"),
-    "aoty":         _loadImage(IMGS_LINKS_DIR + "aoty.png"),
-    "pitchfork":    _loadImage(IMGS_LINKS_DIR + "pitchfork.png"),
-    "metacritic":   _loadImage(IMGS_LINKS_DIR + "metacritic.png"),
-    "fandom":       _loadImage(IMGS_LINKS_DIR + "fandom.png"),
-    "wikipedia":    _loadImage(IMGS_LINKS_DIR + "wikipedia.png")  
-};
 
 // [UI组件] TitleFormat 与 Tooltip
 // $meta(artist,0) 用于避免多值艺人字段导致的文件路径匹配失败
@@ -177,7 +151,7 @@ const SECTIONS = [
     {
         name: "aliases",
         padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-        icon:    LINK_ICONS.Aliases,
+        icon:    iconMgr.get('brands', 'Aliases'),
         iconGap: _scale(5),
         rect:    { x: 0, y: 0, w: 0, h: 0 },
         content: { x: 0, y: 0, w: 0, h: 0 },
@@ -191,7 +165,7 @@ const SECTIONS = [
     {
         name: "genres",
         padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-        icon:    LINK_ICONS.Genres,
+        icon:    iconMgr.get('brands', 'Genres'),
         iconGap: _scale(5),
         rect:    { x: 0, y: 0, w: 0, h: 0 },
         content: { x: 0, y: 0, w: 0, h: 0 },
@@ -206,9 +180,9 @@ const SECTIONS = [
         name: "born",
         // 双列: [Born-icon+born] [Country-icon+country]
         padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-        icon:    LINK_ICONS.Born,
+        icon:    iconMgr.get('brands', 'Born'),
         iconGap: _scale(5),
-        icon2:   LINK_ICONS.Country,
+        icon2:   iconMgr.get('brands', 'Country'),
         colGap:  _scale(100),
         rect:    { x: 0, y: 0, w: 0, h: 0 },
         content: { x: 0, y: 0, w: 0, h: 0 },
@@ -219,7 +193,7 @@ const SECTIONS = [
     {
         name: "links",
         padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-        icon:    LINK_ICONS.Links,
+        icon:    iconMgr.get('brands', 'Links'),
         iconGap: _scale(5),
         rect:    { x: 0, y: 0, w: 0, h: 0 },
         content: { x: 0, y: 0, w: 0, h: 0 },
@@ -825,7 +799,7 @@ function updateCountryFlag() {
     const code = resolveCountryCode(artistData.country);
     if (code === lastCountryCode) return;
     lastCountryCode = code;
-    currentCountryFlagImg = code ? loadFlagImage(code, '4x3') : null;
+    currentCountryFlagImg = code ? loadFlagImage(code) : null;
 }
 
 /**
@@ -850,7 +824,7 @@ function createLinkButtons() {
                 y: 0,  // 占位，updateLayoutMetrics 中计算实际值
                 w: btnSize,
                 h: btnSize,
-                img: LINK_ICONS[key] || LINK_ICONS["default"], 
+                img: iconMgr.get('brands', key),
                 isHover: false,
                 tooltip: key,
             });
@@ -1029,7 +1003,6 @@ function on_script_unload() {
         });
     }
     scrollText.dispose();
-    _disposeImageDict(LINK_ICONS);
     _measureDispose();
     ARTIST_CACHE.clear();
 }

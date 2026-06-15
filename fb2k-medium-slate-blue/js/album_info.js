@@ -11,6 +11,7 @@ include("lib/data.js");
 include("lib/interaction.js");
 include("lib/theme.js");
 include("lib/flag.js");
+include("lib/icons.js");
 
 
 window.DefineScript("Album Info", {
@@ -49,14 +50,6 @@ const COL = THEME.COL;
 const TS = THEME.TEXT;
 
 
-// 图标资源
-const LINK_ICONS = {
-    "Artist":   _loadImage(IMGS_LINKS_DIR + "users-round.png"),
-    "Genres":   _loadImage(IMGS_LINKS_DIR + "circle-small.png"),
-    "Date":     _loadImage(IMGS_LINKS_DIR + "calendar.png"),
-    "Language": _loadImage(IMGS_LINKS_DIR + "languages.png"),
-    "Edition":  _loadImage(IMGS_LINKS_DIR + "copyright.png"),
-};
 // 语言映射表见 lib/flag.js LANGUAGE_MAP
 
 // =========================================================================
@@ -67,8 +60,6 @@ const LINK_ICONS = {
 let currentAlbumKey = null;       // 当前显示的专辑 Key (去重用)
 let albumData = null;               // 当前解析好的专辑数据
 const albumCache = new LRUCache(THEME.CFG.CACHE_SIZE);
-const sourceIconCache = new SourceIconCache(IMGS_LINKS_DIR); // 来源图标缓存
-
 // 封面与轮播
 const carousel = {
     images: [],
@@ -102,7 +93,7 @@ let lastLanguageCode = null;             // 缓存 code，不变则跳过 loadFl
 const elements = {
     descBtn:      { displayText: "Description", x: 0, y: 0, w: 0, h: 0, isHover: false, tooltip: ""  },
     tracklistBtn: { displayText: "Tracklist", x: 0, y: 0, w: 0, h: 0, isHover: false, tooltip: ""  },
-    // 来源图标 (布局 + 悬停状态)，img 由 SourceIconCache 管理
+    // 来源图标 (布局 + 悬停状态)，img 由 IconManager 管理
     sourceIcon:   { x: 0, y: 0, w: THEME.CFG.SOURCE_ICON_SIZE, h: THEME.CFG.SOURCE_ICON_SIZE, img: null, isHover: false, tooltip: "" },
     // 音质标识 (布局 + 悬停状态)，w/h 动态测量
     badgeElement: { x: 0, y: 0, w: 0,
@@ -168,7 +159,7 @@ const SECTIONS = [
     {
         name: "badge",
         padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-        icon:    LINK_ICONS.Edition,
+        icon:    iconMgr.get('brands', 'Edition'),
         iconGap: _scale(5),
         itemGap: _scale(2),
         rect:    { x: 0, y: 0, w: 0, h: 0 },
@@ -180,7 +171,7 @@ const SECTIONS = [
     {
         name: "artist",
         padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-        icon:    LINK_ICONS.Artist,
+        icon:    iconMgr.get('brands', 'Artist'),
         iconGap: _scale(5),
         rect:    { x: 0, y: 0, w: 0, h: 0 },
         content: { x: 0, y: 0, w: 0, h: 0 },
@@ -194,7 +185,7 @@ const SECTIONS = [
     {
         name: "genres",
         padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-        icon:    LINK_ICONS.Genres,
+        icon:    iconMgr.get('brands', 'Genres'),
         iconGap: _scale(5),
         rect:    { x: 0, y: 0, w: 0, h: 0 },
         content: { x: 0, y: 0, w: 0, h: 0 },
@@ -208,9 +199,9 @@ const SECTIONS = [
     {
         name: "dateLang",
         padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-        icon:    LINK_ICONS.Date,
+        icon:    iconMgr.get('brands', 'Date'),
         iconGap: _scale(5),
-        icon2:   LINK_ICONS.Language,
+        icon2:   iconMgr.get('brands', 'Language'),
         colGap:  _scale(100),
         rect:    { x: 0, y: 0, w: 0, h: 0 },
         content: { x: 0, y: 0, w: 0, h: 0 },
@@ -815,17 +806,11 @@ function manageCycleTimer() {
 }
 
 /**
- * 来源图标更新: 根据来源文本查 SourceIconCache → 写入 elements.sourceIcon
+ * 来源图标更新: 通过 IconManager 获取品牌图标 → 写入 elements.sourceIcon
  * @param {string} sourceText - 已转为大写的来源文本
  */
 function updateSourceIcon(sourceText) {
-    const filename = _resolveSourceIconFilename(sourceText);
-
-    let img = sourceIconCache.get(filename);
-    if (!img && filename !== DEFAULT_SOURCE_ICON_FILENAME) {
-        img = sourceIconCache.get(DEFAULT_SOURCE_ICON_FILENAME);
-    }
-    elements.sourceIcon.img = img;
+    elements.sourceIcon.img = iconMgr.get('brands', sourceText);
     elements.sourceIcon.tooltip = sourceText;
 }
 
@@ -836,7 +821,7 @@ function updateLanguageFlag() {
     const code = albumData ? albumData.languageFlagCode : null;
     if (code === lastLanguageCode) return;
     lastLanguageCode = code;
-    currentLanguageFlagImg = code ? loadFlagImage(code, '4x3') : null;
+    currentLanguageFlagImg = code ? loadFlagImage(code) : null;
 }
 
 
@@ -995,10 +980,8 @@ function on_script_unload() {
         });
     }
     scrollText.dispose();
-    _disposeImageDict(LINK_ICONS);
     _measureDispose();
     albumCache.clear();
-    sourceIconCache.clear();
 }
 
 // =========================================================================

@@ -10,6 +10,7 @@ include("lib/utils.js");
 include("lib/data.js");
 include("lib/interaction.js");
 include("lib/theme.js");
+include("lib/icons.js");
 
 window.DefineScript("Control Buttons", {
     author: "XRE",
@@ -26,32 +27,6 @@ let tooltip = _createDefaultTooltip();
 // ============================================================================
 // 2. 资源定义
 // ============================================================================
-
-const images = {
-    recent: _loadImage(IMGS_LUCIDE_DIR + "history.png"),
-    recent_hover: _loadImage(IMGS_LUCIDE_DIR + "history_hover.png"),
-    favorite: _loadImage(IMGS_LUCIDE_DIR + "flame.png"),
-    favorite_hover: _loadImage(IMGS_LUCIDE_DIR + "flame_hover.png"),
-    rg_off: _loadImage(IMGS_LUCIDE_DIR + "replaygain_off.png"),
-    rg_track: _loadImage(IMGS_LUCIDE_DIR + "replaygain_track_on.png"),
-    rg_album: _loadImage(IMGS_LUCIDE_DIR + "replaygain_other_on.png"),
-    rg_hover: _loadImage(IMGS_LUCIDE_DIR + "replaygain_hover.png"),
-    vol: _loadImage(IMGS_LUCIDE_DIR + "volume.png"),
-    vol_hover: _loadImage(IMGS_LUCIDE_DIR + "volume_hover.png"),
-    mute: _loadImage(IMGS_LUCIDE_DIR + "volume_mute.png"),
-    mute_hover: _loadImage(IMGS_LUCIDE_DIR + "volume_mute_hover.png"),
-    asio: _loadImage(IMGS_LUCIDE_DIR + "asio.png"),
-    asio_hover: _loadImage(IMGS_LUCIDE_DIR + "asio_hover.png"),
-    wasapi: _loadImage(IMGS_LUCIDE_DIR + "wasapi.png"),
-    wasapi_share: _loadImage(IMGS_LUCIDE_DIR + "wasapi_share.png"),
-    wasapi_hover: _loadImage(IMGS_LUCIDE_DIR + "wasapi_hover.png"),
-    search: _loadImage(IMGS_LUCIDE_DIR + "search.png"),
-    search_hover: _loadImage(IMGS_LUCIDE_DIR + "search_hover.png"),
-    queue: _loadImage(IMGS_LUCIDE_DIR + "queue.png"),
-    queue_hover: _loadImage(IMGS_LUCIDE_DIR + "queue_hover.png"),
-    menu: _loadImage(IMGS_LUCIDE_DIR + "menu.png"),
-    menu_hover: _loadImage(IMGS_LUCIDE_DIR + "menu_hover.png"),
-};
 
 const BTN_LAYOUT = {
     iconSize: _scale(15),
@@ -336,17 +311,17 @@ function showSearchMenu(x, y) {
 
 // 数组索引 = fb.ReplaygainMode 值: 0=None, 1=Track, 2=Album, 3=Smart
 const replayGainConfigs = [
-    { img: images.rg_off, text: "开启音轨增益 (当前:无)" },    
-    { img: images.rg_track, text: "关闭音轨增益 (当前:音轨)" }, 
-    { img: images.rg_album, text: "关闭专辑增益 (当前:专辑)" }, 
-    { img: images.rg_album, text: "关闭增益 (当前:智能)" }      
+    { img: iconMgr.get('ui', 'rg_off'), text: "开启音轨增益 (当前:无)" },    
+    { img: iconMgr.get('ui', 'rg_track'), text: "关闭音轨增益 (当前:音轨)" }, 
+    { img: iconMgr.get('ui', 'rg_album'), text: "关闭专辑增益 (当前:专辑)" }, 
+    { img: iconMgr.get('ui', 'rg_album'), text: "关闭增益 (当前:智能)" }      
 ];
 
 /** 根据 ReplayGain 模式同步按钮图标与提示文字 */
 function syncRgState() {
     const mode = fb.ReplaygainMode; 
     const cfg = replayGainConfigs[mode] || replayGainConfigs[0];
-    if (buttons.replaygain) buttons.replaygain.updateState(cfg.img, images.rg_hover, cfg.text);
+    if (buttons.replaygain) buttons.replaygain.updateState(cfg.img, iconMgr.get('ui', 'rg_hover'), cfg.text);
 }
 
 /**
@@ -356,24 +331,24 @@ function syncDeviceState() {
     try { deviceArr = JSON.parse(fb.GetOutputDevices()); } catch (e) { console.log("Device list error: " + e); return; }
     const current = deviceArr.find(d => d.active)?.name || "";
     
-    let img = images.wasapi_share;
-    let imgHover = images.wasapi_hover;
+    let img = iconMgr.get('ui', 'wasapi_share');
+    let imgHover = iconMgr.get('ui', 'wasapi_hover');
     let tip = "切换设备";
     let cmd = "";
 
     if (current.includes("ASIO")) {
-        img = images.asio;
-        imgHover = images.asio_hover;
+        img = iconMgr.get('ui', 'asio');
+        imgHover = iconMgr.get('ui', 'asio')_hover;
         tip = "当前: ASIO (点击切换 WASAPI shared)";
         cmd = "Playback/Device/WASAPI (shared) : Default Sound Device"; 
     } else if(current.includes("exclusive")) {
-        img = images.wasapi;
-        imgHover = images.wasapi_hover;
+        img = iconMgr.get('ui', 'wasapi')
+        imgHover = iconMgr.get('ui', 'wasapi_hover');
         tip = "当前: WASAPI (点击切换 WASAPI shared)";
         cmd = "Playback/Device/WASAPI (shared) : Default Sound Device"; 
     } else {
-        img = images.wasapi_share; 
-        imgHover = images.wasapi_hover;
+        img = iconMgr.get('ui', 'wasapi_share'); 
+        imgHover = iconMgr.get('ui', 'wasapi_hover');
         tip = "点击切换 ASIO";
         cmd = "Playback/Device/ASIO : aune USB Audio Device"; 
     }
@@ -389,8 +364,8 @@ function syncDeviceState() {
 /** 根据静音状态同步音量按钮图标与提示文字 */
 function syncVolumeState() {
     const isMuted = (fb.Volume === -100);
-    const img = isMuted ? images.mute : images.vol;
-    const hover = isMuted ? images.mute_hover : images.vol_hover;
+    const img = isMuted ? iconMgr.get('ui', 'mute'): iconMgr.get('ui', 'vol')
+    const hover = isMuted ? iconMgr.get('ui', 'mute_hover') : iconMgr.get('ui', 'vol_hover');
     const text = isMuted ? "取消静音" : "静音";
     
     if (buttons.volumeBtn) buttons.volumeBtn.updateState(img, hover, text);
@@ -404,8 +379,8 @@ function createButtons() {
     BTN_LAYOUT.items.forEach(it => {
         if (it.type === "volume") return;
         buttons[it.key] = new Button({
-            imgNormal:    it.img ? images[it.img] : null,
-            imgHover:     it.img ? images[it.img + "_hover"] : null,
+            imgNormal:    it.img ? iconMgr.get('ui', it.img) : null,
+            imgHover:     it.img ? iconMgr.get('ui', it.img + '_hover') : null,
             func:         it.func || null,
             fnRightClick: it.fnRightClick || null,
             tipText:      it.tipText || "",
@@ -665,5 +640,4 @@ function on_notify_data(name, info) {
 
 function on_script_unload() {
     clearTransparentTrackRepaintTimers();
-    _disposeImageDict(images);
 }

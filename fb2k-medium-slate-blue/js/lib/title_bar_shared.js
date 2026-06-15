@@ -38,11 +38,13 @@ function createTitleBarController(cfg) {
     const COL = THEME.COL;
     const tooltip = _createDefaultTooltip();
 
+    const imgKey = cfg.icon.replace(/\.\w+$/, '');
+    const btnKey = cfg.buttonIconFilename.replace(/\.\w+$/, '');
+    const btnHoverKey = cfg.buttonHoverIconFilename.replace(/\.\w+$/, '');
     const images = {
-        icon: _loadImage(IMGS_LUCIDE_DIR + cfg.icon),
-        // chevron: _loadImage(IMGS_LUCIDE_DIR + "chevron-down.png"),
-        button: _loadImage(IMGS_LUCIDE_DIR + cfg.buttonIconFilename),
-        button_hover: _loadImage(IMGS_LUCIDE_DIR + cfg.buttonHoverIconFilename),
+        icon: iconMgr.get('ui', imgKey),
+        button: iconMgr.get('ui', btnKey),
+        button_hover: iconMgr.get('ui', btnHoverKey),
     };
 
     const layout = {
@@ -184,7 +186,6 @@ function createTitleBarController(cfg) {
 
     function on_script_unload() {
         _measureDispose();
-        _disposeImageDict(images);
     }
 
     function on_mouse_move(x, y) {

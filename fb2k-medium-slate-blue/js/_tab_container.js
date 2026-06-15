@@ -10,6 +10,7 @@ include("lib/data.js");
 include("lib/theme.js");
 include("lib/interaction.js");
 include("lib/background.js");
+include("lib/icons.js");
 
 window.DefineScript("_tab_container", {
     author: "XRE",
@@ -148,9 +149,9 @@ const TAB_CONFIGS = [
     {
         kind: TAB_KIND_TEXT,
         index: 2,
-        imgNormal: _loadImage(IMGS_LUCIDE_DIR + "disc-3.png"),
-        imgHover: _loadImage(IMGS_LUCIDE_DIR + "disc-3_hover.png"),
-        imgActivate: _loadImage(IMGS_LUCIDE_DIR + "disc-3_activate.png"),        
+        imgNormal: iconMgr.get('ui', 'disc-3'),
+        imgHover: iconMgr.get('ui', 'disc-3_hover'),
+        imgActivate: iconMgr.get('ui', 'disc-3_activate'),
         caption: "ESlyric",
         label: "ESlyric",
         tipText: "ESlyric",

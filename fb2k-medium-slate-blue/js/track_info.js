@@ -8,6 +8,7 @@ include("lib/utils.js");
 include("lib/data.js");
 include("lib/interaction.js");
 include("lib/theme.js");
+include("lib/icons.js");
 
 window.DefineScript("Track Info", {
   author: "XRE",
@@ -22,15 +23,6 @@ window.DefineScript("Track Info", {
 const COL = THEME.COL;
 const TS = THEME.TEXT;
 
-
-// --- 路径与图片资源 (Paths & Images) ---
-const STAR_ICONS = {
-  StarOff: _loadImage(IMGS_LUCIDE_DIR + "star1.png"),
-  StarOn: _loadImage(IMGS_LUCIDE_DIR + "star.png"),
-};
-
-// 来源图标缓存 (使用共享库 SourceIconCache)
-const sourceIconCache = new SourceIconCache(IMGS_LINKS_DIR);
 
 // --- 布局参数 (Layout Constants) ---
 const PAD_X = _scale(4);
@@ -233,7 +225,7 @@ class StarElement {
     const targetRating = hoverRating > 0 ? hoverRating : currentRating;
     const isStarOn = this.value <= targetRating;
 
-    const icon = isStarOn ? STAR_ICONS.StarOn : STAR_ICONS.StarOff;
+    const icon = isStarOn ? iconMgr.get('ui', 'star_on') : iconMgr.get('ui', 'star_off');
     if (icon) {
       gr.DrawImage(
         icon,
@@ -319,20 +311,14 @@ function resolveBadgeForTrack(metadb) {
 }
 
 /**
- * 更新来源图标 (使用共享库 SourceIconCache)
+ * 更新来源图标 (使用 IconManager)
  */
 function updateSourceIcon(metadb) {
   const sourceText = albumSourceTf
     .EvalWithMetadb(metadb)
     .trim()
     .toUpperCase();
-  const filename = _resolveSourceIconFilename(sourceText);
-
-  let img = sourceIconCache.get(filename);
-  if (!img && filename !== DEFAULT_SOURCE_ICON_FILENAME) {
-    img = sourceIconCache.get(DEFAULT_SOURCE_ICON_FILENAME);
-  }
-  currentSourceIcon.img = img;
+  currentSourceIcon.img = iconMgr.get('brands', sourceText);
   currentSourceIcon.tooltip = sourceText;
 }
 
@@ -766,8 +752,6 @@ function on_font_changed() {
 function on_script_unload() {
   clearTransparentTrackRepaintTimers();
   _measureDispose();
-  _disposeImageDict(STAR_ICONS);
-  sourceIconCache.clear();
 }
 
 updateContent();

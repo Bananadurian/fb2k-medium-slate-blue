@@ -176,7 +176,6 @@ function resolveLanguageCode(rawLang) {
  * @param {string} [ratio] — 宽高比，'4x3'（默认）或 '1x1'
  * @returns {GdiBitmap|null} 文件不存在返回 null
  */
-function loadFlagImage(code, ratio) {
-    const dir = ratio === '1x1' ? IMGS_FLAGS_DIR.replace('4x3', '1x1') : IMGS_FLAGS_DIR;
-    return _loadImage(dir + code + ".svg");
+function loadFlagImage(code) {
+    return iconMgr.get('flags', code.toUpperCase());
 }

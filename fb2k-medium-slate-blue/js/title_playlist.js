@@ -7,6 +7,7 @@
 include("lib/utils.js");
 include("lib/interaction.js");
 include("lib/theme.js");
+include("lib/icons.js");
 include("lib/title_bar_shared.js");
 
 window.DefineScript("Title Playlist", {
