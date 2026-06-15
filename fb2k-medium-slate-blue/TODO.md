@@ -3,7 +3,7 @@
 ## biography_v2.js
 
 - [ ] 添加更多图标适配更多链接（spotify, apple music, tidal, genius 等）
-- [ ] 链接区域根据链接数量动态适配行数，最多 2 行（当前只显示 1 行，多余被截断）
+- [x] 链接区域根据链接数量动态适配行数，最多 2 行（当前只显示 1 行，多余被截断）
 - [ ] 国家信息考虑是否使用详细地址（`data.origin.birth_place.details_zh`）
 - [x] 性能检查：V2 图片 LRU 缓存是否正常工作
 - [ ] 选中的 TAB 使用白色而非主题色？视觉效果评估
@@ -60,6 +60,7 @@
     - [x] `lib/theme.js` 集中维护路径常量（当前 `IMGS_LINKS_DIR`/`IMGS_LUCIDE_DIR` 已存在）
     - [x] 各面板脚本从 `LINK_ICONS` 字典 → `iconManager.get('brands', 'apple_music')` 调用
     - [ ] `IconManager.BRANDS` 去重：snake_case（`tidal`）和大写来源名（`TIDAL`）指向同一图标，统一键名并归化调用点大小写
+- [ ] SVG 图标存在模糊/锯齿，考虑切换回 PNG（修改注册表文件名即可，无需改代码）
   - [x] 排查旧文件引用：清理 `Links/`/`Lucide/` 中 `-1`, `-xx`, `(1)` 等历史变体 → `_legacy/`
   - [x] `covers/radio/` / `screenshots/` 独立于图标目录
 - [ ] window.DrawMode 优化卡顿面板

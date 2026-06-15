@@ -16,8 +16,9 @@ imgs/
 └── _legacy/                    # 历史废弃文件，确认后删除
 ```
 
-- SVG 为主，PNG 备用。同目录下同用途图标仅扩展名区分（`play.svg` / `play.png`）
-- 加载统一使用 `loadIcon(path, maxWidth)`，按扩展名自动选择 `gdi.LoadSVG` 或 `gdi.Image`
+- SVG/PNG 均可，同目录下同用途图标仅扩展名区分（`play.svg` / `play.png`）
+- 加载统一使用 `iconMgr.get(category, name)`，底层 `_loadImage` 按扩展名自动选择 `gdi.LoadSVG` 或 `gdi.Image`
+- 源图推荐 **96×96 px**：覆盖当前所有显示场景（13px 行内图标 ~54px 大按钮 144DPI）≥1.78× 超采样，比 128px 省 44% 内存
 
 ## 图标来源
 
@@ -28,7 +29,7 @@ imgs/
 | `icons/player/` | Lucide | ISC |
 | `icons/ui/` | Lucide | ISC |
 
-> Lucide 参数：Stroke width `1.5px`，Size `64px`。
+> Lucide 参数：Stroke width `1.5px`，导出尺寸 `96px`（显示场景 13-54px，≥1.78× 超采样）。
 
 ## 命名规范
 
@@ -46,9 +47,8 @@ imgs/
 
 底层使用 `_loadImage(path, maxWidth)`（`lib/utils.js`），扩展名 `.svg` 自动走 `gdi.LoadSVG`，其他走 `gdi.Image`。
 
-> SVG 通过 `maxWidth` 参数动态光栅化适配 DPI，无需预生成多分辨率 PNG。
-> 注册表值暂用 `default.svg` 占位，待图标文件最终确定后替换为实际文件名。
+> SVG 通过注册表扩展名自动识别，切换 SVG/PNG 只需修改注册表值（如 `"play": "circle-play.svg"` → `"circle-play.png"`），无需改代码。国旗只提供 SVG，PNG 可使用 [linebender/resvg](https://github.com/linebender/resvg) 转换。
 
 ## 备注
 
-- 国旗只提供 SVG，PNG 可使用 [linebender/resvg](https://github.com/linebender/resvg) 转换。
+- 图标绘制路径（`Button.paint` / `_drawIcon`）已内置 `SetInterpolationMode(7)` → `0` 恢复，确保高分辨率位图缩放时无锯齿。

@@ -48,6 +48,9 @@ const ARTIST_COVER_DIR = window.GetProperty(
 );
 const SCROLL_STEP = THEME.LAYOUT.SCROLL_STEP;
 const ICON_SIZE = THEME.LAYOUT.ICON_SIZE;
+const LINK_BTN_PAD = _scale(4);   // 按钮从图标外扩尺寸 (icon → button)
+const LINK_BTN_GAP = _scale(6);   // 按钮间水平间距
+const LINK_ROW_GAP = _scale(4);   // 行间垂直间距
 const IMG_CYCLE_MS = THEME.LAYOUT.IMG_CYCLE_MS;
 
 // =========================================================================
@@ -281,7 +284,13 @@ const SECTIONS = [
     content: { x: 0, y: 0, w: 0, h: 0 },
     visible: true,
     getContentHeight() {
-      return _getFontLineHeight(TS.body.font);
+      const lineH = _getFontLineHeight(TS.body.font);
+      const contentW = panelW - this.padding.left - this.padding.right;
+      const btnsPerRow = calcLinkBtnsPerRow(contentW, this.iconGap);
+      const rows = Math.min(2, Math.ceil(activeLinkBtns.length / btnsPerRow));
+      if (rows <= 1) return lineH;
+      const btnSize = ICON_SIZE + LINK_BTN_PAD;
+      return btnSize * rows + LINK_ROW_GAP * (rows - 1);
     },
     draw(gr) {
       drawLinksSection(gr, this);
@@ -984,6 +993,24 @@ function drawLinksSection(gr, sec) {
   });
 }
 
+function calcLinkBtnsPerRow(contentW, iconGap) {
+    const iconSpace = ICON_SIZE + iconGap;
+    const btnTotalW = ICON_SIZE + LINK_BTN_PAD + LINK_BTN_GAP;
+    return Math.max(1, Math.floor((contentW - iconSpace + LINK_BTN_GAP) / btnTotalW));
+}
+
+function layoutLinkButtonPositions(sec) {
+    const btnSize = ICON_SIZE + LINK_BTN_PAD;
+    const startX = sec.content.x + ICON_SIZE + sec.iconGap;
+    const btnsPerRow = calcLinkBtnsPerRow(sec.content.w, sec.iconGap);
+    activeLinkBtns.forEach((btn, i) => {
+        const row = Math.min(1, Math.floor(i / btnsPerRow));
+        const col = i % btnsPerRow;
+        btn.x = startX + col * (btnSize + LINK_BTN_GAP);
+        btn.y = sec.content.y + _scale(1) + row * (btnSize + LINK_ROW_GAP);
+    });
+}
+
 /** @param {Object} sec - SECTIONS tab item */
 function drawTabSection(gr, sec) {
   const pBtn = elements.profileBtn;
@@ -1038,13 +1065,8 @@ function updateLayoutMetrics() {
   // 5. 一次性布局所有 section (cover → title → ... → tab → scrollText)
   layoutSections(SECTIONS, panelW, panelH);
 
-  // 6. 更新链接按钮 Y 坐标
-  if (SEC.links.visible) {
-    const linkCy = SEC.links.content.y;
-    activeLinkBtns.forEach((btn) => {
-      btn.y = linkCy + _scale(1);
-    });
-  }
+  // 6. 更新链接按钮 X/Y 坐标
+  if (SEC.links.visible) layoutLinkButtonPositions(SEC.links);
 
   // 7. 设置 Tab 按钮位置
   const tabCx = SEC.tab.content.x;
@@ -1119,26 +1141,22 @@ function createLinkButtons() {
   activeLinkBtns = [];
   if (!artistData || !artistData.links) return;
 
-  const btnSize = ICON_SIZE + _scale(4);
-  const startX = _scale(25);
-  let currentX = startX;
+  const btnSize = ICON_SIZE + LINK_BTN_PAD;
 
   for (let key in artistData.links) {
     let url = artistData.links[key];
-    // key 统一转为小写匹配
     if (url && url.length > 0) {
       activeLinkBtns.push({
         name: key,
         url: url,
-        x: currentX,
-        y: 0, // 占位，updateLayoutMetrics 中计算实际值
+        x: 0,
+        y: 0, // 占位，updateLayoutMetrics → layoutLinkButtonPositions 计算实际值
         w: btnSize,
         h: btnSize,
         img: iconMgr.get("brands", key),
         isHover: false,
         tooltip: key,
       });
-      currentX += btnSize + _scale(6);
     }
   }
 }

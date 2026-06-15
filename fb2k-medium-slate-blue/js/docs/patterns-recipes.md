@@ -202,7 +202,7 @@ function on_paint(gr) {
 
 ### 6.1 Optional rendering/perf knobs (keep as opt-in)
 - `window.DrawMode = 1` — Direct2D 硬件加速，将渲染从 CPU 转移到 GPU。绘图密集型面板可实验，非全局默认。
-- `gr.SetInterpolationMode(InterpolationMode.LowQuality)` — 降低封面缩放质量，帧率优先时使用。单次高质量渲染用 `7`（HighQualityBicubic）。
+- `gr.SetInterpolationMode()` — 绘制位图时控制缩放插值质量。`Button.paint()` 和 `_drawIcon()` 图标绘制路径已内置 `7`（HighQualityBicubic）→`0`（Default）恢复（见 §11.3）；封面轮播等帧率敏感场景可临时降为 `LowQuality`（1）。
 - `gr.SetTextRenderingHint(TextRenderingHint.AntiAlias)` — 简化抗锯齿替代 ClearType，降低文本密集面板的边缘计算开销。
 - 坐标准则：传给 GdiGraphics 的坐标/宽高必须用 `Math.round()` 或 `Math.floor()` 取整，小数导致 GDI+ 错位。
 - 颜色准则：始终包含显式 alpha：`0xff000000 | (r << 16) | (g << 8) | b`。
@@ -324,7 +324,7 @@ All font references (GdiDrawText / _getFontLineHeight / _measureText / createScr
 
 - `_drawText(gr, style, text, x, y, w, h)` — in `lib/interaction.js`. Calls `gr.GdiDrawText(text, style.font, style.color, x, y, w, h, style.flags)`.
 - `_measureText(text, style, maxW)` — in `lib/utils.js`. Calls `_measureString(text, style.font, maxW, style.flags)`.
-- `_drawIcon(gr, icon, x, y, rowH)` — in `lib/interaction.js`. Vertically centers an icon of `THEME.LAYOUT.ICON_SIZE` within `rowH`.
+- `_drawIcon(gr, icon, x, y, rowH)` — in `lib/interaction.js`. Vertically centers an icon of `THEME.LAYOUT.ICON_SIZE` within `rowH`. Internally sets `InterpolationMode.HighQualityBicubic` (7) before `DrawImage` to prevent aliasing when high-res SVG bitmaps are downscaled to icon size; restores to `Default` (0) after drawing.
 
 ### 11.4 Before/after
 

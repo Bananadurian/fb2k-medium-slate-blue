@@ -162,7 +162,9 @@ class Button {
      */
     paint(gr) {
         if (this.imgCurrent) {
+            gr.SetInterpolationMode(7);
             gr.DrawImage(this.imgCurrent, this.x, this.y, this.w, this.h, 0, 0, this.imgCurrent.Width, this.imgCurrent.Height);
+            gr.SetInterpolationMode(0);
         }
     }
 
@@ -751,7 +753,9 @@ function _drawText(gr, style, text, x, y, w, h) {
  */
 function _drawIcon(gr, icon, x, y, rowH) {
     const sz = THEME.LAYOUT.ICON_SIZE;
+    gr.SetInterpolationMode(7);
     gr.DrawImage(icon, x, y + Math.ceil((rowH - sz) / 2), sz, sz, 0, 0, icon.Width, icon.Height);
+    gr.SetInterpolationMode(0);
 }
 
 // ============================================================================
