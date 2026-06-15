@@ -747,11 +747,13 @@ function on_font_changed() {
 }
 
 /**
- * SMP 卸载回调: 清除 timer → 释放 GDI 资源 (measure/image dict/cache)
+ * SMP 卸载回调: 清除 timer → 释放 GDI 测量资源
+ * iconMgr 缓存由 JSplitter 管理生命周期，此处不手动清理
  */
 function on_script_unload() {
   clearTransparentTrackRepaintTimers();
   _measureDispose();
+  // iconMgr 缓存由 JSplitter 管理生命周期，此处不手动清理
 }
 
 updateContent();

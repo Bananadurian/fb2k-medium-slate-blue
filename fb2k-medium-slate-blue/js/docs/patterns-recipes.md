@@ -32,13 +32,13 @@ For anti-aliased rounded fills or text-heavy controls, compute dirty area as old
 ## 4. Resource Cleanup Pattern
 Typical `on_script_unload` responsibilities:
 - `_measureDispose()`
-- cache clear methods (`iconMgr.clearAll()`, cover cache clear)
+- cover cache clear
 - clear timers for carousel/interval usage
 
-Icons are now managed by `iconMgr` singleton (`lib/icons.js`):
+Icons are now managed by `iconMgr` (`lib/icons.js`):
 - Panels call `iconMgr.get(category, name)` instead of local image dictionaries
-- **Remove** `_disposeImageDict(...)` and `sourceIconCache.clear()` — lifecycle managed by IconManager
-- `iconMgr.clearAll()` available for full cleanup if needed
+- **Remove** `_disposeImageDict(...)` and `sourceIconCache.clear()` — iconMgr 缓存由 JSplitter 管理生命周期，`on_script_unload` 不手动清理
+- 调试时可在 Console 执行 `iconMgr.clearAll()` 强制重置
 
 Rule: if bitmap lifecycle is cache-owned with eviction disposal, do not dispose same bitmap again elsewhere.
 

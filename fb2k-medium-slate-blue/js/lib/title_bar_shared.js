@@ -186,6 +186,7 @@ function createTitleBarController(cfg) {
 
     function on_script_unload() {
         _measureDispose();
+        // iconMgr 缓存由 JSplitter 管理生命周期，此处不手动清理
     }
 
     function on_mouse_move(x, y) {

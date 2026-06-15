@@ -2,6 +2,11 @@
  * @description IconManager — 统一图标资源管理：按类别延迟加载 + 缓存，注册表按需激活
  * @requires lib/utils.js (_loadImage)
  * @requires lib/theme.js (ICONS_* 路径常量)
+ *
+ * ## 生命周期
+ * iconMgr 缓存由 JSplitter 管理生命周期，面板 `on_script_unload` 不手动调用
+ * `clear()`/`clearAll()`。旧模式 `_disposeImageDict()` 释放私有字典；新模式避免
+ * 跨面板引用失效。调试时可在 Console 执行 `iconMgr.clearAll()` 强制重置。
  */
 
 "use strict";

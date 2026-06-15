@@ -640,4 +640,5 @@ function on_notify_data(name, info) {
 
 function on_script_unload() {
     clearTransparentTrackRepaintTimers();
+    // iconMgr 缓存由 JSplitter 管理生命周期，此处不手动清理
 }

@@ -982,6 +982,7 @@ function on_script_unload() {
     scrollText.dispose();
     _measureDispose();
     albumCache.clear();
+    // iconMgr 缓存由 JSplitter 管理生命周期，此处不手动清理
 }
 
 // =========================================================================
