@@ -215,7 +215,7 @@ const SECTIONS = [
   {
     name: "aliases",
     padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-    icon: iconMgr.get('brands', 'Aliases'),
+    icon: iconMgr.get("ui", "aliases"),
     iconGap: _scale(5),
     rect: { x: 0, y: 0, w: 0, h: 0 },
     content: { x: 0, y: 0, w: 0, h: 0 },
@@ -236,7 +236,7 @@ const SECTIONS = [
   {
     name: "genres",
     padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-    icon: iconMgr.get('brands', 'Genres'),
+    icon: iconMgr.get("ui", "genres"),
     iconGap: _scale(5),
     rect: { x: 0, y: 0, w: 0, h: 0 },
     content: { x: 0, y: 0, w: 0, h: 0 },
@@ -258,9 +258,9 @@ const SECTIONS = [
     name: "born",
     // 双列: [Born-icon+born] [Country-icon+country]
     padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-    icon: iconMgr.get('brands', 'Born'),
+    icon: iconMgr.get("ui", "born"),
     iconGap: _scale(5),
-    icon2: iconMgr.get('brands', 'Country'),
+    icon2: iconMgr.get("ui", "country"),
     colGap: _scale(100),
     rect: { x: 0, y: 0, w: 0, h: 0 },
     content: { x: 0, y: 0, w: 0, h: 0 },
@@ -275,7 +275,7 @@ const SECTIONS = [
   {
     name: "links",
     padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
-    icon: iconMgr.get('brands', 'Links'),
+    icon: iconMgr.get("ui", "links"),
     iconGap: _scale(5),
     rect: { x: 0, y: 0, w: 0, h: 0 },
     content: { x: 0, y: 0, w: 0, h: 0 },
@@ -1107,7 +1107,9 @@ function updateCountryFlag() {
   const code = artistData.countryCode || resolveCountryCode(artistData.country);
   if (code === lastCountryCode) return;
   lastCountryCode = code;
-  currentCountryFlagImg = code ? iconMgr.get('flags', code.toUpperCase()) : null;
+  currentCountryFlagImg = code
+    ? iconMgr.get("flags", code.toUpperCase())
+    : null;
 }
 
 /**
@@ -1132,7 +1134,7 @@ function createLinkButtons() {
         y: 0, // 占位，updateLayoutMetrics 中计算实际值
         w: btnSize,
         h: btnSize,
-        img: iconMgr.get('brands', key),
+        img: iconMgr.get("brands", key),
         isHover: false,
         tooltip: key,
       });

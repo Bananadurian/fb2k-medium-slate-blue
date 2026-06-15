@@ -47,18 +47,19 @@
 - [ ] 面板底部阴影遮罩（让显示更自然，避免生硬切割）
 - [ ] 添加 panel/container 布局对象
 - [ ] 检查控制器内存泄露（createTitleBarController、createPanelBackgroundController）
-- [ ] PNG 图标迁移 SVG（播放控制、国旗、链接等）
+- [x] PNG 图标迁移 SVG（播放控制、国旗、链接等）
   - 目录重构：`imgs/icons/{flags, brands, player, ui}/` 按用途分层，PNG/SVG 同目录用扩展名区分
     - [x] flags: 国旗已迁移（`icons/flags/{1x1,4x3}/`，`loadFlagImage(code, ratio)`）
-    - [ ] brands: 品牌图标（原 Links/）
-    - [ ] player: 播放控制图标（原 Lucide/ 播放相关）
-    - [ ] ui: 通用 UI 图标（原 Lucide/ 其他）
+    - [x] brands: 品牌图标（原 Links/）
+    - [x] player: 播放控制图标（原 Lucide/ 播放相关）
+    - [x] ui: 通用 UI 图标（原 Lucide/ 其他）
   - [x] `_loadImage` 优化：按扩展名 `.svg`→`gdi.LoadSVG`，其他→`gdi.Image`
   - [x] `SourceIconCache.get()` 适配 SVG：`lib/data.js:191` `gdi.Image(path)` → `_loadImage(path)`
   - [x] 统一图标资源管理：集中加载+缓存，替代散落在各面板的 `_loadImage` 调用和 `LINK_ICONS` 字典
     - [x] `IconManager` 模块（`lib/icons.js`）：按类别/名称获取图标，自动处理 SVG/PNG + DPI，内置缓存
     - [x] `lib/theme.js` 集中维护路径常量（当前 `IMGS_LINKS_DIR`/`IMGS_LUCIDE_DIR` 已存在）
     - [x] 各面板脚本从 `LINK_ICONS` 字典 → `iconManager.get('brands', 'apple_music')` 调用
+    - [ ] `IconManager.BRANDS` 去重：snake_case（`tidal`）和大写来源名（`TIDAL`）指向同一图标，统一键名并归化调用点大小写
   - [x] 排查旧文件引用：清理 `Links/`/`Lucide/` 中 `-1`, `-xx`, `(1)` 等历史变体 → `_legacy/`
   - [x] `covers/radio/` / `screenshots/` 独立于图标目录
 - [ ] window.DrawMode 优化卡顿面板

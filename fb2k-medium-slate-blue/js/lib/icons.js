@@ -16,86 +16,103 @@
 // ============================================================================
 
 class IconManager {
-    constructor() {
-        this._caches = { brands: new Map(), flags: new Map(), player: new Map(), ui: new Map() };
+  constructor() {
+    this._caches = {
+      brands: new Map(),
+      flags: new Map(),
+      player: new Map(),
+      ui: new Map(),
+    };
+  }
+
+  /**
+   * 获取图标，自动缓存 + fallback
+   * @param {'brands'|'flags'|'player'|'ui'} category
+   * @param {string} name - 注册表键名
+   * @param {Object} [opts] - { maxWidth }
+   * @returns {GdiBitmap|null}
+   */
+  get(category, name, opts) {
+    opts = opts || {};
+    const cache = this._caches[category];
+    if (cache && cache.has(name)) return cache.get(name);
+
+    const registry = this._getRegistry(category);
+    if (!registry) return null;
+
+    const filename = registry[name];
+    if (!filename) {
+      return name === "default" ? null : this.get(category, "default", opts);
     }
 
-    /**
-     * 获取图标，自动缓存 + fallback
-     * @param {'brands'|'flags'|'player'|'ui'} category
-     * @param {string} name - 注册表键名
-     * @param {Object} [opts] - { maxWidth }
-     * @returns {GdiBitmap|null}
-     */
-    get(category, name, opts) {
-        opts = opts || {};
-        const cache = this._caches[category];
-        if (cache && cache.has(name)) return cache.get(name);
-
-        const registry = this._getRegistry(category);
-        if (!registry) return null;
-
-        const filename = registry[name];
-        if (!filename) {
-            return name === "default" ? null : this.get(category, "default", opts);
-        }
-
-        const dir = this._getCategoryDir(category);
-        const img = _loadImage(dir + filename, opts.maxWidth);
-        if (img) {
-            if (cache) cache.set(name, img);
-            return img;
-        }
-        return name === "default" ? null : this.get(category, "default", opts);
+    const dir = this._getCategoryDir(category);
+    const img = _loadImage(dir + filename, opts.maxWidth);
+    if (img) {
+      if (cache) cache.set(name, img);
+      return img;
     }
+    return name === "default" ? null : this.get(category, "default", opts);
+  }
 
-    /**
-     * 获取注册表（懒加载）
-     */
-    _getRegistry(category) {
-        if (category === 'brands')   { if (!IconManager._BRANDS_LOADED) IconManager._loadBrandsRegistry();   return IconManager.BRANDS; }
-        if (category === 'player')   { if (!IconManager._PLAYER_LOADED) IconManager._loadPlayerRegistry();   return IconManager.PLAYER; }
-        if (category === 'ui')       { if (!IconManager._UI_LOADED)     IconManager._loadUIRegistry();       return IconManager.UI; }
-        if (category === 'flags')    { if (!IconManager._FLAGS_LOADED)  IconManager._loadFlagsRegistry();    return IconManager.FLAGS; }
-        return null;
+  /**
+   * 获取注册表（懒加载）
+   */
+  _getRegistry(category) {
+    if (category === "brands") {
+      if (!IconManager._BRANDS_LOADED) IconManager._loadBrandsRegistry();
+      return IconManager.BRANDS;
     }
+    if (category === "player") {
+      if (!IconManager._PLAYER_LOADED) IconManager._loadPlayerRegistry();
+      return IconManager.PLAYER;
+    }
+    if (category === "ui") {
+      if (!IconManager._UI_LOADED) IconManager._loadUIRegistry();
+      return IconManager.UI;
+    }
+    if (category === "flags") {
+      if (!IconManager._FLAGS_LOADED) IconManager._loadFlagsRegistry();
+      return IconManager.FLAGS;
+    }
+    return null;
+  }
 
-    /**
-     * 获取类别目录路径
-     */
-    _getCategoryDir(category) {
-        if (category === 'brands') return ICONS_BRANDS;
-        if (category === 'player') return ICONS_PLAYER;
-        if (category === 'ui')     return ICONS_UI;
-        if (category === 'flags')  return ICONS_FLAGS;
-        return '';
-    }
+  /**
+   * 获取类别目录路径
+   */
+  _getCategoryDir(category) {
+    if (category === "brands") return ICONS_BRANDS;
+    if (category === "player") return ICONS_PLAYER;
+    if (category === "ui") return ICONS_UI;
+    if (category === "flags") return ICONS_FLAGS;
+    return "";
+  }
 
-    /**
-     * 使缓存中的某个图标失效
-     */
-    invalidate(category, name) {
-        if (this._caches[category]) this._caches[category].delete(name);
-    }
+  /**
+   * 使缓存中的某个图标失效
+   */
+  invalidate(category, name) {
+    if (this._caches[category]) this._caches[category].delete(name);
+  }
 
-    /**
-     * 清空某个类别缓存
-     */
-    clear(category) {
-        const cache = this._caches[category];
-        if (!cache) return;
-        cache.forEach(function (img) {
-            if (img && typeof img.Dispose === "function") img.Dispose();
-        });
-        cache.clear();
-    }
+  /**
+   * 清空某个类别缓存
+   */
+  clear(category) {
+    const cache = this._caches[category];
+    if (!cache) return;
+    cache.forEach(function (img) {
+      if (img && typeof img.Dispose === "function") img.Dispose();
+    });
+    cache.clear();
+  }
 
-    /**
-     * 清空所有缓存
-     */
-    clearAll() {
-        for (const key in this._caches) this.clear(key);
-    }
+  /**
+   * 清空所有缓存
+   */
+  clearAll() {
+    for (const key in this._caches) this.clear(key);
+  }
 }
 
 // ============================================================================
@@ -104,238 +121,233 @@ class IconManager {
 
 IconManager._BRANDS_LOADED = false;
 IconManager._PLAYER_LOADED = false;
-IconManager._UI_LOADED     = false;
-IconManager._FLAGS_LOADED  = false;
+IconManager._UI_LOADED = false;
+IconManager._FLAGS_LOADED = false;
 
 // ============================================================================
 // 注册表（值暂用 default.svg 占位，后续替换为实际图标文件名）
 // ============================================================================
 
 IconManager._loadBrandsRegistry = function () {
-    IconManager.BRANDS = {
-        "default": "default.svg",
+  IconManager.BRANDS = {
+    default: "default.svg",
 
-        // Metadata headers (biography_v2.js + album_info.js)
-        "Aliases":  "default.svg",
-        "Genres":   "default.svg",
-        "Country":  "default.svg",
-        "Born":     "default.svg",
-        "Links":    "default.svg",
-        "Artist":   "default.svg",
-        "Date":     "default.svg",
-        "Language": "default.svg",
-        "Edition":  "default.svg",
+    // External URLs
+    official_website: "official_website.svg",
+    official: "official_website.svg", // biography.js v1
+    soundcloud: "soundcloud.svg",
+    bandcamp: "bandcamp.svg",
+    instagram: "instagram.svg",
+    x: "x.svg",
+    tiktok: "tiktok.svg",
+    youtube: "youtube.svg",
+    discogs: "discogs.svg",
+    allmusic: "allmuisc.svg",
+    musicbrainz: "musicbrainz.svg",
+    rate_your_music: "rate_your_music.svg",
+    rateyourmusic: "rate_your_music.svg", // biography.js v1
+    album_of_the_year: "album_of_the_year.svg",
+    aoty: "album_of_the_year.svg", // biography.js v1
+    pitchfork: "pitchfork.svg",
+    metacritic: "metacritic.svg",
+    fandom: "fandom.svg",
+    wikipedia: "wikipedia.svg",
+    last_fm: "last_fm.svg",
+    wikidata: "wikidata.svg",
+    spotify: "spotify.svg",
+    apple_music: "apple_music.svg",
+    amazon_music: "amazon_music.svg",
+    deezer: "deezer.svg",
+    genius: "genius.svg",
+    qobuz: "qobuz.svg",
+    tidal: "tidal.svg",
+    youtube_music: "youtube_music.svg",
+    mora: "mora.svg",
 
-        // External URLs
-        "official_website":   "default.svg",
-        "official":           "default.svg",   // biography.js v1
-        "soundcloud":         "default.svg",
-        "bandcamp":           "default.svg",
-        "instagram":          "default.svg",
-        "x":                  "default.svg",
-        "tiktok":             "default.svg",
-        "youtube":            "default.svg",
-        "discogs":            "default.svg",
-        "allmusic":           "default.svg",
-        "musicbrainz":        "default.svg",
-        "rate_your_music":    "default.svg",
-        "rateyourmusic":      "default.svg",   // biography.js v1
-        "album_of_the_year":  "default.svg",
-        "aoty":               "default.svg",   // biography.js v1
-        "pitchfork":          "default.svg",
-        "metacritic":         "default.svg",
-        "fandom":             "default.svg",
-        "wikipedia":          "default.svg",
-        "last_fm":            "default.svg",
-        "wikidata":           "default.svg",
-        "spotify":            "default.svg",
-        "apple_music":        "default.svg",
-        "amazon_music":       "default.svg",
-        "deezer":             "default.svg",
-        "genius":             "default.svg",
-        "qobuz":              "default.svg",
-        "tidal":              "default.svg",
-        "youtube_music":      "default.svg",
-        "mora":               "default.svg",
-
-        // Source names (uppercase)
-        "OFFICIAL DIGITAL":    "default.svg",
-        "CD":                  "default.svg",
-        "SACD":                "default.svg",
-        "SACD (CD LAYER)":     "default.svg",
-        "JAPAN FIRST PRESS":   "default.svg",
-        "WEB":                 "default.svg",
-        "TIDAL":               "default.svg",
-        "QOBUZ":               "default.svg",
-        "HDTRACKS":            "default.svg",
-        "MORA":                "default.svg",
-        "APPLE MUSIC":         "default.svg",
-        "AMAZON MUSIC":        "default.svg",
-        "DEEZER":              "default.svg",
-        "GENIUS":              "default.svg",
-        "NETEASE":             "default.svg",
-        "QQ MUSIC":            "default.svg",
-        "7DIGITAL":            "default.svg",
-        "BANDCAMP":            "default.svg",
-        "SOUNDCLOUD":          "default.svg",
-    };
-    IconManager._BRANDS_LOADED = true;
+    // Source names (uppercase)
+    "OFFICIAL DIGITAL": "shopping-bag.svg",
+    CD: "disc-2.svg",
+    SACD: "sacd.png",
+    "SACD (CD LAYER)": "sacd.png",
+    "JAPAN FIRST PRESS": "disc.svg",
+    WEB: "cloud.svg",
+    TIDAL: "tidal.svg",
+    QOBUZ: "qobuz.svg",
+    HDTRACKS: "HDtracks.svg",
+    MORA: "mora.svg",
+    "APPLE MUSIC": "apple_music.svg",
+    "AMAZON MUSIC": "amazon_music.svg",
+    DEEZER: "deezer.svg",
+    GENIUS: "genius.svg",
+    NETEASE: "NetEase.svg",
+    "QQ MUSIC": "qq_music.svg",
+    "7DIGITAL": "7digital.svg",
+    BANDCAMP: "bandcamp.svg",
+    SOUNDCLOUD: "soundcloud.svg",
+  };
+  IconManager._BRANDS_LOADED = true;
 };
 
 IconManager._loadPlayerRegistry = function () {
-    IconManager.PLAYER = {
-        "default": "default.svg",
+  IconManager.PLAYER = {
+    default: "default.svg",
 
-        "circle-pause":              "default.svg",
-        "circle-pause_hover":        "default.svg",
-        "circle-play":               "default.svg",
-        "circle-play_hover":         "default.svg",
-        "circle-question-mark":      "default.svg",
-        "circle-question-mark_hover":"default.svg",
-        "dices":                     "default.svg",
-        "dices_hover":               "default.svg",
-        "fast-forward":              "default.svg",
-        "fast-forward_hover":        "default.svg",
-        "repeat":                    "default.svg",
-        "repeat_hover":              "default.svg",
-        "repeat-1":                  "default.svg",
-        "repeat-1_hover":            "default.svg",
-        "rewind":                    "default.svg",
-        "rewind_hover":              "default.svg",
-        "rotate-ccw":                "default.svg",
-        "rotate-ccw_hover":          "default.svg",
-        "shuffle":                   "default.svg",
-        "shuffle_hover":             "default.svg",
-        "square":                    "default.svg",
-        "square_hover":              "default.svg",
-        "square_after":              "default.svg",
-        "step-back":                 "default.svg",
-        "step-back_hover":           "default.svg",
-        "step-forward":              "default.svg",
-        "step-forward_hover":        "default.svg",
+    // playback_buttons.js
+    replay: "rotate-ccw.svg",
+    replay_hover: "rotate-ccw_hover.svg",
 
-        // playback_buttons.js aliases (old key → new filename mapping TBD)
-        "stop":              "default.svg",
-        "stop_hover":        "default.svg",
-        "stop_after":        "default.svg",
-        "pause":             "default.svg",
-        "pause_hover":       "default.svg",
-        "play":              "default.svg",
-        "play_hover":        "default.svg",
-        "previous":          "default.svg",
-        "previous_hover":    "default.svg",
-        "next":              "default.svg",
-        "next_hover":        "default.svg",
-        "order_default":     "default.svg",
-        "order_default_hover":"default.svg",
-        "order_repeat":      "default.svg",
-        "order_repeat_hover":"default.svg",
-        "order_track":       "default.svg",
-        "order_track_hover": "default.svg",
-        "order_shuffle":     "default.svg",
-        "order_shuffle_hover":"default.svg",
-        "replay":            "default.svg",
-        "replay_hover":      "default.svg",
-        "forward":           "default.svg",
-        "forward_hover":     "default.svg",
-    };
-    IconManager._PLAYER_LOADED = true;
+    stop: "square.svg",
+    stop_hover: "square_hover.svg",
+    stop_after: "square_after.svg",
+
+    rewind: "rewind.svg",
+    rewind_hover: "rewind_hover.svg",
+
+    previous: "step-back.svg",
+    previous_hover: "step-back_hover.svg",
+    play: "circle-play.svg",
+    play_hover: "circle-play_hover.svg",
+
+    pause: "circle-pause.svg",
+    pause_hover: "circle-pause_hover.svg",
+
+    next: "step-forward.svg",
+    next_hover: "step-forward_hover.svg",
+
+    forward: "fast-forward.svg",
+    forward_hover: "fast-forward_hover.svg",
+
+    order_default: "circle-question-mark.svg",
+    order_default_hover: "circle-question-mark_hover.svg",
+    order_repeat: "repeat.svg",
+    order_repeat_hover: "repeat_hover.svg",
+    order_track: "repeat-1.svg",
+    order_track_hover: "repeat-1_hover.svg",
+    order_shuffle: "shuffle.svg",
+    order_shuffle_hover: "shuffle_hover.svg",
+
+    random: "dices.svg",
+    random_hover: "dices_hover.svg",
+  };
+  IconManager._PLAYER_LOADED = true;
 };
 
 IconManager._loadUIRegistry = function () {
-    IconManager.UI = {
-        "default": "default.svg",
+  IconManager.UI = {
+    default: "default.svg",
 
-        "calendar":                  "default.svg",
-        "circle-small":              "default.svg",
-        "copyright":                 "default.svg",
-        "disc-3":                    "default.svg",
-        "disc-3_activate":           "default.svg",
-        "disc-3_hover":              "default.svg",
-        "ellipsis-vertical":         "default.svg",
-        "menu":                      "default.svg",   // alias
-        "menu_hover":               "default.svg",   // alias
-        "ellipsis-vertical_hover":   "default.svg",
-        "flame":                     "default.svg",
-        "flame_hover":               "default.svg",
-        "folder-search":             "default.svg",
-        "folder-search_hover":       "default.svg",
-        "history":                   "default.svg",
-        "history_hover":             "default.svg",
-        "languages":                 "default.svg",
-        "library":                   "default.svg",
-        "list-music":                "default.svg",
-        "list-start":                "default.svg",
-        "list-start_hover":          "default.svg",
-        "plus":                      "default.svg",
-        "plus_hover":                "default.svg",
-        "replaygain_hover":          "default.svg",
-        "replaygain_off":            "default.svg",
-        "replaygain_other_on":       "default.svg",
-        "replaygain_track_on":       "default.svg",
-        "search":                    "default.svg",
-        "search_hover":              "default.svg",
-        "signpost":                  "default.svg",
-        "speaker":                   "default.svg",
-        "speaker_hover":             "default.svg",
-        "star_off":                  "default.svg",
-        "star_on":                   "default.svg",
-        "user-round":                "default.svg",
-        "users-round":               "default.svg",
-        "volume-2":                  "default.svg",
-        "volume-2_hover":            "default.svg",
-        "volume-x":                  "default.svg",
-        "volume-x_hover":            "default.svg",
-        "wasapi":                    "default.svg",
-        "wasapi_hover":              "default.svg",
-        "wasapi_share":              "default.svg",
+    // Metadata headers (biography_v2.js + album_info.js)
+    aliases: "user-round.svg",
+    genres: "circle-small.svg",
+    country: "default.svg",
+    born: "calendar.svg",
+    links: "signpost.svg",
+    artist: "users-round.svg",
+    date: "calendar.svg",
+    language: "languages.svg",
+    edition: "copyright.svg",
 
-        // control_buttons.js aliases
-        "recent":                    "default.svg",
-        "recent_hover":              "default.svg",
-        "favorite":                  "default.svg",
-        "favorite_hover":            "default.svg",
-        "rg_off":                    "default.svg",
-        "rg_track":                  "default.svg",
-        "rg_album":                  "default.svg",
-        "rg_hover":                  "default.svg",
-        "vol":                       "default.svg",
-        "vol_hover":                 "default.svg",
-        "mute":                      "default.svg",
-        "mute_hover":                "default.svg",
-        "queue":                     "default.svg",
-        "queue_hover":               "default.svg",
-    };
-    IconManager._UI_LOADED = true;
+    // control_buttons.js aliases
+    recent: "history.svg",
+    recent_hover: "history_hover.svg",
+    favorite: "flame.svg",
+    favorite_hover: "flame_hover.svg",
+    queue: "list-start.svg",
+    queue_hover: "list-start_hover.svg",
+    search: "search.svg",
+    search_hover: "search_hover.svg",
+    rg_off: "replaygain_off.svg",
+    rg_track: "replaygain_track_on.svg",
+    rg_album: "replaygain_other_on.svg",
+    rg_hover: "replaygain_hover.svg",
+    wasapi: "wasapi.svg",
+    wasapi_hover: "wasapi_hover.svg",
+    wasapi_share: "wasapi_share.svg",
+    asio: "speaker.svg",
+    asio_hover: "speaker_hover.svg",
+    vol: "volume-2.svg",
+    vol_hover: "volume-2_hover.svg",
+    mute: "volume-x.svg",
+    mute_hover: "volume-x_hover.svg",
+    menu: "ellipsis-vertical.svg",
+    menu_hover: "ellipsis-vertical_hover.svg",
+
+    // track_info.js
+    star_off: "star_off.svg",
+    star_on: "star_on.svg",
+
+    // Other
+    "disc-3": "disc-3.svg",
+    "disc-3_activate": "disc-3_activate.svg",
+    "disc-3_hover": "disc-3_hover.svg",
+    "folder-search": "folder-search.svg",
+    "folder-search_hover": "folder-search_hover.svg",
+    library: "library.svg",
+    "list-music": "list-music.svg",
+    plus: "plus.svg",
+    plus_hover: "plus_hover.svg",
+  };
+  IconManager._UI_LOADED = true;
 };
 
 IconManager._loadFlagsRegistry = function () {
-    IconManager.FLAGS = {
-        "default": "default.svg",
+  IconManager.FLAGS = {
+    default: "un.svg",
 
-        "CN": "default.svg",  "TW": "default.svg",  "HK": "default.svg",
-        "JP": "default.svg",  "US": "default.svg",  "GB": "default.svg",
-        "KR": "default.svg",  "FR": "default.svg",  "DE": "default.svg",
-        "IT": "default.svg",  "ES": "default.svg",  "RU": "default.svg",
-        "CA": "default.svg",  "AU": "default.svg",  "BR": "default.svg",
-        "SE": "default.svg",  "NO": "default.svg",  "DK": "default.svg",
-        "FI": "default.svg",  "NL": "default.svg",  "IN": "default.svg",
-        "PL": "default.svg",  "UA": "default.svg",  "CH": "default.svg",
-        "AT": "default.svg",  "BE": "default.svg",  "IE": "default.svg",
-        "MX": "default.svg",  "AR": "default.svg",  "TH": "default.svg",
-        "VN": "default.svg",  "ID": "default.svg",  "TR": "default.svg",
-        "GR": "default.svg",  "PT": "default.svg",  "CZ": "default.svg",
-        "HU": "default.svg",  "RO": "default.svg",  "SG": "default.svg",
-        "ZA": "default.svg",  "IL": "default.svg",  "NZ": "default.svg",
-        "PH": "default.svg",  "MY": "default.svg",
+    CN: "cn.svg",
+    TW: "tw.svg",
+    HK: "hk.svg",
+    JP: "jp.svg",
+    US: "us.svg",
+    GB: "gb.svg",
+    KR: "kr.svg",
+    FR: "fr.svg",
+    DE: "de.svg",
+    IT: "it.svg",
+    ES: "es.svg",
+    RU: "ru.svg",
+    CA: "ca.svg",
+    AU: "au.svg",
+    BR: "br.svg",
+    SE: "se.svg",
+    NO: "un.svg",
+    DK: "un.svg",
+    FI: "un.svg",
+    NL: "nl.svg",
+    IN: "un.svg",
+    PL: "un.svg",
+    UA: "un.svg",
+    CH: "un.svg",
+    AT: "un.svg",
+    BE: "un.svg",
+    IE: "ie.svg",
+    MX: "un.svg",
+    AR: "un.svg",
+    TH: "th.svg",
+    VN: "un.svg",
+    ID: "un.svg",
+    TR: "un.svg",
+    GR: "un.svg",
+    PT: "un.svg",
+    CZ: "un.svg",
+    HU: "un.svg",
+    RO: "un.svg",
+    SG: "un.svg",
+    ZA: "un.svg",
+    IL: "un.svg",
+    NZ: "un.svg",
+    PH: "un.svg",
+    MY: "un.svg",
+    CL: "cl.svg",
+    EU: "eu.svg",
 
-        // Aliases
-        "UK":  "default.svg",
-        "CHN": "default.svg",
-        "USA": "default.svg",
-        "JPN": "default.svg",
-    };
-    IconManager._FLAGS_LOADED = true;
+    // Aliases
+    UK: "gb.svg",
+    CHN: "cn.svg",
+    USA: "us.svg",
+    JPN: "jp.svg",
+  };
+  IconManager._FLAGS_LOADED = true;
 };
 
 // ============================================================================
