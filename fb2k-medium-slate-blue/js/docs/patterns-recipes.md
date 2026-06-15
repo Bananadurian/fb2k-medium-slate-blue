@@ -32,9 +32,13 @@ For anti-aliased rounded fills or text-heavy controls, compute dirty area as old
 ## 4. Resource Cleanup Pattern
 Typical `on_script_unload` responsibilities:
 - `_measureDispose()`
-- `_disposeImageDict(...)`
-- cache clear methods (`sourceIconCache.clear()`, cover cache clear)
+- cache clear methods (`iconMgr.clearAll()`, cover cache clear)
 - clear timers for carousel/interval usage
+
+Icons are now managed by `iconMgr` singleton (`lib/icons.js`):
+- Panels call `iconMgr.get(category, name)` instead of local image dictionaries
+- **Remove** `_disposeImageDict(...)` and `sourceIconCache.clear()` — lifecycle managed by IconManager
+- `iconMgr.clearAll()` available for full cleanup if needed
 
 Rule: if bitmap lifecycle is cache-owned with eviction disposal, do not dispose same bitmap again elsewhere.
 

@@ -54,11 +54,11 @@
     - [ ] player: 播放控制图标（原 Lucide/ 播放相关）
     - [ ] ui: 通用 UI 图标（原 Lucide/ 其他）
   - [x] `_loadImage` 优化：按扩展名 `.svg`→`gdi.LoadSVG`，其他→`gdi.Image`
-  - [ ] `SourceIconCache.get()` 适配 SVG：`lib/data.js:191` `gdi.Image(path)` → `_loadImage(path)`
-  - [ ] 统一图标资源管理：集中加载+缓存，替代散落在各面板的 `_loadImage` 调用和 `LINK_ICONS` 字典
-    - `IconManager` 模块（`lib/icons.js`）：按类别/名称获取图标，自动处理 SVG/PNG + DPI，内置缓存
-    - `lib/theme.js` 集中维护路径常量（当前 `IMGS_LINKS_DIR`/`IMGS_LUCIDE_DIR` 已存在）
-    - 各面板脚本从 `LINK_ICONS` 字典 → `iconManager.get('brands', 'apple_music')` 调用
+  - [x] `SourceIconCache.get()` 适配 SVG：`lib/data.js:191` `gdi.Image(path)` → `_loadImage(path)`
+  - [x] 统一图标资源管理：集中加载+缓存，替代散落在各面板的 `_loadImage` 调用和 `LINK_ICONS` 字典
+    - [x] `IconManager` 模块（`lib/icons.js`）：按类别/名称获取图标，自动处理 SVG/PNG + DPI，内置缓存
+    - [x] `lib/theme.js` 集中维护路径常量（当前 `IMGS_LINKS_DIR`/`IMGS_LUCIDE_DIR` 已存在）
+    - [x] 各面板脚本从 `LINK_ICONS` 字典 → `iconManager.get('brands', 'apple_music')` 调用
   - [x] 排查旧文件引用：清理 `Links/`/`Lucide/` 中 `-1`, `-xx`, `(1)` 等历史变体 → `_legacy/`
   - [x] `covers/radio/` / `screenshots/` 独立于图标目录
 - [ ] window.DrawMode 优化卡顿面板

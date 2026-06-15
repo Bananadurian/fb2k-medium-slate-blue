@@ -38,9 +38,16 @@ imgs/
 
 ## 加载约定
 
-使用 `_loadImage(path, maxWidth)`（`lib/utils.js`），扩展名 `.svg` 自动走 `gdi.LoadSVG`，其他走 `gdi.Image`。
+推荐使用 `iconMgr.get(category, name)`（`lib/icons.js` IconManager 单例），按类别延迟加载 + 自动缓存。
+
+- 图标键名 → 注册表（`IconManager.BRANDS` / `PLAYER` / `UI` / `FLAGS`）→ 文件名 → `_loadImage(path, maxWidth)`
+- 查表失败或文件不存在时自动 fallback 到各类注册表的 `"default"` 键
+- 面板脚本：添加 `include("lib/icons.js")`，调用 `iconMgr.get('brands', 'apple_music')`
+
+底层使用 `_loadImage(path, maxWidth)`（`lib/utils.js`），扩展名 `.svg` 自动走 `gdi.LoadSVG`，其他走 `gdi.Image`。
 
 > SVG 通过 `maxWidth` 参数动态光栅化适配 DPI，无需预生成多分辨率 PNG。
+> 注册表值暂用 `default.svg` 占位，待图标文件最终确定后替换为实际文件名。
 
 ## 备注
 
