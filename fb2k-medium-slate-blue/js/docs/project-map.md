@@ -26,13 +26,18 @@
 - consumed by: `theme.js`, `data.js`, `interaction.js`, `flag.js`
 - then reused by: `background.js`, `title_bar_shared.js`
 `lib/flag.js`
-- depends on: `lib/theme.js` (IMGS_FLAGS_DIR), `lib/utils.js` (_loadImage)
+- depends on: `lib/icons.js` (iconMgr), alias `loadFlagImage(code)` → `iconMgr.get('flags', code.toUpperCase())`
+`lib/icons.js`
+- `IconManager` 统一图标管理：4 类注册表懒加载（brands/player/ui/flags），内置 Map 缓存 + "default" fallback
+- 单例 `iconMgr`：`get(category, name, opts)`, `invalidate()`, `clear()`, `clearAll()`
+- depends on: `lib/theme.js` (ICONS_*), `lib/utils.js` (_loadImage)
 
 ## 4. Canonical Reuse Targets
 - `lib/utils.js`: `_hitTest`, `_measureString`, `_measureText`, `_measureDispose`, `_extractImageColors`, `resolveMetadbByMode`, `normalizePadding`, `calcContentRect`, `_getFontLineHeight`, `layoutSections`
 - `lib/interaction.js`: `CURSOR_ARROW`, `CURSOR_HAND`, `Button`, `TextTab`, `_setCursor`, `_drawScrollbar`, `_manageCarousel`, `_carouselNext`, `_drawTabIndicator`, `_drawText`, `_drawIcon`, `_drawEmptyState`, `_drawPageIndicator`, `_disposeImageDict`, `_initTooltip`, `_createDefaultTooltip`, `createScrollTextRenderer`
 - `lib/background.js`: `createPanelBackgroundController`, `createPanelBackgroundAutoController`, `createPanelBackgroundLayer`
 - `lib/title_bar_shared.js`: `createTitleBarController`
+- `lib/icons.js`: `iconMgr` (IconManager 单例 — 统一图标获取，替代散落字典)
 - `lib/flag.js`: `COUNTRY_RULES`, `LANGUAGE_MAP`, `resolveCountryCode`, `resolveLanguageCode`, `loadFlagImage`
 
 ## 5. Behavior Constraints Snapshot

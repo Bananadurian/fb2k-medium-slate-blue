@@ -338,11 +338,11 @@ function syncDeviceState() {
 
     if (current.includes("ASIO")) {
         img = iconMgr.get('ui', 'asio');
-        imgHover = iconMgr.get('ui', 'asio')_hover;
+        imgHover = iconMgr.get('ui', 'asio_hover');
         tip = "当前: ASIO (点击切换 WASAPI shared)";
         cmd = "Playback/Device/WASAPI (shared) : Default Sound Device"; 
     } else if(current.includes("exclusive")) {
-        img = iconMgr.get('ui', 'wasapi')
+        img = iconMgr.get('ui', 'wasapi');
         imgHover = iconMgr.get('ui', 'wasapi_hover');
         tip = "当前: WASAPI (点击切换 WASAPI shared)";
         cmd = "Playback/Device/WASAPI (shared) : Default Sound Device"; 
@@ -364,7 +364,7 @@ function syncDeviceState() {
 /** 根据静音状态同步音量按钮图标与提示文字 */
 function syncVolumeState() {
     const isMuted = (fb.Volume === -100);
-    const img = isMuted ? iconMgr.get('ui', 'mute'): iconMgr.get('ui', 'vol')
+    const img = isMuted ? iconMgr.get('ui', 'mute') : iconMgr.get('ui', 'vol');
     const hover = isMuted ? iconMgr.get('ui', 'mute_hover') : iconMgr.get('ui', 'vol_hover');
     const text = isMuted ? "取消静音" : "静音";
     
