@@ -89,7 +89,7 @@ const carousel = {
   fallbackMetadb: null,
 };
 let currentCountryFlagImg = null; // 当前国籍对应的国旗图标
-let lastCountryCode = null; // 缓存 code，不变则跳过 loadFlagImage
+let lastCountryCode = null; // 缓存 code，不变则跳过 iconMgr.get('flags', code)
 // UI 视图状态
 let isShowingDiscography = false; // Tab状态：False=简介(Profile), True=作品集(Discography)
 let scrollY = 0; // 当前垂直滚动条位置
@@ -1107,7 +1107,7 @@ function updateCountryFlag() {
   const code = artistData.countryCode || resolveCountryCode(artistData.country);
   if (code === lastCountryCode) return;
   lastCountryCode = code;
-  currentCountryFlagImg = code ? loadFlagImage(code) : null;
+  currentCountryFlagImg = code ? iconMgr.get('flags', code.toUpperCase()) : null;
 }
 
 /**

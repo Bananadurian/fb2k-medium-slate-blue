@@ -88,7 +88,7 @@ let titleH = _getFontLineHeight(TS.title.font);
 let genresH = _getFontLineHeight(TS.body.font);
 let editionW = 0;
 let currentLanguageFlagImg = null;      // 当前语言对应的国旗图标
-let lastLanguageCode = null;             // 缓存 code，不变则跳过 loadFlagImage
+let lastLanguageCode = null;             // 缓存 code，不变则跳过 iconMgr.get('flags', code)
 
 const elements = {
     descBtn:      { displayText: "Description", x: 0, y: 0, w: 0, h: 0, isHover: false, tooltip: ""  },
@@ -821,7 +821,7 @@ function updateLanguageFlag() {
     const code = albumData ? albumData.languageFlagCode : null;
     if (code === lastLanguageCode) return;
     lastLanguageCode = code;
-    currentLanguageFlagImg = code ? loadFlagImage(code) : null;
+    currentLanguageFlagImg = code ? iconMgr.get('flags', code.toUpperCase()) : null;
 }
 
 

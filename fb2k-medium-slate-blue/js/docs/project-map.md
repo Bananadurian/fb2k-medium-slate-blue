@@ -26,7 +26,7 @@
 - consumed by: `theme.js`, `data.js`, `interaction.js`, `flag.js`
 - then reused by: `background.js`, `title_bar_shared.js`
 `lib/flag.js`
-- depends on: `lib/icons.js` (iconMgr), alias `loadFlagImage(code)` → `iconMgr.get('flags', code.toUpperCase())`
+- depends on: `lib/icons.js` (iconMgr); flags loaded via `iconMgr.get('flags', code)`
 `lib/icons.js`
 - `IconManager` 统一图标管理：4 类注册表懒加载（brands/player/ui/flags），内置 Map 缓存 + "default" fallback
 - 单例 `iconMgr`：`get(category, name, opts)`, `invalidate()`, `clear()`, `clearAll()`
@@ -38,7 +38,7 @@
 - `lib/background.js`: `createPanelBackgroundController`, `createPanelBackgroundAutoController`, `createPanelBackgroundLayer`
 - `lib/title_bar_shared.js`: `createTitleBarController`
 - `lib/icons.js`: `iconMgr` (IconManager 单例 — 统一图标获取，替代散落字典)
-- `lib/flag.js`: `COUNTRY_RULES`, `LANGUAGE_MAP`, `resolveCountryCode`, `resolveLanguageCode`, `loadFlagImage`
+- `lib/flag.js`: `COUNTRY_RULES`, `LANGUAGE_MAP`, `resolveCountryCode`, `resolveLanguageCode`
 
 ## 5. Behavior Constraints Snapshot
 - Prefer existing library helpers over local reinvention.

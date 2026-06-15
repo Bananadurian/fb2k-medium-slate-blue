@@ -170,12 +170,3 @@ function resolveLanguageCode(rawLang) {
     return null;
 }
 
-/**
- * 根据 ISO-2 国家代码加载国旗图片
- * @param {string} code — 如 "CN"
- * @param {string} [ratio] — 宽高比，'4x3'（默认）或 '1x1'
- * @returns {GdiBitmap|null} 文件不存在返回 null
- */
-function loadFlagImage(code) {
-    return iconMgr.get('flags', code.toUpperCase());
-}
