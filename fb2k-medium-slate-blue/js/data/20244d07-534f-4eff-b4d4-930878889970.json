@@ -2,23 +2,20 @@
   "system": {
     "schema_version": "3.0",
     "entity_type": "artist",
-    "created_at": "2026-06-11T04:54:31.787267+00:00",
-    "updated_at": "2026-06-11T05:16:39.581878+00:00",
+    "created_at": "2026-06-14T06:11:36.405320+00:00",
+    "updated_at": "2026-06-14T06:13:48.283616+00:00",
     "sources": {
-      "musicbrainz": "2026-06-11T04:54:40.450515+00:00",
-      "wikidata": "2026-06-11T04:54:40.452510+00:00",
-      "wikipedia": "2026-06-11T04:54:40.452510+00:00",
-      "rym": "2026-06-11T04:54:40.453507+00:00"
+      "musicbrainz": "2026-06-14T06:11:52.683498+00:00",
+      "wikidata": "2026-06-14T06:11:52.685816+00:00",
+      "wikipedia": "2026-06-14T06:11:52.685816+00:00",
+      "rym": "2026-06-14T06:11:52.686847+00:00"
     },
     "locks": []
   },
   "data": {
     "artist_mbid": "20244d07-534f-4eff-b4d4-930878889970",
     "name": "Taylor Swift",
-    "aliases": [
-      "泰勒·斯威夫特",
-      "霉霉"
-    ],
+    "aliases": ["泰勒·斯威夫特", "霉霉"],
     "origin": {
       "country": {
         "code": "US",
@@ -52,16 +49,16 @@
       "source": "wikipedia",
       "url": "https://en.wikipedia.org/w/rest.php/v1/page/Taylor_Swift/with_html",
       "raw": "",
-      "summary": "泰勒·斯威夫特（Taylor Swift）是美国创作型歌手，1989年12月13日出生。她以自传式词作和跨流派的艺术转型著称，音乐风格横跨流行、乡村、民谣等多种类型。2005年签约Big Machine Records，以乡村音乐出道，2014年发行专辑《1989》正式转型流行乐，此后持续探索独立民谣（《Folklore》《Evermore》）、合成器流行（《Midnights》）等风格。\n\n她是全球票房最高的现场音乐艺人，六次获得IFPI全球年度唱片艺人，创纪录地四次斩获格莱美年度专辑奖（共14座格莱美）。2023-2024年的Eras Tour成为史上票房最高的巡演。她也是首位获选《时代》年度人物的艺术界个人（2023年），以及2026年入选词曲作者名人堂的最年轻女性。代表作包括《We Are Never Ever Getting Back Together》《Shake It Off》《Blank Space》《Anti-Hero》等多首冠军单曲。\n\n斯威夫特拥有全球性的粉丝群体Swifties，被《滚石》和《公告牌》评为史上最伟大艺人之一，是流行文化中极具影响力的人物。"
+      "summary": "泰勒·斯威夫特（Taylor Swift），全名泰勒·艾莉森·斯威夫特（Taylor Alison Swift），1989年12月13日出生于美国宾夕法尼亚州西雷丁，美国创作型歌手。她的音乐风格多变，融合乡村、流行、民谣、合成器流行、独立民谣、流行摇滚等多种元素，被媒体誉为\"音乐变色龙\"。2005年签约Big Machine Records，以乡村歌手身份出道，2014年凭借专辑《1989》正式转型流行，2020年以惊喜专辑《Folklore》和《Evermore》拓展独立民谣领域。\n\n斯威夫特是史上票房最高的现场音乐艺人，也是全球最富有的女性音乐人。她是唯一一位六次获得IFPI全球年度唱片艺人称号的歌手，八张专辑在美国首周销量均突破百万。2023年成为首位入选《时代》年度人物的艺术界人士，2026年成为词曲作者名人堂最年轻女性入选者。她共获得14项格莱美奖，其中四项为年度专辑奖（《Fearless》《1989》《Folklore》《Midnights》），均为历史之最。\n\n她的代表作包括《Love Story》《Shake It Off》《Blank Space》《Anti-Hero》等，2023-2024年的Eras Tour成为史上票房最高的巡回演唱会。斯威夫特以自传式创作和艺术重塑著称，拥有全球性粉丝群体\"Swifties\"。"
     },
     "wikidata_qid": "Q26876",
     "wikipedia_title": "Taylor_Swift",
     "external_urls": {
       "allmusic": "https://www.allmusic.com/artist/mn0000472102",
-      "discogs": "https://www.discogs.com/artist/1124645",
-      "last.fm": "https://www.last.fm/music/Taylor+Swift",
-      "official website": "https://taylorswift.com",
-      "rate your music": "https://rateyourmusic.com/artist/taylor-swift",
+      "discogs": "https://www.discogs.com/artist/5023427",
+      "last_fm": "https://www.last.fm/music/Taylor+Swift",
+      "official_website": "http://taylorswift.jp/",
+      "rate_your_music": "https://rateyourmusic.com/artist/taylor-swift",
       "soundcloud": "https://soundcloud.com/taylorswiftofficial",
       "wikidata": "https://www.wikidata.org/wiki/Q26876",
       "youtube": "https://www.youtube.com/channel/UCqECaJ8Gagnn7YCbPEzWH6g",
@@ -70,15 +67,15 @@
       "instagram": "https://www.instagram.com/taylorswift/",
       "x": "https://x.com/taylorswift13",
       "tiktok": "https://www.tiktok.com/@taylorswift",
-      "album of the year": "https://www.albumoftheyear.org/artist/323/",
+      "album_of_the_year": "https://www.albumoftheyear.org/artist/323/",
       "pitchfork": "https://pitchfork.com/artists/28495-taylor-swift/",
       "metacritic": "https://www.metacritic.com/person/taylor-swift",
       "fandom": "https://disney.fandom.com/wiki/Taylor_Swift",
       "qobuz": "https://www.qobuz.com/us-en/interpreter/taylor-swift/download-streaming-albums",
       "tidal": "https://tidal.com/browse/artist/3557299",
       "spotify": "https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02",
-      "apple music": "https://music.apple.com/us/artist/159260351",
-      "amazon music": "https://music.amazon.com/artists/B00157GJ20",
+      "apple_music": "https://music.apple.com/us/artist/159260351",
+      "amazon_music": "https://music.amazon.com/artists/B00157GJ20",
       "deezer": "https://www.deezer.com/artist/12246",
       "genius": "https://genius.com/artists/Taylor-swift"
     },
@@ -87,7 +84,7 @@
         "type": "image",
         "comment": "",
         "url": "https://commons.wikimedia.org/wiki/File:Taylor_Swift_at_the_2023_MTV_Video_Music_Awards_4.png",
-        "local": "covers/artists/original/20244d07-534f-4eff-b4d4-930878889970_musicbrainz_0eae8c6d.png",
+        "local": "",
         "source": "musicbrainz",
         "source_mbid": "20244d07-534f-4eff-b4d4-930878889970",
         "thumbnails": {
@@ -97,7 +94,7 @@
           "small": "",
           "large": ""
         },
-        "added_at": "2026-06-11T04:56:16.718885+00:00",
+        "added_at": "",
         "exported_to_square": false
       },
       {
@@ -236,81 +233,63 @@
         "title": "Complete Album Collection",
         "date": "2013-11-22",
         "primary_type": "Album",
-        "secondary_types": [
-          "Compilation"
-        ]
+        "secondary_types": ["Compilation"]
       },
       {
         "release_group_mbid": "0a5a4bb3-3b68-4ab4-b36d-7523b5beff16",
         "title": "reputation Stadium Tour Surprise Song Playlist",
         "date": "2018-11-30",
         "primary_type": "Album",
-        "secondary_types": [
-          "Compilation"
-        ]
+        "secondary_types": ["Compilation"]
       },
       {
         "release_group_mbid": "2a8d9df8-c23f-456c-9153-12ab1ced21ce",
         "title": "Speak Now: World Tour Live",
         "date": "2011-11-21",
         "primary_type": "Album",
-        "secondary_types": [
-          "Live"
-        ]
+        "secondary_types": ["Live"]
       },
       {
         "release_group_mbid": "81a20a2d-e9cb-40ce-9e22-178337f381a0",
         "title": "Live From Clear Channel Stripped 2008",
         "date": "2020-04-24",
         "primary_type": "Album",
-        "secondary_types": [
-          "Live"
-        ]
+        "secondary_types": ["Live"]
       },
       {
         "release_group_mbid": "9d8ee40d-075a-4cfe-b079-abfbe7002a21",
         "title": "Lover (live from Paris)",
         "date": "2020-05-19",
         "primary_type": "Album",
-        "secondary_types": [
-          "Live"
-        ]
+        "secondary_types": ["Live"]
       },
       {
         "release_group_mbid": "d931fda7-8710-4212-85c1-b1568d0617fd",
         "title": "folklore: the long pond studio sessions",
         "date": "2020-11-25",
         "primary_type": "Album",
-        "secondary_types": [
-          "Live"
-        ]
+        "secondary_types": ["Live"]
       },
       {
         "release_group_mbid": "f153b0ac-0816-4966-a4f6-70176dd4c301",
         "title": "Taylor Swift Karaoke: Taylor Swift",
         "date": "2009-01-27",
         "primary_type": "Album",
-        "secondary_types": [
-          "Remix"
-        ]
+        "secondary_types": ["Remix"]
       },
       {
         "release_group_mbid": "e227abf9-eb09-4908-bf7b-1aa3dd8725cd",
         "title": "Taylor Swift Karaoke: Fearless",
         "date": "2009-03-31",
         "primary_type": "Album",
-        "secondary_types": [
-          "Remix"
-        ]
+        "secondary_types": ["Remix"]
       },
       {
         "release_group_mbid": "af8d8484-cd0b-4ccb-9a1c-afe6a1e81817",
         "title": "Taylor Swift Karaoke: Speak Now",
         "date": "2010-12-20",
         "primary_type": "Album",
-        "secondary_types": [
-          "Remix"
-        ]
+        "secondary_types": ["Remix"]
       }
     ],
     "rym_descriptors": [],

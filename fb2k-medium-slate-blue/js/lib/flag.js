@@ -173,8 +173,10 @@ function resolveLanguageCode(rawLang) {
 /**
  * 根据 ISO-2 国家代码加载国旗图片
  * @param {string} code — 如 "CN"
+ * @param {string} [ratio] — 宽高比，'4x3'（默认）或 '1x1'
  * @returns {GdiBitmap|null} 文件不存在返回 null
  */
-function loadFlagImage(code) {
-    return _loadImage(IMGS_FLAGS_DIR + code + ".png");
+function loadFlagImage(code, ratio) {
+    const dir = ratio === '1x1' ? IMGS_FLAGS_DIR.replace('4x3', '1x1') : IMGS_FLAGS_DIR;
+    return _loadImage(dir + code + ".svg");
 }

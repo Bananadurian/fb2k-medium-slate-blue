@@ -2,7 +2,7 @@
 
 ## 1. 简介
 
-![](fb2k-medium-slate-blue/imgs/Screenshots/1.3.0-1.png)
+![](fb2k-medium-slate-blue/imgs/screenshots/1.3.0-1.png)
 
 > 更多截图见 [CHANGELOG](fb2k-medium-slate-blue/CHANGELOG.md)。
 
@@ -36,7 +36,7 @@
 
 3. 需要显示封面的地方选择 `Front cover` 即可显示（`Artist` 设置类似）。
 
-> `fb2k-medium-slate-blue/imgs/RadioCover`：示例电台封面。
+> `fb2k-medium-slate-blue/imgs/covers/radio`：示例电台封面。
 
 ## 4. 版本记录
 

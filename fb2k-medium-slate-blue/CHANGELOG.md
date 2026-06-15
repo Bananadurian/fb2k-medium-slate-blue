@@ -9,10 +9,10 @@
 - ESlyric新增多项自定义布局
 - 其它...
 
-![](imgs/Screenshots/1.3.0-1.png)
-![](imgs/Screenshots/1.3.0-2.png)
-![](imgs/Screenshots/1.3.0-3.png)
-![](imgs/Screenshots/1.3.0-4.png)
+![](imgs/screenshots/1.3.0-1.png)
+![](imgs/screenshots/1.3.0-2.png)
+![](imgs/screenshots/1.3.0-3.png)
+![](imgs/screenshots/1.3.0-4.png)
 
 ## 1.2.1 — 2026-01-14
 
@@ -23,7 +23,7 @@
 - 配色优化
 - 脚本优化
 
-![](imgs/Screenshots/1.2.1.png)
+![](imgs/screenshots/1.2.1.png)
 
 ## 1.2.0 — 2026-01-01
 
@@ -31,12 +31,12 @@
 - 新增基于`SMP`的艺人、专辑面板，艺人数据来自本地创建的艺人`Json`数据，未引入`last.fm`，专辑数据来自标签
 - 引入Coverflow面板
 
-![](imgs/Screenshots/1.2.0.png)
+![](imgs/screenshots/1.2.0.png)
 
 ## 1.1.0
 
-![](imgs/Screenshots/1.1.0.png)
+![](imgs/screenshots/1.1.0.png)
 
 ## 1.0.0
 
-![](imgs/Screenshots/1.0.0.png)
+![](imgs/screenshots/1.0.0.png)

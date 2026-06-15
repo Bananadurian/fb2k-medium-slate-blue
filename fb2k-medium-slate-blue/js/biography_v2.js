@@ -64,7 +64,7 @@ const LINK_ICONS = {
   Country: _loadImage(IMGS_LINKS_DIR + "locate.png"),
   Born: _loadImage(IMGS_LINKS_DIR + "calendar.png"),
   Links: _loadImage(IMGS_LINKS_DIR + "milestone.png"),
-  "official website": _loadImage(IMGS_LINKS_DIR + "house.png"),
+  official_website: _loadImage(IMGS_LINKS_DIR + "house.png"),
   soundcloud: _loadImage(IMGS_LINKS_DIR + "soundcloud.png"),
   bandcamp: _loadImage(IMGS_LINKS_DIR + "bandcamp.png"),
   instagram: _loadImage(IMGS_LINKS_DIR + "Instagram.png"),
@@ -74,12 +74,21 @@ const LINK_ICONS = {
   discogs: _loadImage(IMGS_LINKS_DIR + "Discogs.png"),
   allmusic: _loadImage(IMGS_LINKS_DIR + "ALLMUSIC.png"),
   musicbrainz: _loadImage(IMGS_LINKS_DIR + "Musicbrainz.png"),
-  "rate your music": _loadImage(IMGS_LINKS_DIR + "rateyourmusic.png"),
-  "album of the year": _loadImage(IMGS_LINKS_DIR + "aoty.png"),
+  rate_your_music: _loadImage(IMGS_LINKS_DIR + "rateyourmusic.png"),
+  album_of_the_year: _loadImage(IMGS_LINKS_DIR + "aoty.png"),
   pitchfork: _loadImage(IMGS_LINKS_DIR + "pitchfork.png"),
   metacritic: _loadImage(IMGS_LINKS_DIR + "metacritic.png"),
   fandom: _loadImage(IMGS_LINKS_DIR + "fandom.png"),
   wikipedia: _loadImage(IMGS_LINKS_DIR + "wikipedia.png"),
+  last_fm: _loadImage(IMGS_LINKS_DIR + "default.png"),
+  wikidata: _loadImage(IMGS_LINKS_DIR + "default.png"),
+  spotify: _loadImage(IMGS_LINKS_DIR + "default.png"),
+  apple_music: _loadImage(IMGS_LINKS_DIR + "AppleMusic.png"),
+  amazon_music: _loadImage(IMGS_LINKS_DIR + "AmazonMusic.png"),
+  deezer: _loadImage(IMGS_LINKS_DIR + "Deezer.png"),
+  genius: _loadImage(IMGS_LINKS_DIR + "Genius.png"),
+  qobuz: _loadImage(IMGS_LINKS_DIR + "Qobuz.png"),
+  tidal: _loadImage(IMGS_LINKS_DIR + "Tidal.png"),
 };
 
 // [UI组件] TitleFormat 与 Tooltip
@@ -1132,7 +1141,7 @@ function updateCountryFlag() {
   const code = artistData.countryCode || resolveCountryCode(artistData.country);
   if (code === lastCountryCode) return;
   lastCountryCode = code;
-  currentCountryFlagImg = code ? loadFlagImage(code) : null;
+  currentCountryFlagImg = code ? loadFlagImage(code, "4x3") : null;
 }
 
 /**

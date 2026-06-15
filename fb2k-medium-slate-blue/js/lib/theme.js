@@ -250,4 +250,4 @@ function _refreshThemeFonts() {
 const IMGS_BASE = fb.ProfilePath + "\\fb2k-medium-slate-blue\\imgs";
 const IMGS_LUCIDE_DIR = IMGS_BASE + "\\Lucide\\";
 const IMGS_LINKS_DIR  = IMGS_BASE + "\\Links\\";
-const IMGS_FLAGS_DIR  = IMGS_BASE + "\\Flags\\png_4x3_64x64\\";
+const IMGS_FLAGS_DIR  = IMGS_BASE + "\\icons\\flags\\4x3\\";

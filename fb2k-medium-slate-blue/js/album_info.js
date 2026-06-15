@@ -836,7 +836,7 @@ function updateLanguageFlag() {
     const code = albumData ? albumData.languageFlagCode : null;
     if (code === lastLanguageCode) return;
     lastLanguageCode = code;
-    currentLanguageFlagImg = code ? loadFlagImage(code) : null;
+    currentLanguageFlagImg = code ? loadFlagImage(code, '4x3') : null;
 }
 
 
