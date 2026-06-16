@@ -12,7 +12,7 @@
 - [ ] 添加右键菜单：调用 music-meta 更新数据、下载封面等
 - [ ] 封面查找后缀优化：当前 `_X_` 写死，考虑更通用的匹配方案
 - [ ] 点击查看大图（从 biography.js 迁移）
-- [ ] 伪透明模式：选中非当前播放歌曲并停止播放时，背景渲染异常（从 biography.js 迁移）
+- [ ] 伪透明模式：选中非当前播放歌曲并停止播放时，背景渲染异常（从 biography.js 迁移）**[可能是 JSplitter/CUI 插件问题，需调试确认]**
 - [x] `var` → `let`/`const` 重构（33 处），规范已沉淀至 smp-copilot.md §5
 
 ## biography.js — 已废弃，由 biography_v2.js 取代，任务迁移至下方
@@ -21,7 +21,7 @@
 
 - [x] 添加链接显示区域（对齐 biography_v2.js 的 external_urls 展示）
 - [ ] 点击查看大图
-- [ ] 伪透明模式：选中非当前播放歌曲并停止播放时，背景渲染异常
+- [ ] 伪透明模式：选中非当前播放歌曲并停止播放时，背景渲染异常 **[可能是 JSplitter/CUI 插件问题，需调试确认]**
 
 ## cover_panel.js
 
@@ -40,7 +40,11 @@
 - [x] 移除头部 `@file`/`@author`/`@created`/`@updated`/`@version`，统一由 git 管理（22 文件）
 - [ ] 代码进一步规范化（命名、结构一致性）
 - [x] 版本号规范统一（头部仅保留 `@description` + `@requires`）
-- [ ] 删除冗余内容（未引用的代码、空文件、废弃注释）
+- [x] 删除冗余内容（未引用的代码、空文件、废弃注释）
+  - [x] 删除 JSON_SCHEMA_MAP 未使用常量（24 行）
+  - [x] 为 ALBUM_ART_ID 添加 @reserved 标记（后续会用）
+  - ✓ test1.js 空文件保留（用户表示不用管）
+  - ✓ "废弃"注释均为功能描述，无需删除
 - [x] 优化 CLAUDE.md / 文档重构（精简内容、消除重复，详见 docs/ 重构）
 - [x] 文档路径优化（`docs/` 目录结构梳理，已完成重构）
 - [ ] 引入配置模块（全局透明模式开关、D2D 渲染模式开关）
@@ -72,7 +76,7 @@
   - [x] 批量转换 SVG → PNG（96×96px，`imgs/svg_to_png.py` 脚本）
   - [x] 切换注册表到 PNG（`lib/icons.js` 四个注册表全部切换）
   - [x] `_loadImage` 默认值优化：`maxWidth` 默认 96px（对齐图标库标准）
-- [ ] window.DrawMode 优化卡顿面板
+- [ ] window.DrawMode 优化卡顿面板 **[可能是 JSplitter 渲染机制问题，需排查]**
 
 ---
 
