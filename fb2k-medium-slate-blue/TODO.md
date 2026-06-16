@@ -19,7 +19,7 @@
 
 ## album_info.js
 
-- [ ] 添加链接显示区域（对齐 biography_v2.js 的 external_urls 展示）
+- [x] 添加链接显示区域（对齐 biography_v2.js 的 external_urls 展示）
 - [ ] 点击查看大图
 - [ ] 伪透明模式：选中非当前播放歌曲并停止播放时，背景渲染异常
 

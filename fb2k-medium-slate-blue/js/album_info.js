@@ -28,6 +28,11 @@ const SCROLL_STEP = THEME.LAYOUT.SCROLL_STEP;
 const ICON_SIZE = THEME.LAYOUT.ICON_SIZE;
 const IMG_CYCLE_MS = THEME.LAYOUT.IMG_CYCLE_MS;
 
+// 链接按钮布局常量
+const LINK_BTN_PAD = _scale(4);
+const LINK_BTN_GAP = _scale(6);
+const LINK_ROW_GAP = _scale(4);
+
 // 面板配置开关
 const PANEL_CFG = {
   coverAspectRatio: 1 / 1, // 封面宽高比
@@ -80,6 +85,7 @@ let currentText = ""; // 当前显示的文本内容
 let fullTextH = 0; // 文本总高度
 let errorText = "Select or play a track...";
 let activeElement = null; // [状态机] 当前激活的 UI 元素
+let activeLinkBtns = []; // 链接按钮数组（动态生成）
 
 let panelW = window.Width;
 let panelH = window.Height;
@@ -300,6 +306,30 @@ const SECTIONS = [
     },
   },
   {
+    name: "links",
+    padding: { left: _scale(10), top: 0, right: _scale(10), bottom: _scale(6) },
+    icon: iconMgr.get("ui", "links"),
+    iconGap: _scale(5),
+    rect: { x: 0, y: 0, w: 0, h: 0 },
+    content: { x: 0, y: 0, w: 0, h: 0 },
+    get visible() {
+      return activeLinkBtns.length > 0;
+    },
+    getContentHeight() {
+      if (activeLinkBtns.length === 0) return 0;
+      const lineH = _getFontLineHeight(TS.body.font);
+      const contentW = panelW - this.padding.left - this.padding.right;
+      const btnsPerRow = calcLinkBtnsPerRow(contentW, this.iconGap);
+      const rows = Math.min(2, Math.ceil(activeLinkBtns.length / btnsPerRow));
+      if (rows <= 1) return lineH;
+      const btnSize = ICON_SIZE + LINK_BTN_PAD;
+      return btnSize * rows + LINK_ROW_GAP * (rows - 1);
+    },
+    draw(gr) {
+      drawLinksSection(gr, this);
+    },
+  },
+  {
     name: "tab",
     padding: { left: _scale(25), top: 0, right: _scale(10), bottom: 0 },
     rect: { x: 0, y: 0, w: 0, h: 0 },
@@ -377,6 +407,37 @@ const albumDateTf = fb.TitleFormat("$meta(DATE)");
 const albumLanguageTf = fb.TitleFormat("$meta(LANGUAGE)");
 const albumSourceTf = fb.TitleFormat("$if2($meta(SOURCE),WEB)");
 const albumArtistTf = fb.TitleFormat("%album artist%");
+
+// 专辑链接配置映射 (标签名 → 图标键)
+const ALBUM_LINKS_CONFIG = {
+  URL_MUSICBRAINZ: "musicbrainz",
+  URL_WIKIDATA: "wikidata",
+  URL_WIKIPEDIA: "wikipedia",
+  URL_RYM: "rate_your_music",
+  URL_AOTY: "album_of_the_year",
+  URL_DISCOGS: "discogs",
+  URL_ALLMUSIC: "allmusic",
+  URL_LASTFM: "last_fm",
+  URL_SPOTIFY: "spotify",
+  URL_APPLEMUSIC: "apple_music",
+  URL_AMAZONMUSIC: "amazon_music",
+  URL_TIDAL: "tidal",
+  URL_QOBUZ: "qobuz",
+  URL_DEEZER: "deezer",
+  URL_YOUTUBE: "youtube",
+  URL_BANDCAMP: "bandcamp",
+  URL_SOUNDCLOUD: "soundcloud",
+  URL_GENIUS: "genius",
+  URL_PITCHFORK: "pitchfork",
+  URL_METACRITIC: "metacritic",
+  URL_FANDOM: "fandom",
+};
+
+// 动态生成 URL 标签 TitleFormat
+const albumUrlTfs = {};
+for (let tag in ALBUM_LINKS_CONFIG) {
+  albumUrlTfs[tag] = fb.TitleFormat("$meta(" + tag + ")");
+}
 
 // AQ 音质参数提取 TF
 const codecTf = fb.TitleFormat("%codec%");
@@ -463,6 +524,7 @@ function reloadAlbumData(metadb) {
 
   updateSourceIcon(albumData.source);
   updateLanguageFlag();
+  createLinkButtons();
 
   if (panelW > 0) {
     updateLayoutMetrics();
@@ -494,11 +556,29 @@ function getAlbumCacheEntry(safeAlbumKey, metadb) {
     language: getLanguageName(rawLang),
     languageFlagCode: resolveLanguageCode(rawLang),
     source: albumSourceTf.EvalWithMetadb(metadb).trim().toUpperCase(),
+    links: extractAlbumLinks(metadb),
     aliases: [],
   };
 
   albumCache.set(safeAlbumKey, newData);
   return newData;
+}
+
+/**
+ * 从音频标签提取专辑链接
+ * @param {FbMetadbHandle} metadb
+ * @returns {Object} links 对象 (图标键 → URL)
+ */
+function extractAlbumLinks(metadb) {
+  const links = {};
+  for (let tag in ALBUM_LINKS_CONFIG) {
+    const url = albumUrlTfs[tag].EvalWithMetadb(metadb).trim();
+    if (url.length > 0) {
+      const iconKey = ALBUM_LINKS_CONFIG[tag];
+      links[iconKey] = url;
+    }
+  }
+  return links;
 }
 
 /**
@@ -625,6 +705,35 @@ function drawDateLangSection(gr, sec) {
     cw - sec.colGap - ICON_SIZE - sec.iconGap,
     ch,
   );
+}
+
+/** @param {Object} sec - SECTIONS links item */
+function drawLinksSection(gr, sec) {
+  const cx = sec.content.x,
+    cy = sec.content.y,
+    ch = sec.content.h;
+
+  // 绘制 section 图标
+  if (sec.icon) {
+    _drawIcon(gr, sec.icon, cx, cy, ch);
+  }
+
+  // 绘制链接按钮
+  activeLinkBtns.forEach((btn) => {
+    if (btn.img) {
+      gr.DrawImage(
+        btn.img,
+        btn.x,
+        btn.y,
+        btn.w,
+        btn.h,
+        0,
+        0,
+        btn.img.Width,
+        btn.img.Height,
+      );
+    }
+  });
 }
 
 /** @param {Object} sec - SECTIONS tab item */
@@ -762,6 +871,11 @@ function updateLayoutMetrics() {
   elements.tracklistBtn.x = tabCx + elements.descBtn.w + _scale(5);
   elements.tracklistBtn.y = elements.descBtn.y;
 
+  // 10. 计算链接按钮坐标
+  if (SEC.links.visible) {
+    layoutLinkButtonPositions(SEC.links);
+  }
+
   manageCycleTimer();
 }
 
@@ -881,6 +995,34 @@ function ensureCarouselImageReady(nextIndex, carouselState, reason) {
   carouselState.images[index] = processed;
   return true;
 }
+
+/**
+ * 创建专辑链接按钮数组
+ */
+function createLinkButtons() {
+  activeLinkBtns = [];
+  if (!albumData || !albumData.links) return;
+
+  const btnSize = ICON_SIZE + LINK_BTN_PAD;
+
+  for (let key in albumData.links) {
+    let url = albumData.links[key];
+    if (url && url.length > 0) {
+      activeLinkBtns.push({
+        name: key,
+        url: url,
+        x: 0,
+        y: 0,
+        w: btnSize,
+        h: btnSize,
+        img: iconMgr.get("brands", key),
+        isHover: false,
+        tooltip: key,
+      });
+    }
+  }
+}
+
 /**
  * 将语言代码（ISO 639-1/2）转为显示名称，支持 // ; , 分隔的多语言。
  * 映射表见 lib/flag.js LANGUAGE_MAP。
@@ -903,6 +1045,37 @@ function getLanguageName(rawLang) {
 
   // 拼接结果（用分号分隔，保持和输入一致的分隔风格）
   return nameList.join("; ");
+}
+
+/**
+ * 计算单行可容纳的链接按钮数量
+ * @param {number} contentW - section 内容区宽度
+ * @param {number} iconGap - section 图标间距
+ * @returns {number} 单行按钮数
+ */
+function calcLinkBtnsPerRow(contentW, iconGap) {
+  const iconSpace = ICON_SIZE + iconGap;
+  const btnTotalW = ICON_SIZE + LINK_BTN_PAD + LINK_BTN_GAP;
+  return Math.max(1, Math.floor((contentW - iconSpace + LINK_BTN_GAP) / btnTotalW));
+}
+
+/**
+ * 计算链接按钮坐标位置（最多2行）
+ * @param {Object} sec - links section 对象
+ */
+function layoutLinkButtonPositions(sec) {
+  if (activeLinkBtns.length === 0) return;
+
+  const btnSize = ICON_SIZE + LINK_BTN_PAD;
+  const startX = sec.content.x + ICON_SIZE + sec.iconGap;
+  const btnsPerRow = calcLinkBtnsPerRow(sec.content.w, sec.iconGap);
+
+  activeLinkBtns.forEach((btn, i) => {
+    const row = Math.min(1, Math.floor(i / btnsPerRow));
+    const col = i % btnsPerRow;
+    btn.x = startX + col * (btnSize + LINK_BTN_GAP);
+    btn.y = sec.content.y + _scale(1) + row * (btnSize + LINK_ROW_GAP);
+  });
 }
 
 function scheduleEnsureFromPaint() {
@@ -1101,21 +1274,36 @@ function on_mouse_wheel(step) {
   );
 }
 
-// [核心] 状态机：on_mouse_move — hover/点击命中测试 + 局部重绘
+// [核心] 状态机：on_mouse_move — hover/点击命中测试 + 局部重绘（优化版：Y坐标分层）
 function on_mouse_move(x, y) {
   let target = null;
 
-  // 1. 检测 Tab 按钮
-  if (_hitTest(x, y, elements.descBtn)) {
-    target = elements.descBtn;
-  } else if (_hitTest(x, y, elements.tracklistBtn)) {
-    target = elements.tracklistBtn;
-  } else if (_hitTest(x, y, elements.badgeGroup) && SEC.badge.visible) {
-    // 2. 检测音源/AQ 图标
+  // 快速路径：根据 Y 坐标判断区域，避免全局遍历
+  if (y >= SEC.tab.rect.y) {
+    // Tab 区域（面板底部）
+    if (_hitTest(x, y, elements.descBtn)) {
+      target = elements.descBtn;
+    } else if (_hitTest(x, y, elements.tracklistBtn)) {
+      target = elements.tracklistBtn;
+    }
+  } else if (
+    SEC.links.visible &&
+    y >= SEC.links.rect.y &&
+    y < SEC.links.rect.y + SEC.links.rect.h
+  ) {
+    // 链接区域（仅在 visible 且 Y 坐标匹配时检测）
+    for (let btn of activeLinkBtns) {
+      if (_hitTest(x, y, btn)) {
+        target = btn;
+        break;
+      }
+    }
+  } else if (SEC.badge.visible && _hitTest(x, y, elements.badgeGroup)) {
+    // Badge 区域（标识行）
     target = elements.badgeGroup;
   }
 
-  // 3. 状态切换
+  // 状态切换
   if (activeElement === target) return; // 没变，退出
 
   // 旧元素复位
@@ -1209,6 +1397,18 @@ function on_mouse_lbtn_up(x, y) {
     );
     return;
   }
+
+  // 链接点击 (ActiveX 延迟加载)
+  activeLinkBtns.forEach((btn) => {
+    if (_hitTest(x, y, btn)) {
+      try {
+        const WshShell = new ActiveXObject("WScript.Shell");
+        WshShell.Run(btn.url);
+      } catch (e) {
+        console.log("Link Error: " + e);
+      }
+    }
+  });
 }
 
 // 播放/选中 逻辑
@@ -1234,6 +1434,7 @@ function on_playlist_items_selection_change() {
   } else {
     currentAlbumKey = null;
     albumData = null;
+    activeLinkBtns = [];
     errorText = "Select or play a track...";
     window.Repaint();
   }

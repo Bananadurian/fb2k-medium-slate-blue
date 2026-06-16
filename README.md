@@ -20,7 +20,17 @@
 > 便携版：`xx/foobar2000/profile`
 > 非便携版：`C:\Users\用户名\AppData\Roaming\foobar2000\profile`
 
-## 3. 电台封面
+## 3. 功能特性
+
+详细功能说明参见 [**FEATURES.md**](fb2k-medium-slate-blue/FEATURES.md)，包括：
+- **专辑链接**: 支持 21 个音乐平台的一键跳转
+- **艺人信息**: 作品集、外部链接、国旗标识
+- **电台封面**: 为网络电台添加封面
+- **主题系统**: 多种背景渲染模式
+
+## 4. 电台封面
+
+> 详细说明参见 [FEATURES.md §3](fb2k-medium-slate-blue/FEATURES.md#3-电台封面配置)
 
 利用 [foo_external_tags](<https://wiki.hydrogenaud.io/index.php?title=Foobar2000:Components/External_Tags_(foo_external_tags)>) 插件把电台的名字、专辑、艺人信息等信息补全。
 
@@ -38,13 +48,13 @@
 
 > `fb2k-medium-slate-blue/imgs/covers/radio`：示例电台封面。
 
-## 4. 版本记录
+## 5. 版本记录
 
 详见 [`fb2k-medium-slate-blue/CHANGELOG.md`](fb2k-medium-slate-blue/CHANGELOG.md)。版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
-## 5. 附录
+## 6. 附录
 
-### 5.1. 部分文件夹说明
+### 6.1. 部分文件夹说明
 
 - `eslyric-data`: ESlyric配置。
 

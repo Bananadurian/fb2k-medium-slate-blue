@@ -259,6 +259,70 @@ const DISCO_DATA_SOURCE = window.GetProperty(
 - 文件路径配置：JSON 目录、封面目录等
 - 行为开关：显示/隐藏特定功能
 
+## 9.2 Data Source Pattern: Audio Tag Extraction
+
+从音频标签提取链接数据（相对于 JSON 文件，标签来源更通用且用户可控）
+
+**Album Info 专辑链接示例** (`album_info.js`):
+
+### 配置对象模式
+```javascript
+// 集中管理标签名 → 图标键映射
+const ALBUM_LINKS_CONFIG = {
+  URL_MUSICBRAINZ: "musicbrainz",
+  URL_SPOTIFY: "spotify",
+  URL_DISCOGS: "discogs",
+  // ... 21 个平台
+};
+
+// 动态生成 TitleFormat 对象
+const albumUrlTfs = {};
+for (let tag in ALBUM_LINKS_CONFIG) {
+  albumUrlTfs[tag] = fb.TitleFormat("$meta(" + tag + ")");
+}
+```
+
+### 提取函数
+```javascript
+function extractAlbumLinks(metadb) {
+  const links = {};
+  for (let tag in ALBUM_LINKS_CONFIG) {
+    const url = albumUrlTfs[tag].EvalWithMetadb(metadb).trim();
+    if (url.length > 0) {
+      const iconKey = ALBUM_LINKS_CONFIG[tag];
+      links[iconKey] = url;  // 过滤空值
+    }
+  }
+  return links;  // { "spotify": "https://...", "discogs": "https://..." }
+}
+```
+
+### 集成到缓存
+```javascript
+function getAlbumCacheEntry(safeAlbumKey, metadb) {
+  const cached = albumCache.get(safeAlbumKey);
+  if (cached !== undefined) return cached;
+
+  let newData = {
+    title: albumTitleTf.EvalWithMetadb(metadb),
+    // ... 其他字段
+    links: extractAlbumLinks(metadb),  // 标签提取
+  };
+
+  albumCache.set(safeAlbumKey, newData);
+  return newData;
+}
+```
+
+**优势对比**：
+- **JSON 模式** (`biography_v2.js`): 适用于外部 API 数据、复杂结构、批量导入场景
+- **标签模式** (`album_info.js`): 用户可直接用 Mp3tag 编辑，无需维护外部文件，更通用
+
+**标签命名规范**：
+- 使用大写 `URL_` 前缀区分链接类型标签
+- 平台名全大写：`URL_SPOTIFY`、`URL_YOUTUBE`
+- 下划线分隔多词：`URL_APPLEMUSIC`（而非 `URL_APPLE_MUSIC`）
+
 ## 10. SECTIONS Layout Pattern (`album_info.js`, `biography.js`)
 
 Define self-contained area objects in a `SECTIONS` array. Each section owns its own `padding`, `getContentHeight()`, and `draw(gr)`. A shared `layoutSections(panelW, panelH)` vertically stacks them from y=0.
