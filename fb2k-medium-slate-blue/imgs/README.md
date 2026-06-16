@@ -49,6 +49,49 @@ imgs/
 
 > SVG 通过注册表扩展名自动识别，切换 SVG/PNG 只需修改注册表值（如 `"play": "circle-play.svg"` → `"circle-play.png"`），无需改代码。国旗只提供 SVG，PNG 可使用 [linebender/resvg](https://github.com/linebender/resvg) 转换。
 
+## PNG 生成工具
+
+项目包含 `svg_to_png.py` 脚本用于批量转换 SVG → PNG（96×96px）。
+
+### 前置条件
+
+1. 下载 [resvg](https://github.com/linebender/resvg) 并配置路径（脚本中 `Config.resvg_path`）
+2. 安装 [uv](https://github.com/astral-sh/uv)：`winget install --id=astral-sh.uv -e`
+
+### 使用方法
+
+```bash
+# 进入 imgs 目录
+cd fb2k-medium-slate-blue/imgs
+
+# 转换单个目录（同目录输出，SVG/PNG 混放）
+uv run svg_to_png.py  # 默认转换 icons/brands
+
+# 自定义输入输出（修改脚本末尾 INPUT/OUTPUT 变量）
+# INPUT  = r"icons/player"
+# OUTPUT = r"icons/player"
+```
+
+### 配置说明
+
+- **输出尺寸**：96×96px（覆盖 13-54px 显示场景，≥1.78× 超采样，比 128px 省 44% 内存）
+- **居中模式**：小图标居中贴到固定画布，保持长宽比
+- **透明背景**：RGBA 模式，alpha 通道保留
+- **并发处理**：默认使用所有 CPU 核心
+
+### 切换 SVG/PNG
+
+修改 `lib/icons.js` 注册表扩展名即可，无需改代码：
+
+```javascript
+// 从 SVG 切换到 PNG
+IconManager.BRANDS = {
+  "apple_music": "apple-music.png",  // 原 "apple-music.svg"
+  "spotify": "spotify.png",
+  // ...
+}
+```
+
 ## 备注
 
 - 图标绘制路径（`Button.paint` / `_drawIcon`）已内置 `SetInterpolationMode(7)` → `0` 恢复，确保高分辨率位图缩放时无锯齿。

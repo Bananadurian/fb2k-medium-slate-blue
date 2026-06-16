@@ -61,9 +61,12 @@
     - [x] `lib/theme.js` 集中维护路径常量（当前 `IMGS_LINKS_DIR`/`IMGS_LUCIDE_DIR` 已存在）
     - [x] 各面板脚本从 `LINK_ICONS` 字典 → `iconManager.get('brands', 'apple_music')` 调用
     - [ ] `IconManager.BRANDS` 去重：snake_case（`tidal`）和大写来源名（`TIDAL`）指向同一图标，统一键名并归化调用点大小写
-- [ ] SVG 图标存在模糊/锯齿，考虑切换回 PNG（修改注册表文件名即可，无需改代码）
+- [x] SVG 图标存在模糊/锯齿，考虑切换回 PNG（修改注册表文件名即可，无需改代码）
   - [x] 排查旧文件引用：清理 `Links/`/`Lucide/` 中 `-1`, `-xx`, `(1)` 等历史变体 → `_legacy/`
   - [x] `covers/radio/` / `screenshots/` 独立于图标目录
+  - [x] 批量转换 SVG → PNG（96×96px，`imgs/svg_to_png.py` 脚本）
+  - [x] 切换注册表到 PNG（`lib/icons.js` 四个注册表全部切换）
+  - [x] `_loadImage` 默认值优化：`maxWidth` 默认 96px（对齐图标库标准）
 - [ ] window.DrawMode 优化卡顿面板
 
 ---

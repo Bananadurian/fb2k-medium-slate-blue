@@ -47,7 +47,11 @@ profile/
 │   │   ├── *_buttons.js                   # Button panels
 │   │   ├── *_info.js                      # Info panels
 │   └── imgs/                              # Theme assets
-│       ├── Flags/, js_panel3/, Links/, Lucide/, RadioCover/, Screenshots/
+│       ├── icons/                         # 图标资源（brands/player/ui/flags）
+│       ├── covers/radio/                  # 电台封面
+│       ├── screenshots/                   # 截图
+│       ├── svg_to_png.py                  # SVG→PNG 批量转换工具
+│       └── README.md                      # 图标来源、命名规范、工具使用说明
 ├── configuration/                         # Plugin configs
 │   └── *.dll.cfg                          # Plugin-specific configs
 ├── theme.fth                              # Columns UI theme
@@ -161,7 +165,7 @@ Example covers: `fb2k-medium-slate-blue/imgs/RadioCover/`
 - **foo_enhanced_playcount** — Play statistics
 - **foo_vis_*** — Visualization plugins (wispan, milkdrop2)
 - **Sarasa Gothic** font family — UI typography
-- **IconManager** (`lib/icons.js`) — 统一图标资源管理，4 类注册表懒加载 + 缓存
+- **IconManager** (`lib/icons.js`) — 统一图标资源管理，4 类注册表懒加载 + 缓存（PNG 96×96px）
 - 主题版本：`fb2k-medium-slate-blue/VERSION`、`fb2k-medium-slate-blue/CHANGELOG.md`
 - 依赖组件版本：`fb2k-medium-slate-blue/COMPONENT_VERSIONS.md`
 

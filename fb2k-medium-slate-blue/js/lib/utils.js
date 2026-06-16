@@ -81,12 +81,12 @@ function _getDimColor(color) {
 /**
  * 安全加载图片，自动按扩展名选择加载方式（SVG 光栅化 / PNG 直读），文件不存在返回 null
  * @param {string} path - 图片文件路径
- * @param {number} [maxWidth] - SVG 光栅化宽度（PNG 忽略），默认使用 SVG 自身尺寸
+ * @param {number} [maxWidth=96] - SVG 光栅化宽度（PNG 忽略），默认 96px（覆盖 13-54px 显示场景，≥1.78× 超采样）
  * @returns {GdiBitmap|null} 图片对象或 null
  */
 function _loadImage(path, maxWidth) {
     if (!utils.IsFile(path)) return null;
-    if (path.endsWith('.svg')) return gdi.LoadSVG(path, maxWidth);
+    if (path.endsWith('.svg')) return gdi.LoadSVG(path, maxWidth || 96);
     return gdi.Image(path);
 }
 
