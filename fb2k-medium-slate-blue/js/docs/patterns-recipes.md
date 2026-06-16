@@ -229,6 +229,36 @@ On load, prefer selection first; fallback to now playing if available.
 - Popup menu: `window.CreatePopupMenu()` + `AppendMenuItem` + `TrackPopupMenu`
 - External links (biography): `new ActiveXObject("WScript.Shell")` created lazily on click
 
+## 9.1 Configuration Pattern
+
+使用 `window.GetProperty(key, defaultValue)` 实现持久化配置：
+
+**Biography 面板配置示例** (`biography_v2.js`):
+```javascript
+const JSON_DIR = window.GetProperty(
+  "biography.jsonDir",
+  "D:\\11_MusicLib\\_Extras\\MusicMeta\\artists\\",
+);
+const ARTIST_COVER_DIR = window.GetProperty(
+  "biography.coverDir",
+  "D:\\11_MusicLib\\_Extras\\MusicMeta\\covers\\artists\\original\\",
+);
+const DISCO_DATA_SOURCE = window.GetProperty(
+  "biography.discoDataSource",
+  "library",  // "library" | "json"
+);
+```
+
+**特点**：
+- 用户可通过面板属性（右键 → Configure panel → Properties）修改
+- 配置持久化存储，重启 foobar2000 保留
+- 适用于路径、数据源、开关等用户可配置项
+
+**使用场景**：
+- Discography 数据源选择：`"library"` (从 foobar2000 库查询) / `"json"` (从 JSON 文件读取)
+- 文件路径配置：JSON 目录、封面目录等
+- 行为开关：显示/隐藏特定功能
+
 ## 10. SECTIONS Layout Pattern (`album_info.js`, `biography.js`)
 
 Define self-contained area objects in a `SECTIONS` array. Each section owns its own `padding`, `getContentHeight()`, and `draw(gr)`. A shared `layoutSections(panelW, panelH)` vertically stacks them from y=0.

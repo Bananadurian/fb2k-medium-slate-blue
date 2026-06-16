@@ -2,6 +2,11 @@
 
 > 版本号遵循 [SemVer](https://semver.org/lang/zh-CN/) (MAJOR.MINOR.PATCH-prerelease)。
 
+## [Unreleased]
+
+### Added
+- Biography 面板：Discography 数据源可配置（`biography.discoDataSource`），支持从本地音乐库查询或 JSON 文件读取
+
 ## 1.3.0-alpha.1 — 2026-05-18
 
 - JSplitter代替SMP

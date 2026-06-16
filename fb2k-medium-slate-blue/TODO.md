@@ -4,7 +4,7 @@
 
 - [x] 添加更多图标适配更多链接（spotify, apple music, tidal, genius 等）
 - [x] 链接区域根据链接数量动态适配行数，最多 2 行（当前只显示 1 行，多余被截断）
-- [ ] Discography 数据源改为可配置：全局变量控制来源（`fb.GetQueryItems` 库查询 / JSON 数据），JSON 需按日期降序排列
+- [x] Discography 数据源改为可配置：全局变量控制来源（`fb.GetQueryItems` 库查询 / JSON 数据），JSON 需按日期降序排列
 - [ ] 国家信息考虑是否使用详细地址（`data.origin.birth_place.details_zh`）
 - [x] 性能检查：V2 图片 LRU 缓存是否正常工作
 - [ ] 选中的 TAB 使用白色而非主题色？视觉效果评估

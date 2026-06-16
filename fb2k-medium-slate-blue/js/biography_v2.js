@@ -46,11 +46,15 @@ const ARTIST_COVER_DIR = window.GetProperty(
   "biography.coverDir",
   "D:\\11_MusicLib\\_Extras\\MusicMeta\\covers\\artists\\original\\",
 );
+const DISCO_DATA_SOURCE = window.GetProperty(
+  "biography.discoDataSource",
+  "json", // "library" | "json"
+);
 const SCROLL_STEP = THEME.LAYOUT.SCROLL_STEP;
 const ICON_SIZE = THEME.LAYOUT.ICON_SIZE;
-const LINK_BTN_PAD = _scale(4);   // 按钮从图标外扩尺寸 (icon → button)
-const LINK_BTN_GAP = _scale(6);   // 按钮间水平间距
-const LINK_ROW_GAP = _scale(4);   // 行间垂直间距
+const LINK_BTN_PAD = _scale(4); // 按钮从图标外扩尺寸 (icon → button)
+const LINK_BTN_GAP = _scale(6); // 按钮间水平间距
+const LINK_ROW_GAP = _scale(4); // 行间垂直间距
 const IMG_CYCLE_MS = THEME.LAYOUT.IMG_CYCLE_MS;
 
 // =========================================================================
@@ -853,57 +857,93 @@ function manageCycleTimer() {
 }
 
 /**
- * 获取艺人作品集 (自动从音乐库读取并缓存)
- * 格式: YYYY-MM-DD - 专辑名
+ * 获取艺人作品集（根据配置选择数据源）
+ * @returns {string} 格式化后的专辑列表文本
  */
 function getDiscoText() {
-  // 1. 检查缓存：如果已经有数据（且是数组），直接返回 joined 字符串
-  // 注意：这里我们改变了数据结构，从原来的 Object 变成了 Array<String>
+  // 1. 检查缓存
   if (artistData.discography && Array.isArray(artistData.discography)) {
     if (artistData.discography.length === 0)
-      return "No albums found for this artist in library";
-    return artistData.discography.join("\n"); // 使用双换行让排版更稀疏好看
+      return "No albums found for this artist";
+    return artistData.discography.join("\n");
   }
 
-  // --- 以下是初始化逻辑 (仅在第一次访问时运行) ---
-
-  // 2. 准备查询
-  // artistData.title 是艺人的真实名字 (如 "Guns N' Roses")
-  // 需要处理名字中的单引号，防止查询语法错误
-  const safeQueryName = artistData.title.replace(/'/g, "''");
-  const query = "%artist% HAS " + safeQueryName;
-
-  // 3. 获取所有相关曲目 handle list
-  const matches = fb.GetQueryItems(fb.GetLibraryItems(), query);
+  // 2. 根据配置选择数据源
   let resultList = [];
 
-  if (matches.Count > 0) {
-    // 4. 排序：按日期降序 (最新的在前面)，也就是 0-9 还是 9-0 取决于你的需求
-    // 排序依据: %date% %album%  1 为升序, -1 为降序
-    matches.OrderByFormat(albumTf, -1);
-
-    // 5. 格式化提取
-    // 使用 TitleFormat 直接生成需要的字符串格式
-    // 格式示例: [2023-01-01] - 专辑名
-    const rawStrings = albumTf.EvalWithMetadbs(matches); // 返回原生字符串数组
-
-    // 6. 去重 (核心步骤)
-    // 因为查询返回的是所有歌曲，一张专辑有10首歌就会出现10次
-    // 我们利用 Set 特性去除重复的 "日期 - 专辑" 行
-    const uniqueSet = new Set(rawStrings);
-
-    // 将 Set 转回数组
-    resultList = Array.from(uniqueSet);
+  if (DISCO_DATA_SOURCE === "json") {
+    resultList = getDiscoFromJson();
+  } else {
+    resultList = getDiscoFromLibrary();
   }
 
-  // 7. 写入缓存到 artistData 对象中 (内存缓存)
-  // 这样下次调用 getDiscoText 就不会再次查询硬盘了
+  // 3. 写入缓存
   artistData.discography = resultList;
 
-  // 8. 返回结果
-  if (resultList.length === 0)
-    return "No albums found for this artist in library";
+  // 4. 返回结果
+  if (resultList.length === 0) return "No albums found for this artist";
   return resultList.join("\n");
+}
+
+/**
+ * 从 foobar2000 音乐库查询艺人作品集
+ * @returns {string[]} 格式化后的专辑列表
+ */
+function getDiscoFromLibrary() {
+  const safeQueryName = artistData.title.replace(/'/g, "''");
+  const query = "%artist% HAS " + safeQueryName;
+  const matches = fb.GetQueryItems(fb.GetLibraryItems(), query);
+
+  if (matches.Count === 0) return [];
+
+  // 排序：按日期降序
+  matches.OrderByFormat(albumTf, -1);
+
+  // 格式化并去重
+  const rawStrings = albumTf.EvalWithMetadbs(matches);
+  const uniqueSet = new Set(rawStrings);
+
+  return Array.from(uniqueSet);
+}
+
+/**
+ * 从 JSON 数据读取艺人作品集
+ * @returns {string[]} 格式化后的专辑列表
+ */
+function getDiscoFromJson() {
+  // 1. 检查 JSON 数据是否存在
+  if (!artistData.releaseGroups || !Array.isArray(artistData.releaseGroups)) {
+    return [];
+  }
+
+  // 2. 按日期降序排序（最新的在前），无日期的排在末尾
+  const sorted = artistData.releaseGroups.slice().sort((a, b) => {
+    const dateA = a.date || "";
+    const dateB = b.date || "";
+
+    // 无日期排在末尾
+    if (!dateA && !dateB) return 0;
+    if (!dateA) return 1;
+    if (!dateB) return -1;
+
+    return dateB.localeCompare(dateA); // 降序
+  });
+
+  // 3. 格式化为与 library 模式一致的输出
+  // 格式: " ▸ [2023-01-01]: Album Title (Live, Compilation)"
+  const formatted = sorted.map((rg) => {
+    let line = " ▸ [" + (rg.date || "") + "]: " + (rg.title || "");
+
+    // 仅添加 secondary_types 标注（如 Live, Compilation, Remix）
+    // 与现有 library 模式保持一致，不显示 primary_type
+    if (Array.isArray(rg.secondary_types) && rg.secondary_types.length > 0) {
+      line += " (" + rg.secondary_types.join(", ") + ")";
+    }
+
+    return line;
+  });
+
+  return formatted;
 }
 
 // =========================================================================
@@ -994,21 +1034,24 @@ function drawLinksSection(gr, sec) {
 }
 
 function calcLinkBtnsPerRow(contentW, iconGap) {
-    const iconSpace = ICON_SIZE + iconGap;
-    const btnTotalW = ICON_SIZE + LINK_BTN_PAD + LINK_BTN_GAP;
-    return Math.max(1, Math.floor((contentW - iconSpace + LINK_BTN_GAP) / btnTotalW));
+  const iconSpace = ICON_SIZE + iconGap;
+  const btnTotalW = ICON_SIZE + LINK_BTN_PAD + LINK_BTN_GAP;
+  return Math.max(
+    1,
+    Math.floor((contentW - iconSpace + LINK_BTN_GAP) / btnTotalW),
+  );
 }
 
 function layoutLinkButtonPositions(sec) {
-    const btnSize = ICON_SIZE + LINK_BTN_PAD;
-    const startX = sec.content.x + ICON_SIZE + sec.iconGap;
-    const btnsPerRow = calcLinkBtnsPerRow(sec.content.w, sec.iconGap);
-    activeLinkBtns.forEach((btn, i) => {
-        const row = Math.min(1, Math.floor(i / btnsPerRow));
-        const col = i % btnsPerRow;
-        btn.x = startX + col * (btnSize + LINK_BTN_GAP);
-        btn.y = sec.content.y + _scale(1) + row * (btnSize + LINK_ROW_GAP);
-    });
+  const btnSize = ICON_SIZE + LINK_BTN_PAD;
+  const startX = sec.content.x + ICON_SIZE + sec.iconGap;
+  const btnsPerRow = calcLinkBtnsPerRow(sec.content.w, sec.iconGap);
+  activeLinkBtns.forEach((btn, i) => {
+    const row = Math.min(1, Math.floor(i / btnsPerRow));
+    const col = i % btnsPerRow;
+    btn.x = startX + col * (btnSize + LINK_BTN_GAP);
+    btn.y = sec.content.y + _scale(1) + row * (btnSize + LINK_ROW_GAP);
+  });
 }
 
 /** @param {Object} sec - SECTIONS tab item */
