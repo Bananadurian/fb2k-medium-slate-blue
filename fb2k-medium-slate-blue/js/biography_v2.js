@@ -1223,18 +1223,24 @@ function on_mouse_wheel(step) {
   );
 }
 
-// [核心] 状态机：on_mouse_move
+// [核心] 状态机：on_mouse_move — hover/点击命中测试 + 局部重绘（优化版：Y坐标分层）
 function on_mouse_move(x, y) {
   let target = null;
 
-  // 1. 检测 Tab 按钮
-  if (_hitTest(x, y, elements.profileBtn)) {
-    target = elements.profileBtn;
-  } else if (_hitTest(x, y, elements.discographyBtn)) {
-    target = elements.discographyBtn;
-  }
-  // 2. 检测链接按钮
-  else {
+  // 快速路径：根据 Y 坐标判断区域，避免全局遍历
+  if (y >= SEC.tab.rect.y) {
+    // Tab 区域（面板底部）
+    if (_hitTest(x, y, elements.profileBtn)) {
+      target = elements.profileBtn;
+    } else if (_hitTest(x, y, elements.discographyBtn)) {
+      target = elements.discographyBtn;
+    }
+  } else if (
+    SEC.links.visible &&
+    y >= SEC.links.rect.y &&
+    y < SEC.links.rect.y + SEC.links.rect.h
+  ) {
+    // 链接区域（仅在 visible 且 Y 坐标匹配时检测）
     for (let btn of activeLinkBtns) {
       if (_hitTest(x, y, btn)) {
         target = btn;
@@ -1243,7 +1249,7 @@ function on_mouse_move(x, y) {
     }
   }
 
-  // 3. 状态切换
+  // 状态切换
   if (activeElement === target) return; // 没变，直接返回
 
   // 旧元素复位
