@@ -29,6 +29,8 @@
 - depends on: `lib/icons.js` (iconMgr); flags loaded via `iconMgr.get('flags', code)`
 `lib/icons.js`
 - `IconManager` 统一图标管理：4 类注册表懒加载（brands/player/ui/flags），内置 Map 缓存 + "default" fallback
+- 键名规范化：`get()` 自动转小写 + 空格转下划线（`TIDAL` → `tidal`, `APPLE MUSIC` → `apple_music`）
+- 注册表统一小写：BRANDS/FLAGS 键名全部小写 + 下划线（`cd`, `web`, `cn`, `us` 等）
 - 单例 `iconMgr`：`get(category, name, opts)`, `invalidate()`, `clear()`, `clearAll()`
 - depends on: `lib/theme.js` (ICONS_*), `lib/utils.js` (_loadImage)
 

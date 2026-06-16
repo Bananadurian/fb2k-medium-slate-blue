@@ -1175,9 +1175,7 @@ function updateCountryFlag() {
   const code = artistData.countryCode || resolveCountryCode(artistData.country);
   if (code === lastCountryCode) return;
   lastCountryCode = code;
-  currentCountryFlagImg = code
-    ? iconMgr.get("flags", code.toUpperCase())
-    : null;
+  currentCountryFlagImg = code ? iconMgr.get("flags", code) : null;
 }
 
 /**

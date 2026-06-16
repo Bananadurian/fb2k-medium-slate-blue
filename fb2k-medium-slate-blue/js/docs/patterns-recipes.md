@@ -37,6 +37,8 @@ Typical `on_script_unload` responsibilities:
 
 Icons are now managed by `iconMgr` (`lib/icons.js`):
 - Panels call `iconMgr.get(category, name)` instead of local image dictionaries
+- **键名规范化**：`iconMgr.get()` 自动将键名转为小写 + 空格转下划线，调用方无需预处理（如 `iconMgr.get('brands', 'TIDAL')` → 自动规范化为 `tidal`）
+- 注册表统一小写：所有 BRANDS/FLAGS 注册表键名已统一为小写 + 下划线格式（`cd`, `web`, `apple_music`, `cn`, `us` 等）
 - **Remove** `_disposeImageDict(...)` and `sourceIconCache.clear()` — iconMgr 缓存由 JSplitter 管理生命周期，`on_script_unload` 不手动清理
 - 调试时可在 Console 执行 `iconMgr.clearAll()` 强制重置
 

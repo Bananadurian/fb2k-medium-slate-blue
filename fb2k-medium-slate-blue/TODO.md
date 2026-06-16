@@ -60,7 +60,12 @@
     - [x] `IconManager` 模块（`lib/icons.js`）：按类别/名称获取图标，自动处理 SVG/PNG + DPI，内置缓存
     - [x] `lib/theme.js` 集中维护路径常量（当前 `IMGS_LINKS_DIR`/`IMGS_LUCIDE_DIR` 已存在）
     - [x] 各面板脚本从 `LINK_ICONS` 字典 → `iconManager.get('brands', 'apple_music')` 调用
-    - [ ] `IconManager.BRANDS` 去重：snake_case（`tidal`）和大写来源名（`TIDAL`）指向同一图标，统一键名并归化调用点大小写
+    - [x] `IconManager.BRANDS` 去重：snake_case（`tidal`）和大写来源名（`TIDAL`）指向同一图标，统一键名并归化调用点大小写
+      - [x] `IconManager.get()` 引入键名规范化（小写 + 空格转下划线），消除大小写冗余映射
+      - [x] BRANDS 注册表统一小写：删除 v1 别名（`official`, `rateyourmusic`, `aoty`）+ 删除冗余大写键（`TIDAL`, `QOBUZ` 等 9 个）+ 物理介质键小写化（`CD` → `cd`, `WEB` → `web` 等）
+      - [x] FLAGS 注册表统一小写：所有 ISO 3166-1 代码改为小写（`CN` → `cn`, `US` → `us` 等 47 个键）
+      - [x] 调用方清理：移除 5 处 `.toUpperCase()` 预处理（album_info.js 2 处、track_info.js、biography.js、biography_v2.js 各 1 处）
+      - [x] 文档更新：patterns-recipes.md、project-map.md 补充规范化说明
 - [x] SVG 图标存在模糊/锯齿，考虑切换回 PNG（修改注册表文件名即可，无需改代码）
   - [x] 排查旧文件引用：清理 `Links/`/`Lucide/` 中 `-1`, `-xx`, `(1)` 等历史变体 → `_legacy/`
   - [x] `covers/radio/` / `screenshots/` 独立于图标目录

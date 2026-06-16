@@ -34,24 +34,32 @@ class IconManager {
    */
   get(category, name, opts) {
     opts = opts || {};
+
+    // 键名规范化：统一转小写 + 空格转下划线
+    const normalizedName = name.toLowerCase().replace(/\s+/g, "_");
+
     const cache = this._caches[category];
-    if (cache && cache.has(name)) return cache.get(name);
+    if (cache && cache.has(normalizedName)) return cache.get(normalizedName);
 
     const registry = this._getRegistry(category);
     if (!registry) return null;
 
-    const filename = registry[name];
+    const filename = registry[normalizedName];
     if (!filename) {
-      return name === "default" ? null : this.get(category, "default", opts);
+      return normalizedName === "default"
+        ? null
+        : this.get(category, "default", opts);
     }
 
     const dir = this._getCategoryDir(category);
     const img = _loadImage(dir + filename, opts.maxWidth);
     if (img) {
-      if (cache) cache.set(name, img);
+      if (cache) cache.set(normalizedName, img);
       return img;
     }
-    return name === "default" ? null : this.get(category, "default", opts);
+    return normalizedName === "default"
+      ? null
+      : this.get(category, "default", opts);
   }
 
   /**
@@ -132,9 +140,8 @@ IconManager._loadBrandsRegistry = function () {
   IconManager.BRANDS = {
     default: "default.png",
 
-    // External URLs
+    // External URLs (小写 + 下划线，规范化后唯一键名)
     official_website: "official_website.png",
-    official: "official_website.png", // biography.js v1
     soundcloud: "soundcloud.png",
     bandcamp: "bandcamp.png",
     instagram: "instagram.png",
@@ -145,9 +152,7 @@ IconManager._loadBrandsRegistry = function () {
     allmusic: "allmuisc.png",
     musicbrainz: "musicbrainz.png",
     rate_your_music: "rate_your_music.png",
-    rateyourmusic: "rate_your_music.png", // biography.js v1
     album_of_the_year: "album_of_the_year.png",
-    aoty: "album_of_the_year.png", // biography.js v1
     pitchfork: "pitchfork.png",
     metacritic: "metacritic.png",
     fandom: "fandom.png",
@@ -164,26 +169,17 @@ IconManager._loadBrandsRegistry = function () {
     youtube_music: "youtube_music.png",
     mora: "mora.png",
 
-    // Source names (uppercase)
-    "OFFICIAL DIGITAL": "shopping-bag.png",
-    CD: "disc-2.png",
-    SACD: "sacd.png",
-    "SACD (CD LAYER)": "sacd.png",
-    "JAPAN FIRST PRESS": "disc.png",
-    WEB: "cloud.png",
-    TIDAL: "tidal.png",
-    QOBUZ: "qobuz.png",
-    HDTRACKS: "HDtracks.png",
-    MORA: "mora.png",
-    "APPLE MUSIC": "apple_music.png",
-    "AMAZON MUSIC": "amazon_music.png",
-    DEEZER: "deezer.png",
-    GENIUS: "genius.png",
-    NETEASE: "NetEase.png",
-    "QQ MUSIC": "qq_music.png",
-    "7DIGITAL": "7digital.png",
-    BANDCAMP: "bandcamp.png",
-    SOUNDCLOUD: "soundcloud.png",
+    // Source names (物理介质 + 平台来源，已统一小写 + 下划线)
+    official_digital: "shopping-bag.png",
+    cd: "disc-2.png",
+    sacd: "sacd.png",
+    sacd_cd_layer: "sacd.png",
+    japan_first_press: "disc.png",
+    web: "cloud.png",
+    hdtracks: "HDtracks.png",
+    netease: "NetEase.png",
+    qq_music: "qq_music.png",
+    "7digital": "7digital.png",
   };
   IconManager._BRANDS_LOADED = true;
 };
@@ -294,58 +290,59 @@ IconManager._loadFlagsRegistry = function () {
   IconManager.FLAGS = {
     default: "un.png",
 
-    CN: "cn.png",
-    TW: "tw.png",
-    HK: "hk.png",
-    JP: "jp.png",
-    US: "us.png",
-    GB: "gb.png",
-    KR: "kr.png",
-    FR: "fr.png",
-    DE: "de.png",
-    IT: "it.png",
-    ES: "es.png",
-    RU: "ru.png",
-    CA: "ca.png",
-    AU: "au.png",
-    BR: "br.png",
-    SE: "se.png",
-    NO: "un.png",
-    DK: "un.png",
-    FI: "un.png",
-    NL: "nl.png",
-    IN: "un.png",
-    PL: "un.png",
-    UA: "un.png",
-    CH: "un.png",
-    AT: "un.png",
-    BE: "un.png",
-    IE: "ie.png",
-    MX: "un.png",
-    AR: "un.png",
-    TH: "th.png",
-    VN: "un.png",
-    ID: "un.png",
-    TR: "un.png",
-    GR: "un.png",
-    PT: "un.png",
-    CZ: "un.png",
-    HU: "un.png",
-    RO: "un.png",
-    SG: "un.png",
-    ZA: "un.png",
-    IL: "un.png",
-    NZ: "un.png",
-    PH: "un.png",
-    MY: "un.png",
-    CL: "cl.png",
-    EU: "eu.png",
+    // ISO 3166-1 alpha-2 国家代码（小写，文件名对应）
+    cn: "cn.png",
+    tw: "tw.png",
+    hk: "hk.png",
+    jp: "jp.png",
+    us: "us.png",
+    gb: "gb.png",
+    kr: "kr.png",
+    fr: "fr.png",
+    de: "de.png",
+    it: "it.png",
+    es: "es.png",
+    ru: "ru.png",
+    ca: "ca.png",
+    au: "au.png",
+    br: "br.png",
+    se: "se.png",
+    no: "un.png",
+    dk: "un.png",
+    fi: "un.png",
+    nl: "nl.png",
+    in: "un.png",
+    pl: "un.png",
+    ua: "un.png",
+    ch: "un.png",
+    at: "un.png",
+    be: "un.png",
+    ie: "ie.png",
+    mx: "un.png",
+    ar: "un.png",
+    th: "th.png",
+    vn: "un.png",
+    id: "un.png",
+    tr: "un.png",
+    gr: "un.png",
+    pt: "un.png",
+    cz: "un.png",
+    hu: "un.png",
+    ro: "un.png",
+    sg: "un.png",
+    za: "un.png",
+    il: "un.png",
+    nz: "un.png",
+    ph: "un.png",
+    my: "un.png",
+    cl: "cl.png",
+    eu: "eu.png",
 
-    // Aliases
-    UK: "gb.png",
-    CHN: "cn.png",
-    USA: "us.png",
-    JPN: "jp.png",
+    // Aliases (小写别名)
+    uk: "gb.png",
+    chn: "cn.png",
+    usa: "us.png",
+    jpn: "jp.png",
   };
   IconManager._FLAGS_LOADED = true;
 };

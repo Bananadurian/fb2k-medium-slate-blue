@@ -555,7 +555,7 @@ function getAlbumCacheEntry(safeAlbumKey, metadb) {
     artist: albumArtistTf.EvalWithMetadb(metadb),
     language: getLanguageName(rawLang),
     languageFlagCode: resolveLanguageCode(rawLang),
-    source: albumSourceTf.EvalWithMetadb(metadb).trim().toUpperCase(),
+    source: albumSourceTf.EvalWithMetadb(metadb).trim(),
     links: extractAlbumLinks(metadb),
     aliases: [],
   };
@@ -1253,9 +1253,7 @@ function updateLanguageFlag() {
   const code = albumData ? albumData.languageFlagCode : null;
   if (code === lastLanguageCode) return;
   lastLanguageCode = code;
-  currentLanguageFlagImg = code
-    ? iconMgr.get("flags", code.toUpperCase())
-    : null;
+  currentLanguageFlagImg = code ? iconMgr.get("flags", code) : null;
 }
 
 // =========================================================================

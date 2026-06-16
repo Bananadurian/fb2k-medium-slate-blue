@@ -314,10 +314,7 @@ function resolveBadgeForTrack(metadb) {
  * 更新来源图标 (使用 IconManager)
  */
 function updateSourceIcon(metadb) {
-  const sourceText = albumSourceTf
-    .EvalWithMetadb(metadb)
-    .trim()
-    .toUpperCase();
+  const sourceText = albumSourceTf.EvalWithMetadb(metadb).trim();
   currentSourceIcon.img = iconMgr.get('brands', sourceText);
   currentSourceIcon.tooltip = sourceText;
 }
