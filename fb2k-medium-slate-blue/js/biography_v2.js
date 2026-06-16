@@ -68,7 +68,7 @@ const TS = THEME.TEXT;
 const MBID_TF = fb.TitleFormat(
   "$if2($meta(MUSICBRAINZ_ARTISTID),$meta(MUSICBRAINZ ARTIST ID))",
 );
-const albumTf = fb.TitleFormat(" ▸ [%date%]: [%album%] ['('$meta(EDITION)')']");
+const albumTf = fb.TitleFormat("%date% - [%album%] ['('$meta(EDITION)')']");
 
 let tooltip = _createDefaultTooltip();
 
@@ -929,10 +929,11 @@ function getDiscoFromJson() {
     return dateB.localeCompare(dateA); // 降序
   });
 
-  // 3. 格式化为与 library 模式一致的输出
-  // 格式: " ▸ [2023-01-01]: Album Title (Live, Compilation)"
-  const formatted = sorted.map((rg) => {
-    let line = " ▸ [" + (rg.date || "") + "]: " + (rg.title || "");
+  // 3. 格式化为带序号的输出
+  // 格式: "01. 2023-01-01 - Album Title (Live, Compilation)"
+  const formatted = sorted.map((rg, index) => {
+    const num = String(index + 1).padStart(2, "0");
+    let line = num + ". " + (rg.date || "") + " - " + (rg.title || "");
 
     // 仅添加 secondary_types 标注（如 Live, Compilation, Remix）
     // 与现有 library 模式保持一致，不显示 primary_type
