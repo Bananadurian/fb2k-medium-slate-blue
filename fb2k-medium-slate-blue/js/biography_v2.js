@@ -117,7 +117,7 @@ let genresH = _getFontLineHeight(TS.body.font);
 // 固定 UI 元素定义
 const elements = {
   profileBtn: {
-    displayText: "Profile",
+    displayText: "Bio",
     x: 0,
     y: 0,
     w: 0,
@@ -126,7 +126,7 @@ const elements = {
     tooltip: "",
   },
   discographyBtn: {
-    displayText: "Discography",
+    displayText: "Releases",
     x: 0,
     y: 0,
     w: 0,

@@ -92,7 +92,7 @@ let lastLanguageCode = null; // 缓存 code，不变则跳过 iconMgr.get('flags
 
 const elements = {
   descBtn: {
-    displayText: "Description",
+    displayText: "Info",
     x: 0,
     y: 0,
     w: 0,
@@ -101,7 +101,7 @@ const elements = {
     tooltip: "",
   },
   tracklistBtn: {
-    displayText: "Tracklist",
+    displayText: "Tracks",
     x: 0,
     y: 0,
     w: 0,
