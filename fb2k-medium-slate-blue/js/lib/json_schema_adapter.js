@@ -71,7 +71,7 @@ function resolveNestedValue(obj, path) {
  * @description
  * - 通过 JSON_SCHEMA_MAP 提取字段路径
  * - 数组类型字段（aliases, genres）自动转为逗号分隔字符串
- * - 返回对象字段名与 biography.js 渲染代码完全兼容
+ * - 返回对象字段名与 biography_v2.js 渲染代码完全兼容
  *
  * @param {Object|null} rawJson - 原始 JSON 对象（含 system + data 两层）
  * @returns {Object|null} 归一化后的数据对象

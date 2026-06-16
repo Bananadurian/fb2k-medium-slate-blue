@@ -98,7 +98,7 @@ Rule: if bitmap lifecycle is cache-owned with eviction disposal, do not dispose 
   - `resolveMetadbByMode(mode, opts?)`
 - Recommended mapping:
   - background owners (`bg_panel.js`, `_tab_container.js`) -> `PLAYING_FIRST`
-  - selection-driven content panels (`cover_panel.js`, `album_info.js`, `biography.js`) -> `SELECTION_FIRST`
+  - selection-driven content panels (`cover_panel.js`, `album_info.js`, `biography_v2.js`) -> `SELECTION_FIRST`
   - startup/init now-playing probe -> `PLAYING_ONLY`
 - Optional `opts` shape: `{ now?: FbMetadbHandle|null, selection?: FbMetadbHandle|null }`.
   - Use `opts` when caller already has resolved values to avoid duplicate state reads.
@@ -325,7 +325,7 @@ function getAlbumCacheEntry(safeAlbumKey, metadb) {
 - 平台名全大写：`URL_SPOTIFY`、`URL_YOUTUBE`
 - 下划线分隔多词：`URL_APPLEMUSIC`（而非 `URL_APPLE_MUSIC`）
 
-## 10. SECTIONS Layout Pattern (`album_info.js`, `biography.js`)
+## 10. SECTIONS Layout Pattern (`album_info.js`, `biography_v2.js`)
 
 Define self-contained area objects in a `SECTIONS` array. Each section owns its own `padding`, `getContentHeight()`, and `draw(gr)`. A shared `layoutSections(panelW, panelH)` vertically stacks them from y=0.
 
@@ -380,7 +380,7 @@ No spacer sections — gaps between adjacent sections controlled by neighboring 
 
 ### 10.7 Applied examples
 - `album_info.js`: 8 sections (cover, title, badge, artist, genres, dateLang, tab, scrollText)
-- `biography.js`: 8 sections (cover, title, aliases, genres, born, links, tab, scrollText)
+- `biography_v2.js`: 8 sections (cover, title, aliases, genres, born, links, tab, scrollText)
 - `track_info.js`: 6 sections (spacer, title, artist, album, stars, badge) — centered compact layout via getter-based `visible`
 
 ## 11. Text Style Preset Pattern (`lib/theme.js`, `lib/interaction.js`, `lib/utils.js`)
