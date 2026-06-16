@@ -1100,6 +1100,8 @@ function updateLayoutMetrics() {
   if (artistData && artistData.genres) {
     genresH = _measureText(artistData.genres, TS.body, lineW).Height;
     genresH = Math.min(genresH, _getFontLineHeight(TS.body.font) * 2);
+  } else {
+    genresH = _getFontLineHeight(TS.body.font);
   }
 
   // 4. 更新 links 区域可见性
