@@ -352,6 +352,11 @@ const METADB_RESOLVE_MODE = {
     SELECTION_ONLY: "selection-only",
 };
 
+/**
+ * 封面类型 ID 枚举
+ * @enum {number}
+ * @reserved 后续功能会使用，暂时保留
+ */
 const ALBUM_ART_ID = {
     FRONT: 0,
     BACK: 1,

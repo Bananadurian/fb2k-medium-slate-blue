@@ -1,6 +1,5 @@
 ﻿/**
- * @description 艺人资料面板(v2): MBID 驱动 + JSON Schema v3.0 + Cover glob 匹配。
- *              通过 JSON_SCHEMA_MAP 模板实现 schema 版本透明升级。
+ * @description 艺人资料面板 v2: MBID 驱动 + JSON Schema v3.0 + Cover glob 匹配
  */
 
 "use strict";

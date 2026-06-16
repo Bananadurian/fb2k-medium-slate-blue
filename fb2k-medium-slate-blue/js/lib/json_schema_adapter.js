@@ -9,32 +9,6 @@
 // JSON Schema 字段路径映射模板
 // ============================================================================
 
-/**
- * JSON_SCHEMA_MAP — 将逻辑字段名映射到 JSON 中的实际路径（点分隔）
- *
- * @description
- * 当 JSON schema 版本升级时，只需修改此对象中的路径即可适配新结构，
- * 无需修改 biography_v2.js 中的渲染逻辑。
- *
- * @example
- * // schema v3.0 → v4.0 升级时:
- * // 只需将 "data.name" 改为 "artist.name"，normalizeArtistData 自动适配
- *
- * @const {Object<string, string>}
- */
-const JSON_SCHEMA_MAP = {
-    name: "data.name",
-    aliases: "data.aliases",
-    genres: "data.genres",
-    born: "data.life_span.begin",
-    country: "data.origin.country.name_en",
-    countryCode: "data.origin.country.code",
-    biography: "data.intro.summary",
-    links: "data.external_urls",
-    releaseGroups: "data.release_groups",
-    covers: "data.covers"
-};
-
 // ============================================================================
 // 路径解析工具
 // ============================================================================
@@ -69,9 +43,34 @@ function resolveNestedValue(obj, path) {
  * 将 v3.0 原始 JSON 转换为面板内部的统一数据格式
  *
  * @description
- * - 通过 JSON_SCHEMA_MAP 提取字段路径
- * - 数组类型字段（aliases, genres）自动转为逗号分隔字符串
- * - 返回对象字段名与 biography_v2.js 渲染代码完全兼容
+ * 当前实现直接硬编码字段路径（schema v3.0 only）。
+ *
+ * 未来多版本适配方案（需要时再实现）：
+ * 引入配置驱动的 JSON_SCHEMA_MAP，示例结构：
+ * ```javascript
+ * const JSON_SCHEMA_MAP = {
+ *     title: {
+ *         source: "name",           // 单路径
+ *         default: ""
+ *     },
+ *     aliases: {
+ *         source: "aliases",
+ *         type: "array",            // 数组 → 逗号分隔字符串
+ *         default: ""
+ *     },
+ *     country: {
+ *         source: ["origin.country.name_zh", "origin.country.name_en"],  // 多路径降级
+ *         default: ""
+ *     },
+ *     // ...其他字段
+ * };
+ * ```
+ * 函数遍历 MAP 动态提取字段，支持：
+ * - 多路径降级（取第一个非空值）
+ * - 类型转换（array → string, date → format 等）
+ * - 默认值处理
+ *
+ * Schema 版本升级时仅需修改 MAP，函数逻辑无需改动。
  *
  * @param {Object|null} rawJson - 原始 JSON 对象（含 system + data 两层）
  * @returns {Object|null} 归一化后的数据对象
@@ -81,7 +80,7 @@ function resolveNestedValue(obj, path) {
  * @property {string} aliases         - 别名（逗号分隔）
  * @property {string} genres          - 风格（逗号分隔）
  * @property {string} born            - 出生日期 (YYYY-MM-DD)
- * @property {string} country         - 国家名
+ * @property {string} country         - 国家名（优先中文，降级英文）
  * @property {string|null} countryCode - ISO 国家代码（用于国旗查找）
  * @property {string} artistbiography - 简介文本
  * @property {Object} links           - 外部链接对象

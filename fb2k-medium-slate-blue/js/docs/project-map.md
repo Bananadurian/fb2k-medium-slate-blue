@@ -3,7 +3,6 @@
 ## 1. Script Inventory
 - `track_info.js`: metadata, rating, AQ badge, source icon
 - `album_info.js`: album view + cover carousel + tabs
-- `biography_v2.js`: artist profile/discography + links (JSON schema v3.0)
 - `biography_v2.js`: artist profile/discography + links (v3.0.0, MBID-driven, JSON Schema v3.0)
 - `playback_buttons.js`: transport controls
 - `control_buttons.js`: utility controls + volume

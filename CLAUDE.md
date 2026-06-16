@@ -36,7 +36,7 @@ profile/
 │   │   │   ├── data.js                    # Constants, flags
 │   │   │   ├── flag.js                    # Country flag renderer
 │   │   │   ├── title_bar_shared.js        # Title bar shared logic
-│   │   │   └── json_schema_adapter.js     # JSON schema mapping template
+│   │   │   └── json_schema_adapter.js     # JSON schema v3.0 adapter
 │   │   ├── docs/                          # Documentation
 │   │   │   ├── smp-copilot.md             # SMP coding rules & AI guide
 │   │   │   ├── patterns-recipes.md        # Code patterns & recipes
