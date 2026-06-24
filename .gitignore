@@ -40,6 +40,9 @@ library-error-log.txt
 # 配置错误信息
 config.sqlite.bad
 
+# Python byte-compiled cache
+__pycache__/
+
 # 下面是Python模板内容
 
 # # Byte-compiled / optimized / DLL files
