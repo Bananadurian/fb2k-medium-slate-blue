@@ -23,6 +23,7 @@ updated: 2026-06-16
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass, field
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -140,6 +141,15 @@ def batch_processor(input_target: str, output_target: str, cfg: Config = CFG) ->
     print(f"开始转换 {total} 个文件 → 目标画布: {cfg.target_width}×{cfg.target_height}")
     print("-" * 60)
 
+    # 单文件快速路径：跳过进程池创建开销
+    if total == 1:
+        result = convert_single_file(svg_files[0], output_dir, cfg)
+        status = "【成功】" if result.success else f"【失败】— {result.error_msg}"
+        print(f"[1/1] {status}{result.filename}")
+        print("-" * 60)
+        print(f"转换结束！成功: {1 if result.success else 0}/1，输出目录: {output_dir.resolve()}")
+        return
+
     # ProcessPoolExecutor 规避 GIL，Pillow 合成真正多核并行
     success_count = 0
     completed = 0
@@ -162,20 +172,31 @@ def batch_processor(input_target: str, output_target: str, cfg: Config = CFG) ->
 
 
 if __name__ == "__main__":
-    # 批量转换所有图标目录
-    directories = [
-        ("icons/brands", "icons/brands"),
-        ("icons/player", "icons/player"),
-        ("icons/ui", "icons/ui"),
-        ("icons/flags/1x1", "icons/flags/1x1"),
-        ("icons/flags/4x3", "icons/flags/4x3"),
-    ]
+    if len(sys.argv) > 1:
+        # CLI 模式：按需处理指定文件/目录
+        for target in sys.argv[1:]:
+            target_path = Path(target)
+            if target_path.is_file():
+                batch_processor(str(target_path), str(target_path.parent))
+            elif target_path.is_dir():
+                batch_processor(str(target_path), str(target_path))
+            else:
+                print(f"【错误】路径不存在: {target}")
+    else:
+        # 默认模式：批量转换所有图标目录
+        directories = [
+            ("icons/brands", "icons/brands"),
+            ("icons/player", "icons/player"),
+            ("icons/ui", "icons/ui"),
+            ("icons/flags/1x1", "icons/flags/1x1"),
+            ("icons/flags/4x3", "icons/flags/4x3"),
+        ]
 
-    for input_dir, output_dir in directories:
-        if Path(input_dir).exists():
-            print(f"\n{'='*60}")
-            print(f"处理目录: {input_dir}")
-            print(f"{'='*60}")
-            batch_processor(input_dir, output_dir)
-        else:
-            print(f"\n【跳过】目录不存在: {input_dir}")
+        for input_dir, output_dir in directories:
+            if Path(input_dir).exists():
+                print(f"\n{'='*60}")
+                print(f"处理目录: {input_dir}")
+                print(f"{'='*60}")
+                batch_processor(input_dir, output_dir)
+            else:
+                print(f"\n【跳过】目录不存在: {input_dir}")

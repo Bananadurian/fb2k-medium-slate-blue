@@ -64,12 +64,17 @@ imgs/
 # 进入 imgs 目录
 cd fb2k-medium-slate-blue/imgs
 
-# 转换单个目录（同目录输出，SVG/PNG 混放）
-uv run svg_to_png.py  # 默认转换 icons/brands
+# 转换指定文件（输出到同目录）
+uv run svg_to_png.py icons/flags/1x1/dk.svg icons/flags/1x1/is.svg
 
-# 自定义输入输出（修改脚本末尾 INPUT/OUTPUT 变量）
-# INPUT  = r"icons/player"
-# OUTPUT = r"icons/player"
+# 转换整个目录（所有 .svg）
+uv run svg_to_png.py icons/flags/4x3
+
+# 混合文件和目录
+uv run svg_to_png.py icons/flags/1x1/dk.svg icons/flags/4x3
+
+# 无参数 — 转换全部内置目录（brands / player / ui / flags/1x1 / flags/4x3）
+uv run svg_to_png.py
 ```
 
 ### 配置说明
