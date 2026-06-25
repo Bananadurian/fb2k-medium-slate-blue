@@ -67,6 +67,7 @@ const TS = THEME.TEXT;
 const MBID_TF = fb.TitleFormat(
   "$if2($meta(MUSICBRAINZ_ARTISTID),$meta(MUSICBRAINZ ARTIST ID))",
 );
+const artistTf = fb.TitleFormat("$if2(%artist%,Unknown Artist)");
 const albumTf = fb.TitleFormat("%date% - [%album%] ['('$meta(EDITION)')']");
 
 let tooltip = _createDefaultTooltip();
@@ -580,6 +581,7 @@ function reloadArtistData(metadb) {
   if (mbids.length === 0) {
     currentMbid = null;
     artistData = null;
+    activeLinkBtns = [];
     errorText = "No MUSICBRAINZ_ARTISTID tag";
     window.Repaint();
     return;
@@ -589,7 +591,14 @@ function reloadArtistData(metadb) {
   if (!fileInfo) {
     currentMbid = null;
     artistData = null;
-    errorText = "No Biography: " + mbids[0];
+    activeLinkBtns = [];
+    errorText =
+      "No Biography: " +
+      artistTf.EvalWithMetadb(metadb) +
+      "\n" +
+      "MBID:" +
+      "\n" +
+      mbids[0];
     window.Repaint();
     return;
   }
@@ -689,7 +698,7 @@ function scanImagePaths(mbid) {
   // 后缀模板: "" 匹配 {mbid}{ext}/{mbid}_{index}{ext};
   //           "_X_" 匹配手动添加的封面 {mbid}_X_{index}.{ext}
   // const SUFFIXES = ["", "_X_"];
-  const SUFFIXES = ["_X_"];
+  const SUFFIXES = ["_X_", "_INS_"];
 
   for (let s = 0; s < SUFFIXES.length; s++) {
     const suffix = SUFFIXES[s];
@@ -1372,6 +1381,7 @@ function on_playlist_items_selection_change() {
   } else {
     currentMbid = null;
     artistData = null;
+    activeLinkBtns = [];
     errorText = "Select or play a track...";
     if (panelW > 0) {
       window.Repaint();

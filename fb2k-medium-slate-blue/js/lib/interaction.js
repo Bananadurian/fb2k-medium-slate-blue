@@ -773,7 +773,7 @@ function _drawIcon(gr, icon, x, y, rowH) {
  * @returns {void}
  */
 function _drawEmptyState(gr, text, font, color, panelW, panelH) {
-    gr.GdiDrawText(text, font, color, 0, panelH / 2, panelW, panelH, DT_CENTER);
+    gr.GdiDrawText(text, font, color, 0, panelH / 2, panelW, panelH, CENTER_WRAP_FLAGS);
 }
 
 // ============================================================================
