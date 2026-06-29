@@ -14,10 +14,10 @@ void PS(float2 uv  : TEXCOORD,
     //const float w2 = w[2] + w[3];
     //const float w3 = w[4] + w[5];
     //const float w4 = w[6] + w[7];
-    //const float d1 = 0 + 2 * w[1] / w1;
-    //const float d2 = 2 + 2 * w[3] / w2;
-    //const float d3 = 4 + 2 * w[5] / w3;
-    //const float d4 = 6 + 2 * w[7] / w4;
+    //const float d1 = 0.0 + 2.0 * w[1] / w1;
+    //const float d2 = 2.0 + 2.0 * w[3] / w2;
+    //const float d3 = 4.0 + 2.0 * w[5] / w3;
+    //const float d4 = 6.0 + 2.0 * w[7] / w4;
     //const float w_div = 0.5 / (w1 + w2 + w3 + w4);
 
 #define srctexsize _c0
@@ -34,22 +34,22 @@ void PS(float2 uv  : TEXCOORD,
 #define w_div _c3.z
 
     // Note: Taking one sample at exactly `uv.xy`, returns an average of 4 pixels.
-    float2 uv2 = uv.xy + srctexsize.zw * float2(1, 1); // + moves blur UP, LEFT by 1-pixel increments //* float2(0.5, 0.5);
+    float2 uv2 = uv.xy + srctexsize.zw * float2(1.0, 1.0); // + moves blur UP, LEFT by 1-pixel increments //* float2(0.5, 0.5);
 
     float3 blur =
-        (tex2D(sampler_main, uv2 + float2(d1 * srctexsize.z, 0)).xyz
-         + tex2D(sampler_main, uv2 + float2(-d1 * srctexsize.z, 0)).xyz) * w1 +
-        (tex2D(sampler_main, uv2 + float2(d2 * srctexsize.z, 0)).xyz
-         + tex2D(sampler_main, uv2 + float2(-d2 * srctexsize.z, 0)).xyz) * w2 +
-        (tex2D(sampler_main, uv2 + float2(d3 * srctexsize.z, 0)).xyz
-         + tex2D(sampler_main, uv2 + float2(-d3 * srctexsize.z, 0)).xyz) * w3 +
-        (tex2D(sampler_main, uv2 + float2(d4 * srctexsize.z, 0)).xyz
-         + tex2D(sampler_main, uv2 + float2(-d4 * srctexsize.z, 0)).xyz) * w4;
+        (tex2D(sampler_main, uv2 + float2(d1 * srctexsize.z, 0.0)).xyz
+         + tex2D(sampler_main, uv2 + float2(-d1 * srctexsize.z, 0.0)).xyz) * w1 +
+        (tex2D(sampler_main, uv2 + float2(d2 * srctexsize.z, 0.0)).xyz
+         + tex2D(sampler_main, uv2 + float2(-d2 * srctexsize.z, 0.0)).xyz) * w2 +
+        (tex2D(sampler_main, uv2 + float2(d3 * srctexsize.z, 0.0)).xyz
+         + tex2D(sampler_main, uv2 + float2(-d3 * srctexsize.z, 0.0)).xyz) * w3 +
+        (tex2D(sampler_main, uv2 + float2(d4 * srctexsize.z, 0.0)).xyz
+         + tex2D(sampler_main, uv2 + float2(-d4 * srctexsize.z, 0.0)).xyz) * w4;
     blur.xyz *= w_div;
 
     blur.xyz = blur.xyz * fscale + fbias;
 
     ret.xyz = blur;
-    ret.w = 1;
-    //ret.xyzw = tex2D(sampler_main, uv + 0 * srctexsize.zw);
+    ret.w = 1.0;
+    //ret.xyzw = tex2D(sampler_main, uv + 0.0 * srctexsize.zw);
 }

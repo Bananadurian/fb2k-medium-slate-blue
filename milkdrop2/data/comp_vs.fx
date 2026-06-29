@@ -7,7 +7,7 @@ void VS(float3 vPosIn     : POSITION,
     out float2 _rad_ang   : TEXCOORD1,
     out float4 vPosProj   : POSITION)
 {
-    vPosProj = float4(vPosIn.x, vPosIn.y, vPosIn.z, 1);
+    vPosProj = float4(vPosIn.x, vPosIn.y, vPosIn.z, 1.0);
     _vDiffuse = vDiffuseIn;
     _uv = uv_in.xyzw;
     _rad_ang = rad_ang_in.xy;

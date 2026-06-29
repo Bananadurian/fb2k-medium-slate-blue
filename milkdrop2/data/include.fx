@@ -18,6 +18,10 @@ float4 _c13; // .xy = blur2_min,blur2_max; .zw = blur3_min,blur3_max
 float4 _c14; // .xy = mouse position; .z = button hold; .z = mouse click
 float4 _c15; // .x = hour, .y = minute, .z = second, .w = time converted to seconds
 float4 _c16; // .x = year, .y = month, .z = day, .w = weekday (1-7)
+float4 _c17; // .x = bass_smooth, .y = mid_smooth, .z = treb_smooth, .w = vol_smooth
+float4 _c18; // .x = vis_intensity, .y = vis_shift, .z = vis_version; .w = unused
+float4 _c19; // .x = colshift_hue, .y = colshift_saturation, .z = colshift_brightness; .w = unused
+float4 _c20; // .x = gamma_adj, .y = echo_alpha, .z = echo_inv_zoom, .w = echo_orient
 float4 _qa;  // q vars bank 1 [q1-q4]
 float4 _qb;  // q vars bank 2 [q5-q8]
 float4 _qc;  // q vars bank 3 [q9-q12]
@@ -170,6 +174,20 @@ float4x3 rot_rand4;
 #define month _c16.y
 #define day _c16.z
 #define weekday _c16.w
+#define bass_smooth _c17.x
+#define mid_smooth _c17.y
+#define treb_smooth _c17.z
+#define vol_smooth _c17.w
+#define vis_intensity _c18.x
+#define vis_shift _c18.y
+#define vis_version _c18.z
+#define colshift_hue _c19.x
+#define colshift_saturation _c19.y
+#define colshift_brightness _c19.z
+#define gamma_adj _c20.x
+#define echo_alpha_param _c20.y
+#define echo_inv_zoom _c20.z
+#define echo_orient_param _c20.w
 
 #define GetMain(uv) (tex2D(sampler_main, uv).xyz)
 #define GetPixel(uv) (tex2D(sampler_main, uv).xyz)
@@ -177,15 +195,34 @@ float4x3 rot_rand4;
 #define GetBlur2(uv) (tex2D(sampler_blur2, uv).xyz * _c5.z + _c5.w)
 #define GetBlur3(uv) (tex2D(sampler_blur3, uv).xyz * _c6.x + _c6.y)
 
-#define get_fft(p) (tex2D(sampler_fft, float2(saturate((p)), 0.25)).x)
-#define get_fft_peak(p) (tex2D(sampler_fft, float2(saturate((p)), 0.75)).x)
-#define get_fft_hz(hz) (get_fft(saturate((hz) / 22050.0)))
-#define get_fft_peak_hz(hz) (get_fft_peak(saturate((hz) / 22050.0)))
-#define get_wave(p) ((get_wave_left(p) + get_wave_right(p)) * 0.5)
-#define get_wave_left(p) (tex2D(sampler_wave, float2(saturate((p)), 0.25)).x)
-#define get_wave_right(p) (tex2D(sampler_wave, float2(saturate((p)), 0.75)).x)
+#define GetFFT(p) (tex2D(sampler_fft, float2(saturate((p)), 0.25)).x)
+#define GetFFTPeak(p) (tex2D(sampler_fft, float2(saturate((p)), 0.75)).x)
+#define GetFFTHz(hz) (GetFFT(saturate((hz) / 22050.0)))
+#define GetFFTPeakHz(hz) (GetFFTPeak(saturate((hz) / 22050.0)))
+#define GetWaveLeft(p) (tex2D(sampler_wave, float2(saturate((p)), 0.25)).x)
+#define GetWaveRight(p) (tex2D(sampler_wave, float2(saturate((p)), 0.75)).x)
+#define GetWave(p) ((GetWaveLeft(p) + GetWaveRight(p)) * 0.5)
 
 #define lum(x) (dot(x, float3(0.32, 0.49, 0.29)))
+float3 shiftHSV(float3 c)
+{
+    float3 rgb = c;
+    if (colshift_hue != 0.0 || colshift_saturation != 0.0 || colshift_brightness != 0.0)
+    {
+        float4 K = float4(0, -1.0 / 3.0, 2.0 / 3.0, -1);
+        float4 p = lerp(float4(c.bg, K.wz), float4(c.gb, K.xy), step(c.b, c.g));
+        float4 q = lerp(float4(p.xyw, c.r), float4(c.r, p.yzx), step(p.x, c.r));
+        float d = q.x - min(q.w, q.y), e = 1e-10;
+        float h = frac(abs(q.z + (q.w - q.y) / (6.0 * d + e)) + colshift_hue * 0.5);
+        float s = d / (q.x + e);
+        float v = q.x;
+        s = (colshift_saturation <= 0.0) ? s * (1.0 + colshift_saturation) : s + (1.0 - s) * colshift_saturation;
+        v = (colshift_brightness <= 0.0) ? v * (1.0 + colshift_brightness) : v + (1.0 - v) * colshift_brightness;
+        float3 t = abs(frac(h + float3(0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
+        rgb = v * lerp(float3(1, 1, 1), saturate(t - 1.0), s);
+    }
+    return rgb;
+}
 
 float  _safe_normalize(float  x) { return sign(x); }
 float2 _safe_normalize(float2 x) { float d = dot(x, x); return d > 0.0 ? x * rsqrt(d) : (float2)0.0; }
@@ -221,17 +258,37 @@ float2 _safe_denom(float2 x) { return float2(x.x == 0.0 ? 1e-30 : x.x, x.y == 0.
 float3 _safe_denom(float3 x) { return float3(x.x == 0.0 ? 1e-30 : x.x, x.y == 0.0 ? 1e-30 : x.y, x.z == 0.0 ? 1e-30 : x.z); }
 float4 _safe_denom(float4 x) { return float4(x.x == 0.0 ? 1e-30 : x.x, x.y == 0.0 ? 1e-30 : x.y, x.z == 0.0 ? 1e-30 : x.z, x.w == 0.0 ? 1e-30 : x.w); }
 
+// Aliases to match MilkDrop3, BeatDrop, MilkWave, MDropDX12.
+#define mouse_clicked _c14.z
+#define mouse_released _c14.w
+#define sysTime _c15
+#define sysDate _c16
+#define sysTimeHour _c15.x
+#define sysTimeMinute _c15.y
+#define sysTimeSecond _c15.z
+#define sysTimeTotalSeconds _c15.w
+#define sysDateYear _c16.x
+#define sysDateMonth _c16.y
+#define sysDateDay _c16.z
+#define sysDateWeekday _c16.w
 #define tex1d tex1D
 #define tex2d tex2D
 #define tex3d tex3D
 #define texcube texCUBE
-#define GetFFT get_fft
-#define GetFFTPeak get_fft_peak
-#define GetFFTHz get_fft_hz
-#define GetFFTPeakHz get_fft_peak_hz
-#define GetWave get_wave
-#define GetWaveLeft get_wave_left
-#define GetWaveRight get_wave_right
+#define texCube texCUBE
+#define texture1D tex1D
+#define texture2D tex2D
+#define texture3D tex3D
+#define SAMPLER1D sampler1D
+#define SAMPLER2D sampler2D
+#define SAMPLER3D sampler3D
+#define get_fft GetFFT
+#define get_fft_peak GetFFTPeak
+#define get_fft_hz GetFFTHz
+#define get_fft_peak_hz GetFFTPeakHz
+#define get_wave_left GetWaveLeft
+#define get_wave_right GetWaveRight
+#define get_wave GetWave
 
 // Previous-frame-image samplers.
 texture PrevFrameImage;
@@ -266,6 +323,7 @@ sampler2D sampler_blur3;
 
 // FFT audio spectrum texture.
 sampler2D sampler_fft;
+#define HAS_FFT_PEAK 1
 
 // Waveform audio texture.
 sampler2D sampler_wave;

@@ -5,6 +5,6 @@ void VS(float3 vPosIn     : POSITION,
     out float2 uv         : TEXCOORD0,
     out float4 vPosProj   : POSITION)
 {
-    vPosProj = float4(vPosIn.xy, 1, 1);
+    vPosProj = float4(vPosIn.xy, 1.0, 1.0);
     uv = uv1.xy;
 }

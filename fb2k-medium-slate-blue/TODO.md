@@ -5,11 +5,31 @@
 - [x] 添加更多图标适配更多链接（spotify, apple music, tidal, genius 等）
 - [x] 链接区域根据链接数量动态适配行数，最多 2 行（当前只显示 1 行，多余被截断）
 - [x] Discography 数据源改为可配置：全局变量控制来源（`fb.GetQueryItems` 库查询 / JSON 数据），JSON 需按日期降序排列
-- [ ] 国家信息考虑是否使用详细地址（`data.origin.birth_place.details_zh`）
+- [ ] 国家信息优化：使用 `country.name_zh` 拼接 `region_zh`（可能为空）+ `city_zh`（可能为空）显示详细出生地
+  - **当前实现**: `origin.country.name_zh` 或 `origin.country.name_en`（仅国家名）
+  - **目标格式**: "美国纽约"、"中国台湾台北" 等完整地址（region/city 为空时仅显示国家）
+  - **涉及文件**: `lib/json_schema_adapter.js:115` normalizeArtistData() country 字段映射
 - [x] 性能检查：V2 图片 LRU 缓存是否正常工作
 - [ ] 选中的 TAB 使用白色而非主题色？视觉效果评估
 - [ ] 无艺人数据时显示按钮，点击调用 music-meta 自动获取
-- [ ] 添加右键菜单：调用 music-meta 更新数据、下载封面等
+  - **依赖工具**: music-meta CLI (`D:\11_MusicLib\_Tools\music-meta\`)
+  - **文档**: `D:\11_MusicLib\_Tools\music-meta\README.md`
+  - **SMP API**: `utils.RunCmdAsync()` / `utils.Run()` (见 `user-components-x64/foo_uie_jsplitter/docs/js/foo_uie_jsplitter.js:2361-2358`)
+  - **路径配置方案**:
+    - 推荐：`window.GetProperty("music_meta.cli_path", "music-meta")` + `window.GetProperty("music_meta.data_dir", "")`
+    - 备选：环境变量 `%MUSIC_META_DATA_DIR%`（通过 WScript.Shell.ExpandEnvironmentStrings）
+    - 避免：写死绝对路径（影响可移植性）
+  - **实现模式**: 异步调用 → `on_run_cmd_async_done()` 回调 → JSON.parse(result.Stdout) → 更新面板数据
+  - **输出格式**: `--json` 标志，返回 `{status: "ok|ambiguous|error", data: {...}, candidates: [...]}`
+  - **待补充文档**: CLAUDE.md "External Tools" 章节 + patterns-recipes.md 调用示例
+- [ ] 添加右键菜单：资料面板右键打开本地 JSON 文件，调用系统默认软件手动编辑
+  - **触发条件**: 当 `artistData` 已加载且有对应的 `jsonPath` 时
+  - **实现方案**: `on_mouse_rbtn_up` → 构建菜单 → `ActiveXObject("WScript.Shell").Run(jsonPath)` 用默认关联程序打开
+  - **路径来源**: `reloadArtistData()` → `tryFindArtistFiles()` → `fileInfo.jsonPath`，需将 `jsonPath` 存入全局状态供右键使用
+  - **菜单位置**: 右键点击面板任意位置（非封面/Tab/链接区域）
+  - [ ] 添加右键菜单：调用 music-meta 更新数据、下载封面等
+  - **相关命令**: `get artist`, `covers --download`, `export tag`
+  - **需处理**: status="ambiguous" 消歧菜单、超时处理（默认 30s）、错误提示
 - [ ] 封面查找后缀优化：当前 `_X_` 写死，考虑更通用的匹配方案
 - [ ] 点击查看大图（从 biography.js 迁移）
 - [ ] 伪透明模式：选中非当前播放歌曲并停止播放时，背景渲染异常（从 biography.js 迁移）**[可能是 JSplitter/CUI 插件问题，需调试确认]**
