@@ -1,0 +1,19 @@
+#!/bin/sh
+set -e
+
+ROOT=$(git rev-parse --show-toplevel)
+CONFIG="$ROOT/config.sqlite"
+BACKUP="$ROOT/config.sqlite.bak"
+
+# 静默跳过：config.sqlite 不在暂存区 或 仅被删除
+if ! git diff --cached --name-only --diff-filter=ACM | grep -qx "config.sqlite"; then
+    exit 0
+fi
+
+# 脱敏流程
+cp "$CONFIG" "$BACKUP"
+python "$ROOT/fb2k-medium-slate-blue/tools/sanitize_config.py" "$CONFIG"
+git add "$CONFIG"
+
+# EXIT 时恢复真实文件（无论 commit 成功或失败）
+trap "mv $BACKUP $CONFIG" EXIT
