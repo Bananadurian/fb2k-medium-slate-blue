@@ -1,65 +1,83 @@
-# fb2k-medium-slate-blue
+# fb2k-medium-slate-blue [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![zh-CN](https://img.shields.io/badge/中文-zh--CN-red.svg)](README.zh-CN.md)
 
-## 1. 简介
+- [1. Introduction](#1-introduction)
+- [2. Setup](#2-setup)
+  - [2.1. Troubleshooting](#21-troubleshooting)
+- [3. Features](#3-features)
+- [4. Changelog](#4-changelog)
+- [5. Appendix](#5-appendix)
+  - [5.1. Common Data Folders](#51-common-data-folders)
+- [6. License](#6-license)
 
-![](fb2k-medium-slate-blue/imgs/screenshots/1.3.0-1.png)
+## 1. Introduction
 
-> 更多截图见 [CHANGELOG](fb2k-medium-slate-blue/CHANGELOG.md)。
+![screenshot](fb2k-medium-slate-blue/imgs/screenshots/1.3.0-1.png)
 
-**fb2k-medium-slate-blue**（Medium Slate Blue）是一个基于 [**foobar2000-x64_v2.2.x**](https://www.foobar2000.org/download)、[**Columns UI**](https://github.com/reupen/columns_ui) 定制版本。
+> More screenshots in [CHANGELOG.md](fb2k-medium-slate-blue/CHANGELOG.md).
 
-> 仅在 WIN11 测试。推荐字体：更纱黑体 [Sarasa-Gothic](https://github.com/be5invis/Sarasa-Gothic)。
+**fb2k-medium-slate-blue** (Medium Slate Blue) is a theme for [**foobar2000 v2.25.x**](https://www.foobar2000.org/download) built on [**Columns UI**](https://github.com/reupen/columns_ui).
 
-## 2. 使用
+> Tested on Windows 11. Recommended font: [Sarasa Gothic](https://github.com/be5invis/Sarasa-Gothic).
 
-1. 下载 **64bit** 的 [Foobar2000](https://www.foobar2000.org/download)，推荐**便携**方式安装
-2. **不要启动** foobar2000，此时不会生成 `/profile` 目录
-3. 下载或克隆仓库，将 `/fb2k-medium-slate-blue` 重命名为 `/profile`，复制到安装目录
+## 2. Setup
 
-> 安装目录参考：
-> 便携版：`xx/foobar2000/profile`
-> 非便携版：`C:\Users\用户名\AppData\Roaming\foobar2000\profile`
+1. Download **64-bit** [Foobar2000](https://www.foobar2000.org/download) — **portable** install recommended
 
-## 3. 功能特性
+   > All required plugins are bundled (`user-components-x64/`), no manual installation needed.
 
-详细功能说明参见 [**FEATURES.md**](fb2k-medium-slate-blue/FEATURES.md)，包括：
-- **专辑链接**: 支持 21 个音乐平台的一键跳转
-- **艺人信息**: 作品集、外部链接、国旗标识
-- **电台封面**: 为网络电台添加封面
-- **主题系统**: 多种背景渲染模式
+2. **Do not launch** foobar2000 yet (launching auto-creates a `profile` folder, which interferes with the next steps)
+3. Grab the theme:
+   - **ZIP download**: Code → Download ZIP on the repo page, extract the `fb2k-medium-slate-blue-main` folder
+   - **git clone**: `git clone https://github.com/Bananadurian/fb2k-medium-slate-blue.git`
+4. **Rename** the folder to `profile` and **copy** it into your foobar2000 installation directory
 
-## 4. 电台封面
+   > ⚠️ If a `profile` folder already exists, back it up first to avoid data loss.
 
-> 详细说明参见 [FEATURES.md §3](fb2k-medium-slate-blue/FEATURES.md#3-电台封面配置)
+   > Install paths:
+   > Portable: `<your_install_dir>/profile` (e.g. `D:\foobar2000\profile`)
+   > Standard: `%APPDATA%\foobar2000\profile` (i.e. `C:\Users\<user>\AppData\Roaming\foobar2000\profile`)
 
-利用 [foo_external_tags](<https://wiki.hydrogenaud.io/index.php?title=Foobar2000:Components/External_Tags_(foo_external_tags)>) 插件把电台的名字、专辑、艺人信息等信息补全。
+5. Launch foobar2000
+6. ⚠️ **Fix proxy settings**: The config file (`config.sqlite`) contains the author's personal proxy — change it immediately:
+   `Preferences → Networking → Proxy server → No proxy`
 
-1. 下载电台封面到一个指定文件夹中（建议封面命名和电台名字一致，方便后续使用）；
+### 2.1. Troubleshooting
 
-2. 打开 `Foobar -> Preferences -> Display -> Album art -> Front cover`，添加电台封面所在路径，
+- **Panel layout broken**: JS panels may render incorrectly on first load — right-click the panel and Reload
+- **Last.fm**: Configuration entries are at:
+  `Preferences → Tools → Enhanced Playback Statistics`
+  `Preferences → Tools → Last.fm Scrobbling`
 
-   示例参数：
+## 3. Features
 
-   利用电台Url标识设置路径：`$if($strstr(%path%,'://'),E:\Music\_Extras\Radio\%title%.*)`；
+See [**FEATURES.md**](fb2k-medium-slate-blue/FEATURES.md) for full details.
 
-   固定路径：`E:\Music\_Extras\Radio\%title%.*`（优先级*最低*，不然会覆盖同名歌曲）。
+- **Album Links**: Reads `URL_*` tags from audio files and displays clickable buttons for Spotify, Discogs, YouTube, and 18 other platforms
+- **Artist Info**: Nationality + flag, discography, external link buttons
+- **Radio Covers**: Matches local cover art to radio streams via [foo_external_tags](https://wiki.hydrogenaud.io/index.php?title=Foobar2000:Components/External_Tags_(foo_external_tags)) (setup → [FEATURES.md §3](fb2k-medium-slate-blue/FEATURES.md#3-电台封面配置))
+- **Theme System**: Multiple background modes — cover color extraction, blur, pseudo-transparency, and more
 
-3. 需要显示封面的地方选择 `Front cover` 即可显示（`Artist` 设置类似）。
+## 4. Changelog
 
-> `fb2k-medium-slate-blue/imgs/covers/radio`：示例电台封面。
+See [`fb2k-medium-slate-blue/CHANGELOG.md`](fb2k-medium-slate-blue/CHANGELOG.md). Versioning follows [SemVer](https://semver.org/).
 
-## 5. 版本记录
+## 5. Appendix
 
-详见 [`fb2k-medium-slate-blue/CHANGELOG.md`](fb2k-medium-slate-blue/CHANGELOG.md)。版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
+### 5.1. Common Data Folders
 
-## 6. 附录
+Depending on installed plugins, the following folders may appear under `profile/`:
 
-### 6.1. 部分文件夹说明
+| Folder | Plugin | Description |
+|:---|:---|:---|
+| `eslyric-data/` | [ESlyric](https://www.foobar2000.org/components/view/foo_uie_eslyric) | Lyric layouts & styles |
+| `milkdrop2/` | [MilkDrop 2](https://www.foobar2000.org/components/view/foo_vis_milk2) | Visualization presets & shaders |
+| `wispan/` | [Spectrum Analyzer Visualisation](https://www.foobar2000.org/components/view/foo_vis_wispan) | Spectrum visualizer config |
+| `goom/` | [What a GOOM!](https://www.foobar2000.org/components/view/foo_vis_goom) | Visualizer config (not bundled) |
+| `lyrics/` | ESlyric | Cached lyric files |
+| `dsp-presets/` | DSP plugins | DSP effect presets |
+| `component-updates/` | — | Plugin update cache |
+| `radio-browser-cache/` | — | Radio browser cache |
 
-- `eslyric-data`: ESlyric配置。
+## 6. License
 
-- `wispan`：[Spectrum Analyzer Visualisation](https://www.foobar2000.org/components/view/foo_vis_wispan)配置。
-
-- `goom`: [What a GOOM! Visualisation](https://www.foobar2000.org/components/view/foo_vis_goom)配置。
-
-- `milkdrop2`: [MilkDrop 2 Visualisation](https://www.foobar2000.org/components/view/foo_vis_milk2)配置。
+This project is licensed under the [MIT License](LICENSE). See [THIRD_PARTY.md](THIRD_PARTY.md) for third-party attributions.

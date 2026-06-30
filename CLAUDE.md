@@ -6,19 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**fb2k-medium-slate-blue** is a foobar2000 v2.25.9 theme/configuration package based on Columns UI. The core scripting layer uses **Spider Monkey Panel (SMP)** with custom JavaScript panels.
+**fb2k-medium-slate-blue** is a foobar2000 v2.25.x theme/configuration package based on Columns UI. The core scripting layer uses **JSplitter** running Spider Monkey Panel (SMP) JavaScript.
 
 This is a **portable foobar2000 profile directory** (`profile/`) that contains:
 - Configuration files (`.cfg`, `.sqlite`, `.db`)
-- Spider Monkey Panel scripts (`fb2k-medium-slate-blue/js/`)
+- Spider Monkey Panel scripts (`fb2k-medium-slate-blue/js/`) — runs on JSplitter
 - Theme assets (icons, flags, screenshots in `fb2k-medium-slate-blue/imgs/`)
 - Plugin configurations for Columns UI, ESlyric, visualizations, etc.
 
 **Target Environment:**
-- foobar2000 v2.25.9 (64-bit)
+- foobar2000 v2.25.x (64-bit)
 - Windows 11 (tested)
 - Columns UI plugin required
-- Spider Monkey Panel (foo_spider_monkey_panel) required
+- JSplitter (foo_uie_jsplitter) required
 
 ---
 
@@ -56,7 +56,10 @@ profile/
 │   └── *.dll.cfg                          # Plugin-specific configs
 ├── theme.fth                              # Columns UI theme
 ├── config.sqlite                          # Main config database
-└── README.md                              # User documentation
+├── README.md                              # User documentation (EN)
+├── README.zh-CN.md                        # User documentation (中文)
+├── THIRD_PARTY.md                         # Third-party license notices
+└── LICENSE                                # MIT License
 
 Excluded from indexing (.gitignore + .claudeignore):
 - Large databases: metadb.sqlite (100MB), minibar.db (211MB)
@@ -68,9 +71,9 @@ Excluded from indexing (.gitignore + .claudeignore):
 
 ## Core Architecture
 
-### Spider Monkey Panel Script System
+### Spider Monkey Panel Script System (via JSplitter)
 
-**Runtime:** Mozilla SpiderMonkey ESR68 (ES2019/ES10)
+**Runtime:** Mozilla SpiderMonkey ESR68 (ES2019/ES10) — hosted by JSplitter
 - **Not** a browser environment — no DOM APIs or XMLHttpRequest
 - All scripts must start with `"use strict";`
 
@@ -131,7 +134,7 @@ Excluded from indexing (.gitignore + .claudeignore):
 **Committed:**
 - All `.js` panel scripts and libraries
 - Theme assets (`imgs/`)
-- `theme.fth`, `README.md`, `version.txt`, `LICENSE`
+- `theme.fth`, `README.md`, `README.zh-CN.md`, `THIRD_PARTY.md`, `version.txt`, `LICENSE`
 
 **Ignored (`.gitignore`):**
 - Large databases: `metadb.sqlite`, `minibar.db`
@@ -139,7 +142,7 @@ Excluded from indexing (.gitignore + .claudeignore):
 - Runtime: `js_data/`, `*cache/`, `crash reports/`, `component-updates/`
 - Logs: `library-error-log.txt`, `config.sqlite.bad`
 
-**Current version:** foobar2000 v2.25.9 (see `version.txt`)
+**Current version:** foobar2000 v2.25.x (see `version.txt`)
 
 ---
 
@@ -152,15 +155,15 @@ Uses `foo_external_tags` plugin to assign covers to radio streams:
 3. Add path pattern: `$if($strstr(%path%,'://'),E:\Music\_Extras\Radio\%title%.*)`
 4. Select "Front cover" source where covers should display
 
-Example covers: `fb2k-medium-slate-blue/imgs/RadioCover/`
+Example covers: `fb2k-medium-slate-blue/imgs/covers/radio/`
 
 ---
 
 ## Key Technologies
 
-- **foobar2000** v2.25.9 — Audio player
+- **foobar2000** v2.25.x — Audio player
 - **Columns UI** — Advanced UI framework
-- **Spider Monkey Panel** — JavaScript scripting (Mozilla SpiderMonkey ESR68)
+- **JSplitter** — Panel host & scripting (Mozilla SpiderMonkey ESR68)
 - **ESlyric** — Lyrics display plugin
 - **foo_enhanced_playcount** — Play statistics
 - **foo_vis_*** — Visualization plugins (wispan, milkdrop2)
