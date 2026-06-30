@@ -28,8 +28,8 @@
 2. **Do not launch** foobar2000 yet (launching auto-creates a `profile` folder, which interferes with the next steps)
 3. Grab the theme:
    - **ZIP download**: Code → Download ZIP on the repo page, extract the `fb2k-medium-slate-blue-main` folder
-   - **git clone**: `git clone https://github.com/Bananadurian/fb2k-medium-slate-blue.git`
-4. **Rename** the folder to `profile` and **copy** it into your foobar2000 installation directory
+   - **git clone**: `git clone https://github.com/Bananadurian/fb2k-medium-slate-blue.git profile` (clone as `profile` directly)
+4. **Copy** the `profile` folder into your foobar2000 installation directory
 
    > ⚠️ If a `profile` folder already exists, back it up first to avoid data loss.
 

@@ -28,8 +28,8 @@
 2. **不要启动** foobar2000（启动后会自动生成 `profile` 目录，影响后续替换）
 3. 获取本主题：
    - **下载 ZIP**：点击仓库页面的 Code → Download ZIP，解压得到 `fb2k-medium-slate-blue-main` 目录
-   - **git clone**：`git clone https://github.com/Bananadurian/fb2k-medium-slate-blue.git`
-4. 将获取到的目录**重命名**为 `profile`，**复制**到 foobar2000 安装目录
+   - **git clone**：`git clone https://github.com/Bananadurian/fb2k-medium-slate-blue.git profile`（直接克隆为 `profile`）
+4. 将 `profile` 目录**复制**到 foobar2000 安装目录
 
 > ⚠️ 如已有 `profile` 目录请先备份，避免覆盖个人数据。
 
