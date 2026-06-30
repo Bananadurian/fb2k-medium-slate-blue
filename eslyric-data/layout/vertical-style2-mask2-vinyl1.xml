@@ -145,7 +145,7 @@
                    height="*"
                    margin="2%,2%,2%,2%"
                    text-align="center"
-                   banner-text="XRE's Music" />
+                   banner-text="foobar2000" />
             <!-- 优化：删除在垂直 Stack 列中会导致逻辑计算错误的垂�?anchor="vcenter" -->
             <container name="button-panel"
                        layout="stack"

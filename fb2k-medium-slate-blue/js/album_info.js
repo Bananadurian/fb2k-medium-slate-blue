@@ -1126,7 +1126,7 @@ function on_paint(gr) {
   if (!window.IsTransparent) gr.FillSolidRect(0, 0, panelW, panelH, COL.BG);
 
   if (!albumData) {
-    _drawEmptyState(gr, errorText, TS.body.font, TS.body.color, panelW, panelH);
+    _drawEmptyState(gr, errorText, TS.empty.font, TS.empty.color, panelW, panelH);
     return;
   }
 

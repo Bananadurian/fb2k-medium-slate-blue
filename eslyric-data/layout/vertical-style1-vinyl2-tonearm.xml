@@ -128,7 +128,7 @@
                    height="*"
                    margin="2%,2%,2%,2%"
                    text-align="center"
-                   banner-text="XRE's Music" />
+                   banner-text="foobar2000" />
             <!-- 优化：删除垂�?Stack 中会导致计算撕裂�?anchor="vcenter" -->
             <container name="button-panel"
                        layout="stack"

@@ -495,8 +495,8 @@ function on_paint(gr) {
     _drawEmptyState(
       gr,
       errorText,
-      TS.title.font,
-      TS.title.color,
+      TS.empty.font,
+      TS.empty.color,
       panelW,
       panelH,
     );
