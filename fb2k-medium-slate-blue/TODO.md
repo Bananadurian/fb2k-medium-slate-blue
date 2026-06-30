@@ -43,6 +43,10 @@
 
 ## biography.js — 已废弃，由 biography_v2.js 取代，任务迁移至下方
 
+## track_info.js
+
+- [ ] 首次启动布局偏移：全新播放器首次启动时，无选中/无播放 → 显示 "No Track" → 播放歌曲后内容位置计算错误。刷新脚本或重启后可恢复正常，后续无异常。疑似 JSplitter/SMP 初始化回调时序问题（`on_size()` 与 `updateContent()` 的竞态）
+
 ## album_info.js
 
 - [x] 添加链接显示区域（对齐 biography_v2.js 的 external_urls 展示）
