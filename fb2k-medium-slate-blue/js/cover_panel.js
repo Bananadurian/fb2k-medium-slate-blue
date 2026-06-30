@@ -12,7 +12,7 @@ include("lib/theme.js");
 include("lib/background.js");
 
 window.DefineScript("cover_panel", {
-    author: "XRE",
+    author: "Bananadurian",
     version: "2.1.0",
     options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });

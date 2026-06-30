@@ -15,7 +15,7 @@ include("lib/json_schema_adapter.js");
 include("lib/icons.js");
 
 window.DefineScript("Biography", {
-  author: "XRE",
+  author: "Bananadurian",
   version: "3.0.0",
   options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
@@ -39,11 +39,11 @@ const PANEL_CFG = {
 };
 const JSON_DIR = window.GetProperty(
   "biography.jsonDir",
-  "D:\\11_MusicLib\\_Extras\\MusicMeta\\artists\\",
+  "<MusicMeta 数据目录>/artists/",
 );
 const ARTIST_COVER_DIR = window.GetProperty(
   "biography.coverDir",
-  "D:\\11_MusicLib\\_Extras\\MusicMeta\\covers\\artists\\original\\",
+  "<MusicMeta 数据目录>/covers/artists/original/",
 );
 const DISCO_DATA_SOURCE = window.GetProperty(
   "biography.discoDataSource",

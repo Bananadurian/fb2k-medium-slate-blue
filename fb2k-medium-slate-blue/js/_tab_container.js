@@ -13,7 +13,7 @@ include("lib/background.js");
 include("lib/icons.js");
 
 window.DefineScript("_tab_container", {
-    author: "XRE",
+    author: "Bananadurian",
     version: "2.1.0",
     options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });

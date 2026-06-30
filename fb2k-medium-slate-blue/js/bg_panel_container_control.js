@@ -15,7 +15,7 @@ include("lib/interaction.js");
 include("lib/background.js");
 
 window.DefineScript("bg_panel_container_control", {
-    author: "XRE",
+    author: "Bananadurian",
     version: "2.1.0",
     options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });

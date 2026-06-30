@@ -12,7 +12,7 @@ include("lib/title_bar_shared.js");
 include("lib/i18n.js");
 
 window.DefineScript("Title Library", {
-  author: "XRE",
+  author: "Bananadurian",
   version: "2.1.0",
   options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });

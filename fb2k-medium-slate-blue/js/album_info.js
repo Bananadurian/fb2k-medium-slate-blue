@@ -14,7 +14,7 @@ include("lib/flag.js");
 include("lib/icons.js");
 
 window.DefineScript("Album Info", {
-  author: "XRE",
+  author: "Bananadurian",
   version: "2.1.0",
   options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });

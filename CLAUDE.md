@@ -154,7 +154,7 @@ Uses `foo_external_tags` plugin to assign covers to radio streams:
 
 1. Place radio cover images in a folder (name files after station names)
 2. Open Preferences → Display → Album art → Front cover
-3. Add path pattern: `$if($strstr(%path%,'://'),E:\Music\_Extras\Radio\%title%.*)`
+3. Add path pattern: `$if($strstr(%path%,'://'),<你的电台封面目录>\%title%.*)`
 4. Select "Front cover" source where covers should display
 
 Example covers: `fb2k-medium-slate-blue/imgs/covers/radio/`

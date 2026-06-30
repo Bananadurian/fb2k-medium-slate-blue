@@ -239,11 +239,11 @@ On load, prefer selection first; fallback to now playing if available.
 ```javascript
 const JSON_DIR = window.GetProperty(
   "biography.jsonDir",
-  "D:\\11_MusicLib\\_Extras\\MusicMeta\\artists\\",
+  "<MusicMeta 数据目录>/artists/",
 );
 const ARTIST_COVER_DIR = window.GetProperty(
   "biography.coverDir",
-  "D:\\11_MusicLib\\_Extras\\MusicMeta\\covers\\artists\\original\\",
+  "<MusicMeta 数据目录>/covers/artists/original/",
 );
 const DISCO_DATA_SOURCE = window.GetProperty(
   "biography.discoDataSource",

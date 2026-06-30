@@ -12,8 +12,8 @@
 - [x] 性能检查：V2 图片 LRU 缓存是否正常工作
 - [ ] 选中的 TAB 使用白色而非主题色？视觉效果评估
 - [ ] 无艺人数据时显示按钮，点击调用 music-meta 自动获取
-  - **依赖工具**: music-meta CLI (`D:\11_MusicLib\_Tools\music-meta\`)
-  - **文档**: `D:\11_MusicLib\_Tools\music-meta\README.md`
+  - **依赖工具**: music-meta CLI（`<music-meta 安装目录>`）
+  - **文档**: `<music-meta 安装目录>/README.md`
   - **SMP API**: `utils.RunCmdAsync()` / `utils.Run()` (见 `user-components-x64/foo_uie_jsplitter/docs/js/foo_uie_jsplitter.js:2361-2358`)
   - **路径配置方案**:
     - 推荐：`window.GetProperty("music_meta.cli_path", "music-meta")` + `window.GetProperty("music_meta.data_dir", "")`

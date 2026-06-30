@@ -98,7 +98,7 @@ URL_MUSICBRAINZ  = https://musicbrainz.org/release/xxxxx
 **配置步骤**:
 1. 下载电台封面到指定文件夹（建议封面名与电台名一致）
 2. 打开 `Preferences → Display → Album art → Front cover`
-3. 添加路径模式：`$if($strstr(%path%,'://'),E:\Music\_Extras\Radio\%title%.*)`
+3. 添加路径模式：`$if($strstr(%path%,'://'),<你的电台封面目录>\%title%.*)`
 4. 选择 `Front cover` 作为封面来源
 
 **示例封面**: 见 `fb2k-medium-slate-blue/imgs/covers/radio/`
