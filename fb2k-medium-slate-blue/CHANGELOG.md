@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### Added
+- `config.sqlite` 隐私脱敏：新增 `sanitize_config.py` + pre-commit hook，提交时自动清除主机名/代理/UUID/路径等隐私数据
+
+### Changed
+- 作者标识统一：`XRE` → `Bananadurian`（13 个面板脚本）
+- 文档中的真实路径替换为通用占位符（`FEATURES.md`、`TODO.md` 等）
+
 ## 1.3.0-alpha.2 — 2026-06-30
 
 ### Added

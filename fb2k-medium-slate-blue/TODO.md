@@ -1,5 +1,11 @@
 # TODO
 
+## Infrastructure
+
+- [x] 隐私脱敏：config.sqlite 自动清理（`sanitize_config.py` + pre-commit hook）
+- [x] 作者标识统一：XRE → Bananadurian
+- [x] 文档路径占位符：移除硬编码 `D:\` / `E:\` 真实路径
+
 ## biography_v2.js
 
 - [x] 添加更多图标适配更多链接（spotify, apple music, tidal, genius 等）

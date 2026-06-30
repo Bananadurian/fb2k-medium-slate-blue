@@ -136,6 +136,7 @@ Excluded from indexing (.gitignore + .claudeignore):
 **Committed:**
 - All `.js` panel scripts and libraries
 - Theme assets (`imgs/`)
+- `config.sqlite` (auto-sanitized via pre-commit hook)
 - `theme.fth`, `README.md`, `README.zh-CN.md`, `THIRD_PARTY.md`, `version.txt`, `LICENSE`
 
 **Ignored (`.gitignore`):**
@@ -143,6 +144,24 @@ Excluded from indexing (.gitignore + .claudeignore):
 - User data: `library-v2.0/`, `playlists-v2.0/`, `lyrics/`
 - Runtime: `js_data/`, `*cache/`, `crash reports/`, `component-updates/`
 - Logs: `library-error-log.txt`, `config.sqlite.bad`
+- Sanitize backups: `/config.sqlite.bak`
+
+### Config Sanitization
+
+`config.sqlite` is tracked in Git but privacy-sanitized before every commit via a pre-commit hook (`fb2k-medium-slate-blue/tools/pre-commit` → `.git/hooks/pre-commit`).
+
+**How it works:**
+1. Pre-commit hook detects `config.sqlite` in staging area
+2. Backs up real config → runs `sanitize_config.py` → stages sanitized version
+3. After commit (success or fail), restores real config to working copy
+
+**Sanitize rules** (`fb2k-medium-slate-blue/tools/sanitize_config.py`):
+- Deletes `UPnP.renderer.name`, `UPnP.renderer.USN`, `milk2.szPresetDir` from `configStrings`
+- Deletes rows with local proxy values (`127.0.0.1:`, `localhost:`, `::1:`) from `configStrings`
+- Runs `VACUUM` to physically erase deleted data
+- `core.totalTimePlayed` rule is present but disabled (`enabled: False`)
+
+**One-time setup**: `cp fb2k-medium-slate-blue/tools/pre-commit .git/hooks/pre-commit`
 
 **Current version:** foobar2000 v2.25.x (see `version.txt`)
 
