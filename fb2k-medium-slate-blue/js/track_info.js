@@ -112,6 +112,7 @@ const SECTIONS = [
         starSize: _scale(16),
         padding: { left: PAD_X, top: _scale(4), right: PAD_X, bottom: _scale(4) },
         getContentHeight() { return this.starSize; },
+        // 动态可见性：无播放时隐藏。on_size 已固定计入其高度，不可见时仅留空隙。
         get visible() { return !!(HAS_PLAYCOUNT && metadb); },
         draw(gr) {
             if (!window.IsTransparent) {
@@ -468,8 +469,11 @@ function on_size() {
   panelH = window.Height;
 
   // Phase 1: 计算内容总高度 → spacer → 布局
+  // 注: stars.visible 依赖 metadb，切歌/停止时动态切换会导致 spacerH 漂移。
+  // 改为固定尺寸计算（忽略可见性），stars 不可见时仅留一小段空白间隙，视觉可忽略。
+  // 原逻辑: if (!sec.visible || sec.name === "spacer") return s;
   const contentH = SECTIONS.reduce(function(s, sec) {
-    if (!sec.visible || sec.name === "spacer") return s;
+    if (sec.name === "spacer") return s;
     return s + sec.getContentHeight() + sec.padding.top + sec.padding.bottom;
   }, 0);
   spacerH = Math.max(0, Math.round((panelH - contentH) / 2));
