@@ -469,7 +469,7 @@ function on_size() {
 
   // Phase 1: 计算内容总高度 → spacer → 布局
   const contentH = SECTIONS.reduce(function(s, sec) {
-    if (!sec.visible) return s;
+    if (!sec.visible || sec.name === "spacer") return s;
     return s + sec.getContentHeight() + sec.padding.top + sec.padding.bottom;
   }, 0);
   spacerH = Math.max(0, Math.round((panelH - contentH) / 2));
