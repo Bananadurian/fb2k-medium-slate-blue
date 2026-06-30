@@ -393,41 +393,76 @@ function syncRgState() {
 }
 
 /**
-/** 根据当前输出设备同步设备按钮图标与切换逻辑 */
+ * 设备类型识别。
+ *   device_asio          — 含 "ASIO"
+ *   device_wasapi_ex     — 含 "exclusive"（Default [exclusive] 也是 WASAPI exclusive）
+ *   device_wasapi_share  — 含 "WASAPI" + "shared"
+ *   device_default       — 其他（Default : xxx、XAudio2 : xxx）
+ * @param {string} name
+ * @returns {"device_asio"|"device_wasapi_ex"|"device_wasapi_share"|"device_default"}
+ */
+function classifyDevice(name) {
+  if (name.includes("ASIO")) return "device_asio";
+  if (name.includes("exclusive") && (name.includes("Default") || name.includes("WASAPI")))
+    return "device_wasapi_ex";
+  if (name.includes("WASAPI") && name.includes("shared")) return "device_wasapi_share";
+  return "device_default";
+}
+
+/**
+ * 根据当前输出设备同步按钮图标、tooltip 与切换逻辑。
+ * 点击按钮在 device_asio → device_wasapi_ex → device_wasapi_share 之间循环，
+ * device_default 不入循环。不可用时按优先级轮询，deviceArr[0] 绝对兜底。
+ */
 function syncDeviceState() {
+  const deviceIconMap = {
+    device_asio:          "device_asio",
+    device_wasapi_ex:     "device_wasapi_ex",
+    device_wasapi_share:  "device_wasapi_share",
+    device_default:       "device_default",
+  };
+
+  const deviceTipMap = {
+    device_asio:          "control_buttons.device_asio",
+    device_wasapi_ex:     "control_buttons.device_wasapi_ex",
+    device_wasapi_share:  "control_buttons.device_wasapi_share",
+    device_default:       "Unknown",
+  };
   let deviceArr;
   try {
     deviceArr = JSON.parse(fb.GetOutputDevices());
   } catch (e) {
-    console.log("Device list error: " + e);
+    console.log("Device switch error: " + e);
     return;
   }
+
   const current = deviceArr.find((d) => d.active)?.name || "";
+  const currentType = classifyDevice(current);
 
-  let img = iconMgr.get("ui", "wasapi_share");
-  let imgHover = iconMgr.get("ui", "wasapi_hover");
-  let tip = I18N.t("control_buttons.device_default");
-  let cmd = "";
+  // Cycle: device_asio → device_wasapi_ex → device_wasapi_share
+  const CYCLE = ["device_asio", "device_wasapi_ex", "device_wasapi_share"];
+  const curIdx = CYCLE.indexOf(currentType);
+  const nextType = CYCLE[(curIdx + 1) % CYCLE.length];
 
-  if (current.includes("ASIO")) {
-    img = iconMgr.get("ui", "asio");
-    imgHover = iconMgr.get("ui", "asio_hover");
-    tip = I18N.t("control_buttons.device_asio");
-    cmd = "Playback/Device/WASAPI (shared) : Default Sound Device";
-  } else if (current.includes("exclusive")) {
-    img = iconMgr.get("ui", "wasapi");
-    imgHover = iconMgr.get("ui", "wasapi_hover");
-    tip = I18N.t("control_buttons.device_wasapi_ex");
-    cmd = "Playback/Device/WASAPI (shared) : Default Sound Device";
-  } else {
-    img = iconMgr.get("ui", "wasapi_share");
-    imgHover = iconMgr.get("ui", "wasapi_hover");
-    tip = I18N.t("control_buttons.device_wasapi");
-    cmd = "Playback/Device/ASIO : aune USB Audio Device";
+  // 目标查找 + 优先级轮询 fallback
+  const start = CYCLE.indexOf(nextType);
+  let target = null;
+  for (let i = 0; i < CYCLE.length; i++) {
+    const tryType = CYCLE[(start + i) % CYCLE.length];
+    target = deviceArr.find((d) => classifyDevice(d.name) === tryType);
+    if (target) break;
   }
+  target = target || deviceArr[0];
+
+  const cmd = target ? "Playback/Device/" + target.name : "";
+
+  const icon = iconMgr.get("ui", deviceIconMap[currentType]);
+  const iconHover = iconMgr.get("ui", deviceIconMap[currentType] + "_hover");
+  const tip = I18N.t(deviceTipMap[currentType]);
 
   if (buttons.device) {
-    buttons.device.updateState(img, imgHover, tip, () => {
+    buttons.device.updateState(icon, iconHover, tip, () => {
+      if (!cmd) return;
       try {
         fb.RunMainMenuCommand(cmd);
       } catch (e) {

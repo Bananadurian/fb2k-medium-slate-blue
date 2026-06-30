@@ -106,6 +106,12 @@
   - [x] 切换注册表到 PNG（`lib/icons.js` 四个注册表全部切换）
   - [x] `_loadImage` 默认值优化：`maxWidth` 默认 96px（对齐图标库标准）
 - [ ] window.DrawMode 优化卡顿面板 **[可能是 JSplitter 渲染机制问题，需排查]**
+- [x] 设备切换动态化：去掉硬编码设备名，改用 `fb.GetOutputDevices()` 动态识别
+  - **涉及文件**: `control_buttons.js` → `syncDeviceState()` + `classifyDevice()`
+  - **优先级循环**: WASAPI shared → WASAPI exclusive → ASIO → shared
+  - **识别规则**: 关键词 `ASIO` / `exclusive` / 其他；同类多设备选列表第一个
+  - **Fallback**: 从 nextType 开始按优先级轮询所有类型，不可用时 `deviceArr[0]` 兜底
+  - **隐私修复**: 移除硬编码的 `aune USB Audio Device` ✅
 - [ ] 调研 `utils.GetCountryFlag` 替代 `lib/flag.js` 的方案（JSplitter v4.1.10+）
   - **API**: `utils.GetCountryFlag(country_or_code)` → 返回 ISO 代码（小写），内置 249 国 `countries.json`
   - **`resolveCountryCode`（biography_v2 使用）**：可部分替代
