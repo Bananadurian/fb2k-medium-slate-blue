@@ -9,6 +9,7 @@ include("lib/interaction.js");
 include("lib/theme.js");
 include("lib/icons.js");
 include("lib/title_bar_shared.js");
+include("lib/i18n.js");
 
 window.DefineScript("Title Library", {
   author: "XRE",
@@ -21,8 +22,8 @@ const controller = createTitleBarController({
   icon: "library.png",
   buttonIconFilename: "folder-search.png",
   buttonHoverIconFilename: "folder-search_hover.png",
-  buttonTooltip: "音乐库搜索",
-  getDisplayText: () => "音乐库",
+  buttonTooltip: I18N.t("title_library.tooltip"),
+  getDisplayText: () => I18N.t("title_library.title"),
   onButtonClick: () => fb.RunMainMenuCommand("Library/Search"),
 });
 

@@ -184,6 +184,7 @@ const THEME = {
     // --- 共享配置开关 (跨面板复用) ---
     CFG: {
         GRAB_FOCUS:       false,         // DefineScript 选项
+        LANGUAGE:         "en",          // UI 语言 (en/zh)，可被 GetProperty("ui.language") 覆盖
         CACHE_SIZE:       50,            // LRU 缓存上限
         SOURCE_ICON_SIZE: _scale(10),    // 来源图标尺寸
         AQ_BADGE: {                      // 音质标识布局

@@ -11,6 +11,7 @@ include("lib/data.js");
 include("lib/interaction.js");
 include("lib/theme.js");
 include("lib/icons.js");
+include("lib/i18n.js");
 
 window.DefineScript("Control Buttons", {
   author: "XRE",
@@ -37,7 +38,7 @@ const BTN_LAYOUT = {
       key: "menu",
       img: "menu",
       func: (x, y) => showMainMenu(x, y),
-      tipText: "主菜单",
+      tipText: I18N.t("control_buttons.menu"),
     },
     { key: "volumeBar", type: "volume", w: _scale(60) },
     {
@@ -61,26 +62,26 @@ const BTN_LAYOUT = {
         fb.RunMainMenuCommand("View/Show now playing in playlist");
         fb.RunMainMenuCommand("Edit/Search");
       },
-      tipText: "搜索(右键: 媒体库搜索)",
+      tipText: I18N.t("control_buttons.search"),
       fnRightClick: (x, y) => showSearchMenu(x, y),
     },
     {
       key: "queue",
       img: "queue",
       func: () => fb.RunMainMenuCommand("View/Queue Viewer"),
-      tipText: "队列",
+      tipText: I18N.t("control_buttons.queue"),
     },
     {
       key: "favorite",
       img: "favorite",
       func: () => runCustomQuery("favorite"),
-      tipText: "最受欢迎",
+      tipText: I18N.t("control_buttons.favorite"),
     },
     {
       key: "recent",
       img: "recent",
       func: () => runCustomQuery("recent"),
-      tipText: "最近播放",
+      tipText: I18N.t("control_buttons.recent"),
     },
   ],
 };
@@ -254,16 +255,16 @@ const libraryQueryConfigs = {
     ),
   },
   search: [
-    { query: '%title% HAS "" SORT DESCENDING BY [%date%]', label: "搜索歌曲" },
-    { query: '%artist% HAS "" SORT DESCENDING BY [%date%]', label: "搜索歌手" },
+    { query: '%title% HAS "" SORT DESCENDING BY [%date%]', label: I18N.t("control_buttons.search_song") },
+    { query: '%artist% HAS "" SORT DESCENDING BY [%date%]', label: I18N.t("control_buttons.search_artist") },
     {
       query: '%album artist% HAS "" SORT DESCENDING BY [%date%]',
-      label: "搜索专辑歌手",
+      label: I18N.t("control_buttons.search_album_artist"),
     },
-    { query: '%album% HAS "" SORT DESCENDING BY [%date%]', label: "搜索专辑" },
+    { query: '%album% HAS "" SORT DESCENDING BY [%date%]', label: I18N.t("control_buttons.search_album") },
     {
       query: '(%album artist% HAS "") AND (NOT %rating% EQUAL 1)',
-      label: "智能列表默认搜索",
+      label: I18N.t("control_buttons.search_smart"),
     },
   ],
 };
@@ -275,8 +276,8 @@ const libraryQueryConfigs = {
 function runCustomQuery(type) {
   const config =
     type === "recent"
-      ? { tf: libraryQueryConfigs.recent, plName: "🕤️ 最近播放" }
-      : { tf: libraryQueryConfigs.favorite, plName: "🔥 最受欢迎" };
+      ? { tf: libraryQueryConfigs.recent, plName: I18N.t("control_buttons.playlist_recent") }
+      : { tf: libraryQueryConfigs.favorite, plName: I18N.t("control_buttons.playlist_favorite") };
 
   const handleList = fb.GetQueryItems(fb.GetLibraryItems(), config.tf.query);
   handleList.OrderByFormat(config.tf.sort, -1);
@@ -373,10 +374,10 @@ function showSearchMenu(x, y) {
 
 // 数组索引 = fb.ReplaygainMode 值: 0=None, 1=Track, 2=Album, 3=Smart
 const replayGainConfigs = [
-  { img: iconMgr.get("ui", "rg_off"), text: "开启音轨增益 (当前:无)" },
-  { img: iconMgr.get("ui", "rg_track"), text: "关闭音轨增益 (当前:音轨)" },
-  { img: iconMgr.get("ui", "rg_album"), text: "关闭专辑增益 (当前:专辑)" },
-  { img: iconMgr.get("ui", "rg_album"), text: "关闭增益 (当前:智能)" },
+  { img: iconMgr.get("ui", "rg_off"), text: I18N.t("control_buttons.rg_none") },
+  { img: iconMgr.get("ui", "rg_track"), text: I18N.t("control_buttons.rg_track") },
+  { img: iconMgr.get("ui", "rg_album"), text: I18N.t("control_buttons.rg_album") },
+  { img: iconMgr.get("ui", "rg_album"), text: I18N.t("control_buttons.rg_smart") },
 ];
 
 /** 根据 ReplayGain 模式同步按钮图标与提示文字 */
@@ -405,23 +406,23 @@ function syncDeviceState() {
 
   let img = iconMgr.get("ui", "wasapi_share");
   let imgHover = iconMgr.get("ui", "wasapi_hover");
-  let tip = "切换设备";
+  let tip = I18N.t("control_buttons.device_default");
   let cmd = "";
 
   if (current.includes("ASIO")) {
     img = iconMgr.get("ui", "asio");
     imgHover = iconMgr.get("ui", "asio_hover");
-    tip = "当前: ASIO (点击切换 WASAPI shared)";
+    tip = I18N.t("control_buttons.device_asio");
     cmd = "Playback/Device/WASAPI (shared) : Default Sound Device";
   } else if (current.includes("exclusive")) {
     img = iconMgr.get("ui", "wasapi");
     imgHover = iconMgr.get("ui", "wasapi_hover");
-    tip = "当前: WASAPI (点击切换 WASAPI shared)";
+    tip = I18N.t("control_buttons.device_wasapi_ex");
     cmd = "Playback/Device/WASAPI (shared) : Default Sound Device";
   } else {
     img = iconMgr.get("ui", "wasapi_share");
     imgHover = iconMgr.get("ui", "wasapi_hover");
-    tip = "点击切换 ASIO";
+    tip = I18N.t("control_buttons.device_wasapi");
     cmd = "Playback/Device/ASIO : aune USB Audio Device";
   }
 
@@ -444,7 +445,7 @@ function syncVolumeState() {
   const hover = isMuted
     ? iconMgr.get("ui", "mute_hover")
     : iconMgr.get("ui", "vol_hover");
-  const text = isMuted ? "取消静音" : "静音";
+  const text = isMuted ? I18N.t("control_buttons.unmute") : I18N.t("control_buttons.mute");
 
   if (buttons.volumeBtn) buttons.volumeBtn.updateState(img, hover, text);
 }

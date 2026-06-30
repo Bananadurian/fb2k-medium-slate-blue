@@ -35,7 +35,9 @@ profile/
 │   │   │   ├── interaction.js             # Mouse/hover handling
 │   │   │   ├── data.js                    # Constants, flags
 │   │   │   ├── flag.js                    # Country flag renderer
+│   │   │   ├── icons.js                   # Unified icon manager
 │   │   │   ├── title_bar_shared.js        # Title bar shared logic
+│   │   │   ├── i18n.js                    # UI text i18n (EN/ZH)
 │   │   │   └── json_schema_adapter.js     # JSON schema v3.0 adapter
 │   │   ├── docs/                          # Documentation
 │   │   │   ├── smp-copilot.md             # SMP coding rules & AI guide

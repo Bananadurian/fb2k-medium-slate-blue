@@ -17,7 +17,7 @@
 - `bg_panel_container_control.js`: background container with control sub-panel layout
 
 ## 2. Directory Layout
-- `lib/`: shared libs (`utils.js`, `data.js`, `interaction.js`, `theme.js`, `background.js`, `title_bar_shared.js`, `flag.js`, `json_schema_adapter.js`)
+- `lib/`: shared libs (`utils.js`, `data.js`, `interaction.js`, `theme.js`, `background.js`, `title_bar_shared.js`, `flag.js`, `icons.js`, `i18n.js`, `json_schema_adapter.js`)
 - `test1.js`: local test copy
 
 ## 3. Library Dependency Chain
@@ -40,6 +40,9 @@
 - `lib/title_bar_shared.js`: `createTitleBarController`
 - `lib/icons.js`: `iconMgr` (IconManager 单例 — 统一图标获取，替代散落字典)
 - `lib/flag.js`: `COUNTRY_RULES`, `LANGUAGE_MAP`, `resolveCountryCode`, `resolveLanguageCode`
+- `lib/i18n.js`: `I18N` (UI 文案中英文映射，按脚本文件名分组)，`I18N.t(path, vars)` (取值 API，读 `window.GetProperty("ui.language", "en")` 切换语言，支持 `{key}` 占位替换)
+  - depends on: 无外部依赖，纯数据模块
+  - consumed by: `playback_buttons.js`, `control_buttons.js`, `title_library.js`, `title_playlist.js`
 
 ## 5. Behavior Constraints Snapshot
 - Prefer existing library helpers over local reinvention.

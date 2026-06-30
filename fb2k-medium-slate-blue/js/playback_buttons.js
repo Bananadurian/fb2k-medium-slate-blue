@@ -11,6 +11,7 @@ include("lib/data.js");
 include("lib/interaction.js");
 include("lib/theme.js");
 include("lib/icons.js");
+include("lib/i18n.js");
 
 window.DefineScript("Playback Buttons", {
   author: "XRE",
@@ -37,63 +38,63 @@ const BTN_LAYOUT = {
       size: "S",
       img: "replay",
       func: () => fb.Play(),
-      tipText: "重放",
+      tipText: I18N.t("playback_buttons.replay"),
     },
     {
       key: "stop",
       size: "S",
       img: "stop",
       func: () => fb.Stop(),
-      tipText: "Stop",
+      tipText: I18N.t("playback_buttons.stop"),
     },
     {
       key: "rewind",
       size: "S",
       img: "rewind",
       func: () => fb.RunMainMenuCommand("Playback/Seek/Back by 5 seconds"),
-      tipText: "Seek -5s",
+      tipText: I18N.t("playback_buttons.rewind"),
     },
     {
       key: "prev",
       size: "L",
       img: "previous",
       func: () => fb.Prev(),
-      tipText: "上一曲",
+      tipText: I18N.t("playback_buttons.prev"),
     },
     {
       key: "play",
       size: "L",
       img: "play",
       func: () => fb.PlayOrPause(),
-      tipText: "播放",
+      tipText: I18N.t("playback_buttons.play"),
     },
     {
       key: "next",
       size: "L",
       img: "next",
       func: () => fb.Next(),
-      tipText: "下一曲",
+      tipText: I18N.t("playback_buttons.next"),
     },
     {
       key: "forward",
       size: "S",
       img: "forward",
       func: () => fb.RunMainMenuCommand("Playback/Seek/Ahead by 5 seconds"),
-      tipText: "Seek +5s",
+      tipText: I18N.t("playback_buttons.forward"),
     },
     {
       key: "order",
       size: "S",
       img: "order_default",
       func: () => togglePlaybackOrder(),
-      tipText: "播放模式",
+      tipText: I18N.t("playback_buttons.order"),
     },
     {
       key: "random",
       size: "S",
       img: "random",
       func: () => fb.Random(),
-      tipText: "Random",
+      tipText: I18N.t("playback_buttons.random"),
     },
   ],
 };
@@ -116,32 +117,32 @@ const ORDER_CONFIG = {
   0: {
     img: iconMgr.get("player", "order_default"),
     hover: iconMgr.get("player", "order_default_hover"),
-    tip: "顺序播放",
+    tip: I18N.t("playback_buttons.order_mode_0"),
   },
   1: {
     img: iconMgr.get("player", "order_repeat"),
     hover: iconMgr.get("player", "order_repeat_hover"),
-    tip: "列表循环",
+    tip: I18N.t("playback_buttons.order_mode_1"),
   },
   2: {
     img: iconMgr.get("player", "order_track"),
     hover: iconMgr.get("player", "order_track_hover"),
-    tip: "单曲循环",
+    tip: I18N.t("playback_buttons.order_mode_2"),
   },
   3: {
     img: iconMgr.get("player", "order_default"),
     hover: iconMgr.get("player", "order_default_hover"),
-    tip: "随机播放 (Random)",
+    tip: I18N.t("playback_buttons.order_mode_3"),
   },
   4: {
     img: iconMgr.get("player", "order_shuffle"),
     hover: iconMgr.get("player", "order_shuffle_hover"),
-    tip: "随机乱序 (Shuffle)",
+    tip: I18N.t("playback_buttons.order_mode_4"),
   },
   default: {
     img: iconMgr.get("player", "order_default"),
     hover: iconMgr.get("player", "order_default_hover"),
-    tip: "其他模式",
+    tip: I18N.t("playback_buttons.order_mode_default"),
   },
 };
 
@@ -164,13 +165,13 @@ function syncPlayPauseState() {
     buttons.play.updateState(
       iconMgr.get("player", "pause"),
       iconMgr.get("player", "pause_hover"),
-      "暂停",
+      I18N.t("playback_buttons.pause"),
     );
   } else {
     buttons.play.updateState(
       iconMgr.get("player", "play"),
       iconMgr.get("player", "play_hover"),
-      "播放",
+      I18N.t("playback_buttons.play"),
     );
   }
 }
@@ -181,14 +182,14 @@ function syncStopState() {
     buttons.stop.updateState(
       iconMgr.get("player", "stop_after"),
       iconMgr.get("player", "stop_hover"),
-      "立即停止 (右键: 取消稍后停止)",
+      I18N.t("playback_buttons.stop_after_current"),
       () => fb.Stop(),
     );
   } else {
     buttons.stop.updateState(
       iconMgr.get("player", "stop"),
       iconMgr.get("player", "stop_hover"),
-      "停止播放 (右键: 稍后停止)",
+      I18N.t("playback_buttons.stop_default"),
       () => fb.Stop(),
     );
   }
@@ -224,13 +225,13 @@ function togglePlaybackOrder() {
 function showOrderMenu(x, y) {
   const menu = window.CreatePopupMenu();
   const modes = [
-    { id: 0, text: "顺序播放 (Default)" },
-    { id: 1, text: "列表循环 (Repeat Playlist)" },
-    { id: 2, text: "单曲循环 (Repeat Track)" },
-    { id: 3, text: "随机播放 (Random)" },
-    { id: 4, text: "随机乱序 (Shuffle Tracks)" },
-    { id: 5, text: "专辑乱序 (Shuffle Albums)" },
-    { id: 6, text: "目录乱序 (Shuffle Folders)" },
+    { id: 0, text: I18N.t("playback_buttons.order_menu_0") },
+    { id: 1, text: I18N.t("playback_buttons.order_menu_1") },
+    { id: 2, text: I18N.t("playback_buttons.order_menu_2") },
+    { id: 3, text: I18N.t("playback_buttons.order_menu_3") },
+    { id: 4, text: I18N.t("playback_buttons.order_menu_4") },
+    { id: 5, text: I18N.t("playback_buttons.order_menu_5") },
+    { id: 6, text: I18N.t("playback_buttons.order_menu_6") },
   ];
 
   modes.forEach((m, i) => {

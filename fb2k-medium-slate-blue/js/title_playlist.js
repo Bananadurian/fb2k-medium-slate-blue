@@ -9,6 +9,7 @@ include("lib/interaction.js");
 include("lib/theme.js");
 include("lib/icons.js");
 include("lib/title_bar_shared.js");
+include("lib/i18n.js");
 
 window.DefineScript("Title Playlist", {
   author: "XRE",
@@ -21,8 +22,8 @@ const controller = createTitleBarController({
   icon: "list-music.png",
   buttonIconFilename: "plus.png",
   buttonHoverIconFilename: "plus_hover.png",
-  buttonTooltip: "新增播放列表",
-  getDisplayText: () => `播放列表 (${plman.PlaylistCount})`,
+  buttonTooltip: I18N.t("title_playlist.tooltip"),
+  getDisplayText: () => I18N.t("title_playlist.title", { count: plman.PlaylistCount }),
   onButtonClick: () => fb.RunMainMenuCommand("Library/Search"),
 });
 
