@@ -59,6 +59,13 @@
 
 - [x] 移除头部 `@file`/`@author`/`@created`/`@updated`/`@version`，统一由 git 管理（22 文件）
 - [ ] 代码进一步规范化（命名、结构一致性）
+- [ ] UI 文案国际化：新增 `lib/i18n.js`，统一管理 tooltip/hover 文案的中英文版本
+  - **当前状态**: ~40 处用户可见中文字符串散落在 `playback_buttons.js`、`control_buttons.js`、`title_library.js`、`title_playlist.js` 四个面板
+  - **方案**: `lib/i18n.js` 纯数据模块，`{ LANG: { key: value } }` 结构，零性能开销（不在渲染热路径）
+  - **切换入口**: `window.GetProperty("ui.language", "zh")` → `"en"` / `"zh"`，各面板通过 `I18N.key` 取值
+  - **涉及面板**: `playback_buttons.js`、`control_buttons.js`、`title_library.js`、`title_playlist.js` 各加 `include("lib/i18n.js")`，其余后续按需迁移
+  - **命名规范**: 键名小写 snake_case（`play_mode`、`prev_track`），中文直接用自然词（`播放模式`、`上一曲`）
+  - **文件结构**: `lib/i18n.js`（~80 行纯数据，`I18N` 全局对象 + `t(key)` 赋值函数）
 - [x] 版本号规范统一（头部仅保留 `@description` + `@requires`）
 - [x] 删除冗余内容（未引用的代码、空文件、废弃注释）
   - [x] 删除 JSON_SCHEMA_MAP 未使用常量（24 行）
@@ -97,6 +104,14 @@
   - [x] 切换注册表到 PNG（`lib/icons.js` 四个注册表全部切换）
   - [x] `_loadImage` 默认值优化：`maxWidth` 默认 96px（对齐图标库标准）
 - [ ] window.DrawMode 优化卡顿面板 **[可能是 JSplitter 渲染机制问题，需排查]**
+- [ ] 调研 `utils.GetCountryFlag` 替代 `lib/flag.js` 的方案（JSplitter v4.1.10+）
+  - **API**: `utils.GetCountryFlag(country_or_code)` → 返回 ISO 代码（小写），内置 249 国 `countries.json`
+  - **`resolveCountryCode`（biography_v2 使用）**：可部分替代
+    - ✅ 已有 `artistData.countryCode`（ISO 码）时，可直接传 `GetCountryFlag`，覆盖面从 49 → 249 国
+    - ❌ fallback 为中文名（如"美国纽约"）时，`GetCountryFlag` 不支持中文，需保留正则层或确保上游总是输出 ISO 码
+    - 返回值小写 → 需 `.toUpperCase()` 适配当前注册表键名
+  - **`resolveLanguageCode`（album_info 使用）**：无法替代 — 语言码→国家码映射与 `GetCountryFlag` 是不同领域
+  - **建议**: 低优先级，当前实现工作正常。若迁移，在 `json_schema_adapter.js` 保证 `countryCode` 优先输出 ISO 码，`resolveCountryCode` 降级为中文兜底
 
 ---
 

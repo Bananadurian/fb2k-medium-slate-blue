@@ -2,7 +2,7 @@
 
 | 组件 | 版本 | 说明 |
 |:---|:---|:---|
-| JSplitter | `v4.1.8` | JavaScript 面板宿主，JSDoc 随 DLL 附带 |
+| JSplitter | `v4.1.11` | JavaScript 面板宿主，JSDoc 随 DLL 附带 |
 
 ## 发布地址
 
@@ -13,6 +13,24 @@
 ## 版本更新记录
 
 > 来源：俄文主站，翻译整理。仅收录 4.0.0+ 版本。
+
+### v4.1.11 [2026-06-27]
+
+- [修复] Direct2D 模式下彩色字形字体文本不显示的 Bug
+
+### v4.1.10 [2026-06-26]
+
+- [修复] 脚本崩溃时调用栈中缺失源文件名
+- [新增] `utils.GetCountryFlag`（详见文档）
+- [更新] Visual C++ 工具包升级至 v145 (14.51.36231)
+
+### v4.1.9 [2026-06-17]
+
+- [修复] `utils.RunCmdAsync`：不再因等待外部进程阻塞共享异步队列；修复并行命令处理，无关命令可在另一命令等待/超时期间完成；修复可能导致 stdout/stderr 延迟完成的继承管道句柄；启动失败和空应用路径现在通过回调上报
+- [修复] `utils.RunCmdAsync`：修正文档，新增 `samples\basic\RunCmdAsync.js` 示例
+- [修复] `utils.Run`：修正文档，新增 `samples\basic\Run.js` 示例
+- [修复] 文档多处修正（`index.html`）
+- [更新] JS 引擎升级至 SpiderMonkey 140.12.0esr
 
 ### v4.1.8 [2026-06-09]
 
