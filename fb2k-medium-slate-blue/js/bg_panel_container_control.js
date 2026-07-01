@@ -15,19 +15,18 @@ include("lib/interaction.js");
 include("lib/background.js");
 
 window.DefineScript("bg_panel_container_control", {
-    author: "Bananadurian",
-    version: "2.1.0",
-    options: { grab_focus: THEME.CFG.GRAB_FOCUS },
+  author: "Bananadurian",
+  version: "2.1.0",
+  options: { grab_focus: THEME.CFG.GRAB_FOCUS },
 });
 
 // --- 常量定义 ---
 
+const playbackTimeTf = fb.TitleFormat("%playback_time%");
+const lengthTf = fb.TitleFormat("%length%");
 
-const playbackTimeTf = fb.TitleFormat('%playback_time%');
-const lengthTf = fb.TitleFormat('%length%');
-
-const playbackTimeLabel = {x:0, y:0, w: _scale(40), h:_scale(40)}
-const lengthLabel = {x:0, y:0, w: _scale(40), h:_scale(40)}
+const playbackTimeLabel = { x: 0, y: 0, w: _scale(50), h: _scale(40) };
+const lengthLabel = { x: 0, y: 0, w: _scale(50), h: _scale(40) };
 
 /**
  * 子面板配置表（运行时状态 + 布局缓存）
@@ -40,11 +39,61 @@ const lengthLabel = {x:0, y:0, w: _scale(40), h:_scale(40)}
  * - missingLogged: 缺失日志去抖标记（避免连续刷屏）
  */
 const SUB_PANELS = {
-    coverPanel: {key: "coverPanel", panelCaption: "cover", panelIndex: 0, x: 0, y: 0, w: _scale(40), h: _scale(40), panel: null, missingLogged: false},
-    trackInfoPanel: {key: "trackInfoPanel", panelCaption: "track_info", panelIndex: 1, x: 0, y: 0, w: _scale(40), h: _scale(40), panel: null, missingLogged: false},
-    playbackBtnPanel: {key: "playbackBtnPanel", panelCaption: "playback_button", panelIndex: 4, x: 0, y: 0, w: _scale(40), h: _scale(40), panel: null, missingLogged: false},
-    waveformMinibarPanel: {key: "waveformMinibarPanel", panelCaption: "waveform_minibar", panelIndex: 3, x: 0, y: 0, w: _scale(40), h: _scale(40), panel: null, missingLogged: false},
-    controlBtnPanel: {key: "controlBtnPanel", panelCaption: "control_button", panelIndex: 2, x: 0, y: 0, w: _scale(40), h: _scale(40), panel: null, missingLogged: false},
+  coverPanel: {
+    key: "coverPanel",
+    panelCaption: "cover",
+    panelIndex: 0,
+    x: 0,
+    y: 0,
+    w: _scale(40),
+    h: _scale(40),
+    panel: null,
+    missingLogged: false,
+  },
+  trackInfoPanel: {
+    key: "trackInfoPanel",
+    panelCaption: "track_info",
+    panelIndex: 1,
+    x: 0,
+    y: 0,
+    w: _scale(40),
+    h: _scale(40),
+    panel: null,
+    missingLogged: false,
+  },
+  playbackBtnPanel: {
+    key: "playbackBtnPanel",
+    panelCaption: "playback_button",
+    panelIndex: 4,
+    x: 0,
+    y: 0,
+    w: _scale(40),
+    h: _scale(40),
+    panel: null,
+    missingLogged: false,
+  },
+  waveformMinibarPanel: {
+    key: "waveformMinibarPanel",
+    panelCaption: "waveform_minibar",
+    panelIndex: 3,
+    x: 0,
+    y: 0,
+    w: _scale(40),
+    h: _scale(40),
+    panel: null,
+    missingLogged: false,
+  },
+  controlBtnPanel: {
+    key: "controlBtnPanel",
+    panelCaption: "control_button",
+    panelIndex: 2,
+    x: 0,
+    y: 0,
+    w: _scale(40),
+    h: _scale(40),
+    panel: null,
+    missingLogged: false,
+  },
 };
 
 /**
@@ -54,16 +103,20 @@ const SUB_PANELS = {
  * 维持固定顺序可以让日志、排障和坐标比对更稳定。
  */
 const SUB_PANEL_ORDER = [
-    "coverPanel",
-    "trackInfoPanel",
-    "playbackBtnPanel",
-    "waveformMinibarPanel",
-    "controlBtnPanel",
+  "coverPanel",
+  "trackInfoPanel",
+  "playbackBtnPanel",
+  "waveformMinibarPanel",
+  "controlBtnPanel",
 ];
 
 // 子面板的padding
-const PANEL_AREA_PADDING = normalizePadding({top:_scale(4), right:_scale(4), bottom:_scale(4), left:_scale(4)});
-
+const PANEL_AREA_PADDING = normalizePadding({
+  top: _scale(4),
+  right: _scale(4),
+  bottom: _scale(4),
+  left: _scale(4),
+});
 
 /** @const {string} 主题背景模式 */
 const BG_MODE_THEME = "theme";
@@ -104,41 +157,41 @@ let bgTransparentNotifyEpoch = 0;
  * @property {string} syncMode 封面获取同步模式
  */
 const PANEL_CFG = {
-    // 背景模式: "theme" | "cover-color" | "cover-image" | "custom"
-    // - "theme": 使用主题背景色
-    // - "cover-color": 使用封面提色（无封面回退主题色）
-    // - "cover-image": 使用封面图背景（无封面回退主题色）
-    // - "custom": 使用 custom.color1/color2 填充（无需封面/meta，支持 _argb 半透明）
-    mode: BG_MODE_THEME,
+  // 背景模式: "theme" | "cover-color" | "cover-image" | "custom"
+  // - "theme": 使用主题背景色
+  // - "cover-color": 使用封面提色（无封面回退主题色）
+  // - "cover-image": 使用封面图背景（无封面回退主题色）
+  // - "custom": 使用 custom.color1/color2 填充（无需封面/meta，支持 _argb 半透明）
+  mode: BG_MODE_THEME,
 
-    // ===== 渐变（theme / cover-color / custom 生效，cover-image 不参与底图绘制）=====
-    gradientEnabled: false,                 // 是否启用渐变
-    gradientAngle: 180,                     // 渐变角度 [0, 360]
-    gradientSpan: 8,                        // 渐变跨度 (>=2)；2=第1/2色，N=第1/N色
+  // ===== 渐变（theme / cover-color / custom 生效，cover-image 不参与底图绘制）=====
+  gradientEnabled: false, // 是否启用渐变
+  gradientAngle: 180, // 渐变角度 [0, 360]
+  gradientSpan: 8, // 渐变跨度 (>=2)；2=第1/2色，N=第1/N色
 
-    // ===== 形状（全模式生效）=====
-    shapeType: "round-rect",                // "rect" | "round-rect"
-    shapeRadius: THEME.LAYOUT.CORNER_RADIUS, // 圆角半径 (px)，<=0 等同矩形
-    padding: {top:0, right:_scale(8), bottom:_scale(8), left:_scale(8)}, // 背景绘制内边距 (px)
+  // ===== 形状（全模式生效）=====
+  shapeType: "round-rect", // "rect" | "round-rect"
+  shapeRadius: THEME.LAYOUT.CORNER_RADIUS, // 圆角半径 (px)，<=0 等同矩形
+  padding: { top: 0, right: _scale(8), bottom: _scale(8), left: _scale(8) }, // 背景绘制内边距 (px)
 
-    // ===== 背景图（仅 cover-image 生效）=====
-    imageScaleMode: "cover",                // "cover"=铺满裁切 | "fit"=完整留边
-    imageBlurRadius: 150,                   // 模糊半径 [0, 200]
-    imageCacheSize: 3,                      // 图片缓存条目数 (>=1)
+  // ===== 背景图（仅 cover-image 生效）=====
+  imageScaleMode: "cover", // "cover"=铺满裁切 | "fit"=完整留边
+  imageBlurRadius: 150, // 模糊半径 [0, 200]
+  imageCacheSize: 3, // 图片缓存条目数 (>=1)
 
-    // ===== 遮罩（全模式生效，可与 fill alpha 叠加）=====
-    maskEnabled: false,
-    maskColor: THEME.COL.MASK,              // 遮罩 RGB 颜色
-    maskAlpha: 255,                         // 遮罩透明度 [0, 255]；0=透明
+  // ===== 遮罩（全模式生效，可与 fill alpha 叠加）=====
+  maskEnabled: false,
+  maskColor: THEME.COL.MASK, // 遮罩 RGB 颜色
+  maskAlpha: 255, // 遮罩透明度 [0, 255]；0=透明
 
-    // ===== 同步策略 =====
-    syncMode: SYNC_MODE_AUTO,
+  // ===== 同步策略 =====
+  syncMode: SYNC_MODE_AUTO,
 
-    // ===== custom 模式专用（仅在 mode="custom" 生效）=====
-    // custom: {
-    //     color1: _argb(255, 30, 35, 45),  // ARGB 填充色1（必填）
-    //     color2: _argb(255, 40, 45, 55),  // ARGB 填充色2（可选，不设=单色无渐变）
-    // },
+  // ===== custom 模式专用（仅在 mode="custom" 生效）=====
+  // custom: {
+  //     color1: _argb(255, 30, 35, 45),  // ARGB 填充色1（必填）
+  //     color2: _argb(255, 40, 45, 55),  // ARGB 填充色2（可选，不设=单色无渐变）
+  // },
 };
 
 // --- 状态变量 ---
@@ -178,7 +231,7 @@ let layoutApplied = false;
  * @returns {FbMetadbHandle|null} 优先返回播放中歌曲，其次返回选中的歌曲
  */
 function getActiveMetadb() {
-    return resolveMetadbByMode(METADB_RESOLVE_MODE.PLAYING_FIRST);
+  return resolveMetadbByMode(METADB_RESOLVE_MODE.PLAYING_FIRST);
 }
 
 /**
@@ -187,7 +240,7 @@ function getActiveMetadb() {
  * @returns {GdiBitmap|null} 封面位图对象
  */
 function fetchAlbumArt(metadb) {
-    return utils.GetAlbumArtV2(metadb, 0);
+  return utils.GetAlbumArtV2(metadb, 0);
 }
 
 /**
@@ -195,87 +248,93 @@ function fetchAlbumArt(metadb) {
  * 原理：通过极小的进度跳转（10ms）绕过组件内部的等值判断，强制产生 Seek 信号。
  */
 function syncNativePanel() {
-    if (fb.IsPlaying || fb.IsPaused) {
-        try {
-            const now = fb.PlaybackTime;
-            const delta = 0.01;
-            fb.PlaybackTime = Math.max(0, now - delta);
-            fb.PlaybackTime = now;
-        } catch (e) {}
-    }
+  if (fb.IsPlaying || fb.IsPaused) {
+    try {
+      const now = fb.PlaybackTime;
+      const delta = 0.01;
+      fb.PlaybackTime = Math.max(0, now - delta);
+      fb.PlaybackTime = now;
+    } catch (e) {}
+  }
 }
 
 /**
  * 清除所有与启动刷新相关的计时器
  */
 function clearStartupKickTimers() {
-    if (bgStartupKickTimer) { window.ClearTimeout(bgStartupKickTimer); bgStartupKickTimer = null; }
-    if (bgStartupKickLateTimer) { window.ClearTimeout(bgStartupKickLateTimer); bgStartupKickLateTimer = null; }
+  if (bgStartupKickTimer) {
+    window.ClearTimeout(bgStartupKickTimer);
+    bgStartupKickTimer = null;
+  }
+  if (bgStartupKickLateTimer) {
+    window.ClearTimeout(bgStartupKickLateTimer);
+    bgStartupKickLateTimer = null;
+  }
 }
 
 /**
  * 启动或重置播放时的"强效刷新"序列，用于修复波形条等组件启动变灰的问题。
  */
 function triggerStartupChildRefreshKick() {
-    if (bgStartupKickDone || bgStartupKickTimer) return;
+  if (bgStartupKickDone || bgStartupKickTimer) return;
 
-    bgStartupKickTimer = window.SetTimeout(function () {
-        bgStartupKickTimer = null;
-        if (bgStartupKickDone) return;
+  bgStartupKickTimer = window.SetTimeout(function () {
+    bgStartupKickTimer = null;
+    if (bgStartupKickDone) return;
 
-        syncNativePanel();
+    syncNativePanel();
 
-        bgStartupKickLateTimer = window.SetTimeout(function () {
-            bgStartupKickLateTimer = null;
-            if (bgStartupKickDone) return;
+    bgStartupKickLateTimer = window.SetTimeout(function () {
+      bgStartupKickLateTimer = null;
+      if (bgStartupKickDone) return;
 
-            syncNativePanel();
-            bgStartupKickDone = true;
-        }, THEME.LAYOUT.BG_TRANSPARENT_SYNC_LATE_DELAY_MS + 200);
-    }, THEME.LAYOUT.BG_TRANSPARENT_SYNC_DELAY_MS + 160);
+      syncNativePanel();
+      bgStartupKickDone = true;
+    }, THEME.LAYOUT.BG_TRANSPARENT_SYNC_LATE_DELAY_MS + 200);
+  }, THEME.LAYOUT.BG_TRANSPARENT_SYNC_DELAY_MS + 160);
 }
 
 /**
  * 重新创建背景渲染层实例并初始化配置
  */
 function recreateBackgroundLayer() {
-    if (bgLayer) bgLayer.clearCache();
+  if (bgLayer) bgLayer.clearCache();
 
-    bgLayer = createPanelBackgroundLayer({
-        background: {
-            mode: PANEL_CFG.mode,
-            gradient: {
-                enabled: PANEL_CFG.gradientEnabled,
-                angle: PANEL_CFG.gradientAngle,
-                span: PANEL_CFG.gradientSpan,
-            },
-            image: {
-                scaleMode: PANEL_CFG.imageScaleMode,
-                blurRadius: PANEL_CFG.imageBlurRadius,
-                cacheSize: PANEL_CFG.imageCacheSize,
-            },
-            shape: {
-                type: PANEL_CFG.shapeType,
-                radius: PANEL_CFG.shapeRadius,
-            },
-            mask: {
-                enabled: PANEL_CFG.maskEnabled,
-                color: PANEL_CFG.maskColor,
-                alpha: PANEL_CFG.maskAlpha,
-            },
-            custom: PANEL_CFG.custom,
-            cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
-            keyTf: THEME.TF.COVER_KEY,
-        },
-        getPreferredMetadb: getActiveMetadb,
-        getTargetRect: function () {
-            return calcContentRect(panelW, panelH, PANEL_CFG.padding);
-        },
-        getAlbumArt: fetchAlbumArt,
-    });
+  bgLayer = createPanelBackgroundLayer({
+    background: {
+      mode: PANEL_CFG.mode,
+      gradient: {
+        enabled: PANEL_CFG.gradientEnabled,
+        angle: PANEL_CFG.gradientAngle,
+        span: PANEL_CFG.gradientSpan,
+      },
+      image: {
+        scaleMode: PANEL_CFG.imageScaleMode,
+        blurRadius: PANEL_CFG.imageBlurRadius,
+        cacheSize: PANEL_CFG.imageCacheSize,
+      },
+      shape: {
+        type: PANEL_CFG.shapeType,
+        radius: PANEL_CFG.shapeRadius,
+      },
+      mask: {
+        enabled: PANEL_CFG.maskEnabled,
+        color: PANEL_CFG.maskColor,
+        alpha: PANEL_CFG.maskAlpha,
+      },
+      custom: PANEL_CFG.custom,
+      cacheSize: Math.min(5, THEME.CFG.CACHE_SIZE),
+      keyTf: THEME.TF.COVER_KEY,
+    },
+    getPreferredMetadb: getActiveMetadb,
+    getTargetRect: function () {
+      return calcContentRect(panelW, panelH, PANEL_CFG.padding);
+    },
+    getAlbumArt: fetchAlbumArt,
+  });
 
-    bgLayer.setThemeColor(THEME.COL.BG);
-    syncBackground();
+  bgLayer.setThemeColor(THEME.COL.BG);
+  syncBackground();
 }
 
 /**
@@ -283,27 +342,28 @@ function recreateBackgroundLayer() {
  * @param {FbMetadbHandle|null} [metadb] 可选，指定同步的元数据
  */
 function syncBackground(metadb, publishNotify) {
-    if (!bgLayer) return;
+  if (!bgLayer) return;
 
-    const target = (typeof metadb !== "undefined") ? (metadb || null) : getActiveMetadb();
+  const target =
+    typeof metadb !== "undefined" ? metadb || null : getActiveMetadb();
 
-    if (PANEL_CFG.syncMode === SYNC_MODE_WITH_RAW) {
-        if (!target) {
-            bgLayer.syncNoArt(null);
-        } else {
-            const raw = fetchAlbumArt(target);
-            raw ? bgLayer.syncWithRaw(target, raw) : bgLayer.syncNoArt(target);
-        }
-    } else if (PANEL_CFG.syncMode === SYNC_MODE_NO_ART) {
-        bgLayer.syncNoArt(target);
+  if (PANEL_CFG.syncMode === SYNC_MODE_WITH_RAW) {
+    if (!target) {
+      bgLayer.syncNoArt(null);
     } else {
-        bgLayer.sync(target);
+      const raw = fetchAlbumArt(target);
+      raw ? bgLayer.syncWithRaw(target, raw) : bgLayer.syncNoArt(target);
     }
+  } else if (PANEL_CFG.syncMode === SYNC_MODE_NO_ART) {
+    bgLayer.syncNoArt(target);
+  } else {
+    bgLayer.sync(target);
+  }
 
-    window.Repaint();
-    if (publishNotify !== false) {
-        publishTransparentSyncNotify("sync", target);
-    }
+  window.Repaint();
+  if (publishNotify !== false) {
+    publishTransparentSyncNotify("sync", target);
+  }
 }
 
 /**
@@ -313,72 +373,78 @@ function syncBackground(metadb, publishNotify) {
  * @param {FbMetadbHandle|null} [metadb] 可选，指定当前轨道
  */
 function publishTransparentSyncNotify(eventName, metadb) {
-    if (!window.IsTransparent) return;
+  if (!window.IsTransparent) return;
 
-    bgTransparentNotifyEpoch += 1;
-    window.NotifyOthers(NOTIFY.TRANSPARENT_SYNC.name, {
-        v: NOTIFY.TRANSPARENT_SYNC.version,
-        source: NOTIFY.SOURCE.BG_PANEL_CONTAINER_CONTROL,
-        event: eventName || "sync",
-        epoch: bgTransparentNotifyEpoch,
-        ts: Date.now(),
-        trackKey: metadb ? (THEME.TF.COVER_KEY.EvalWithMetadb(metadb) || metadb.Path || "") : "",
-    });
+  bgTransparentNotifyEpoch += 1;
+  window.NotifyOthers(NOTIFY.TRANSPARENT_SYNC.name, {
+    v: NOTIFY.TRANSPARENT_SYNC.version,
+    source: NOTIFY.SOURCE.BG_PANEL_CONTAINER_CONTROL,
+    event: eventName || "sync",
+    epoch: bgTransparentNotifyEpoch,
+    ts: Date.now(),
+    trackKey: metadb
+      ? THEME.TF.COVER_KEY.EvalWithMetadb(metadb) || metadb.Path || ""
+      : "",
+  });
 }
 
 /**
  * 清除背景同步相关的防抖计时器
  */
 function clearDeferredBackgroundSyncTimers() {
-    if (deferredBgSyncTimer) { window.ClearTimeout(deferredBgSyncTimer); deferredBgSyncTimer = null; }
-    if (deferredBgLateSyncTimer) { window.ClearTimeout(deferredBgLateSyncTimer); deferredBgLateSyncTimer = null; }
+  if (deferredBgSyncTimer) {
+    window.ClearTimeout(deferredBgSyncTimer);
+    deferredBgSyncTimer = null;
+  }
+  if (deferredBgLateSyncTimer) {
+    window.ClearTimeout(deferredBgLateSyncTimer);
+    deferredBgLateSyncTimer = null;
+  }
 }
-
 
 /**
  * 计划一次背景同步，包含透明模式下的双重延迟逻辑
  * @param {FbMetadbHandle|null} [metadb] 可选，指定同步的元数据
  */
 function scheduleBackgroundSync(metadb) {
-    if (!window.IsTransparent) {
-        syncBackground(metadb, false);
-        return;
-    }
+  if (!window.IsTransparent) {
+    syncBackground(metadb, false);
+    return;
+  }
 
-    const epoch = ++bgSyncEpoch;
-    clearDeferredBackgroundSyncTimers();
+  const epoch = ++bgSyncEpoch;
+  clearDeferredBackgroundSyncTimers();
 
-    deferredBgSyncTimer = window.SetTimeout(function () {
-        deferredBgSyncTimer = null;
-        if (epoch !== bgSyncEpoch) return;
-        syncBackground(metadb);
+  deferredBgSyncTimer = window.SetTimeout(function () {
+    deferredBgSyncTimer = null;
+    if (epoch !== bgSyncEpoch) return;
+    syncBackground(metadb);
 
-        deferredBgLateSyncTimer = window.SetTimeout(function () {
-            deferredBgLateSyncTimer = null;
-            if (epoch !== bgSyncEpoch) return;
-            syncBackground(metadb, false);
-        }, THEME.LAYOUT.BG_TRANSPARENT_SYNC_LATE_DELAY_MS);
-    }, THEME.LAYOUT.BG_TRANSPARENT_SYNC_DELAY_MS);
+    deferredBgLateSyncTimer = window.SetTimeout(function () {
+      deferredBgLateSyncTimer = null;
+      if (epoch !== bgSyncEpoch) return;
+      syncBackground(metadb, false);
+    }, THEME.LAYOUT.BG_TRANSPARENT_SYNC_LATE_DELAY_MS);
+  }, THEME.LAYOUT.BG_TRANSPARENT_SYNC_DELAY_MS);
 }
 
-
 function resolveSubPanel(subPanelState) {
-    let panel = null;
+  let panel = null;
+  try {
+    panel = window.GetPanel(subPanelState.panelCaption);
+  } catch (e) {
+    panel = null;
+  }
+
+  if (!panel) {
     try {
-        panel = window.GetPanel(subPanelState.panelCaption);
+      panel = window.GetPanelByIndex(subPanelState.panelIndex);
     } catch (e) {
-        panel = null;
+      panel = null;
     }
+  }
 
-    if (!panel) {
-        try {
-            panel = window.GetPanelByIndex(subPanelState.panelIndex);
-        } catch (e) {
-            panel = null;
-        }
-    }
-
-    return panel;
+  return panel;
 }
 
 /**
@@ -395,97 +461,101 @@ function resolveSubPanel(subPanelState) {
  * - 保持原有 Math.round 时机，避免像素级偏移。
  */
 function computeSubPanelRect(panelKey, layoutContext) {
-    const containerX = layoutContext.containerX;
-    const containerY = layoutContext.containerY;
-    const containerW = layoutContext.containerW;
-    const containerH = layoutContext.containerH;
-    const containerLeftWidth = layoutContext.containerLeftWidth;
-    const containerCenterWidth = layoutContext.containerCenterWidth;
-    const containerRightStartX = layoutContext.containerRightStartX;
-    const centerStartX = layoutContext.centerStartX;
-    const halfContainerHeight = layoutContext.halfContainerHeight;
+  const containerX = layoutContext.containerX;
+  const containerY = layoutContext.containerY;
+  const containerW = layoutContext.containerW;
+  const containerH = layoutContext.containerH;
+  const containerLeftWidth = layoutContext.containerLeftWidth;
+  const containerCenterWidth = layoutContext.containerCenterWidth;
+  const containerRightStartX = layoutContext.containerRightStartX;
+  const centerStartX = layoutContext.centerStartX;
+  const halfContainerHeight = layoutContext.halfContainerHeight;
 
-    // 左栏-封面：左栏 35%，并限制为正方形（不超过容器高度）
-    if (panelKey === "coverPanel") {
-        const side = Math.min(Math.round(containerLeftWidth * 0.35), containerH);
-        return {
-            x: containerX,
-            y: Math.round((containerH - side) / 2 + containerY),
-            w: side,
-            h: side,
-        };
-    }
+  // 左栏-封面：左栏 35%，并限制为正方形（不超过容器高度）
+  if (panelKey === "coverPanel") {
+    const side = Math.min(Math.round(containerLeftWidth * 0.35), containerH);
+    return {
+      x: containerX,
+      y: Math.round((containerH - side) / 2 + containerY),
+      w: side,
+      h: side,
+    };
+  }
 
-    // 左栏-信息评分：左栏剩余 65%，与容器同高
-    if (panelKey === "trackInfoPanel") {
-        const width = Math.round(containerLeftWidth * 0.5);
-        return {
-            x: Math.round(containerX + Math.min(containerLeftWidth * 0.35, containerH)),
-            y: Math.round((containerH - containerH) / 2 + containerY),
-            w: width,
-            h: containerH,
-        };
-    }
+  // 左栏-信息评分：左栏剩余 65%，与容器同高
+  if (panelKey === "trackInfoPanel") {
+    const width = Math.round(containerLeftWidth * 0.5);
+    return {
+      x: Math.round(
+        containerX + Math.min(containerLeftWidth * 0.35, containerH),
+      ),
+      y: Math.round((containerH - containerH) / 2 + containerY),
+      w: width,
+      h: containerH,
+    };
+  }
 
-    // 中栏上半-播放按钮：占中栏宽度，上半区内垂直居中
-    if (panelKey === "playbackBtnPanel") {
-        const height = Math.round(containerH * 0.5);
-        return {
-            x: centerStartX,
-            y: Math.round((halfContainerHeight - height) / 2 + containerY),
-            w: containerCenterWidth,
-            h: height,
-        };
-    }
+  // 中栏上半-播放按钮：占中栏宽度，上半区内垂直居中
+  if (panelKey === "playbackBtnPanel") {
+    const height = Math.round(containerH * 0.5);
+    return {
+      x: centerStartX,
+      y: Math.round((halfContainerHeight - height) / 2 + containerY),
+      w: containerCenterWidth,
+      h: height,
+    };
+  }
 
-    // 中栏下半-waveform：两侧预留时间标签宽度（左 elapsed / 右 length）
-    if (panelKey === "waveformMinibarPanel") {
-        const height = Math.round(containerH * 0.4);
-        const width = Math.round(containerCenterWidth - playbackTimeLabel.w * 2);
-        return {
-            x: Math.round(centerStartX + playbackTimeLabel.w),
-            y: Math.round((halfContainerHeight - height) / 2 + containerY + halfContainerHeight),
-            w: width,
-            h: height,
-        };
-    }
+  // 中栏下半-waveform：两侧预留时间标签宽度（左 elapsed / 右 length）
+  if (panelKey === "waveformMinibarPanel") {
+    const height = Math.round(containerH * 0.4);
+    const width = Math.round(containerCenterWidth - playbackTimeLabel.w * 2);
+    return {
+      x: Math.round(centerStartX + playbackTimeLabel.w),
+      y: Math.round(
+        (halfContainerHeight - height) / 2 + containerY + halfContainerHeight,
+      ),
+      w: width,
+      h: height,
+    };
+  }
 
-    // 右栏-控制按钮：完整占据右栏区域
-    if (panelKey === "controlBtnPanel") {
-        return {
-            x: containerRightStartX,
-            y: Math.round((containerH - containerH) / 2 + containerY),
-            w: Math.round(containerW * 0.3),
-            h: containerH,
-        };
-    }
+  // 右栏-控制按钮：完整占据右栏区域
+  if (panelKey === "controlBtnPanel") {
+    return {
+      x: containerRightStartX,
+      y: Math.round((containerH - containerH) / 2 + containerY),
+      w: Math.round(containerW * 0.3),
+      h: containerH,
+    };
+  }
 
-    return { x: 0, y: 0, w: 0, h: 0 };
+  return { x: 0, y: 0, w: 0, h: 0 };
 }
 
 /**
  * 在几何信息变化时才触发 Move，避免宿主层重复布局/重绘。
  */
 function moveSubPanelIfNeeded(subPanelState, targetRect) {
-    const nextX = targetRect.x;
-    const nextY = targetRect.y;
-    const nextW = Math.max(0, targetRect.w);
-    const nextH = Math.max(0, targetRect.h);
+  const nextX = targetRect.x;
+  const nextY = targetRect.y;
+  const nextW = Math.max(0, targetRect.w);
+  const nextH = Math.max(0, targetRect.h);
 
-    if (
-        subPanelState.x === nextX &&
-        subPanelState.y === nextY &&
-        subPanelState.w === nextW &&
-        subPanelState.h === nextH
-    ) {
-        return;
-    }
+  if (
+    subPanelState.x === nextX &&
+    subPanelState.y === nextY &&
+    subPanelState.w === nextW &&
+    subPanelState.h === nextH
+  ) {
+    return;
+  }
 
-    subPanelState.x = nextX;
-    subPanelState.y = nextY;
-    subPanelState.w = nextW;
-    subPanelState.h = nextH;
-    subPanelState.panel.Move(nextX, nextY, nextW, nextH, false);
+  subPanelState.x = nextX;
+  subPanelState.y = nextY;
+  subPanelState.w = nextW;
+  subPanelState.h = nextH;
+  subPanelState.panel.Move(nextX, nextY, nextW, nextH, false);
 }
 
 /**
@@ -496,60 +566,74 @@ function moveSubPanelIfNeeded(subPanelState, targetRect) {
  * - 更新 waveform 左右时间标签锚点
  */
 function layoutSubPanels() {
-    const rect = calcContentRect(panelW, panelH, PANEL_CFG.padding);
-    const containerW = Math.max(0, Math.round(rect.w - PANEL_AREA_PADDING.left - PANEL_AREA_PADDING.right));
-    const containerH = Math.max(0, Math.round(rect.h - PANEL_AREA_PADDING.top - PANEL_AREA_PADDING.bottom));
-    const containerX = Math.round(rect.x + PANEL_AREA_PADDING.left);
-    const containerY = Math.round(rect.y + PANEL_AREA_PADDING.top);
+  const rect = calcContentRect(panelW, panelH, PANEL_CFG.padding);
+  const containerW = Math.max(
+    0,
+    Math.round(rect.w - PANEL_AREA_PADDING.left - PANEL_AREA_PADDING.right),
+  );
+  const containerH = Math.max(
+    0,
+    Math.round(rect.h - PANEL_AREA_PADDING.top - PANEL_AREA_PADDING.bottom),
+  );
+  const containerX = Math.round(rect.x + PANEL_AREA_PADDING.left);
+  const containerY = Math.round(rect.y + PANEL_AREA_PADDING.top);
 
-    // 几何参考线：左/中/右三栏与中栏半高
-    const containerLeftWidth = containerW * 0.3;
-    const containerCenterWidth = Math.round(containerW * 0.4);
-    const centerStartX = Math.round(containerX + containerLeftWidth);
-    const containerRightStartX = Math.round(containerX + containerW * 0.7);
-    const halfContainerHeight = containerH / 2;
+  // 几何参考线：左/中/右三栏与中栏半高
+  const containerLeftWidth = containerW * 0.3;
+  const containerCenterWidth = Math.round(containerW * 0.4);
+  const centerStartX = Math.round(containerX + containerLeftWidth);
+  const containerRightStartX = Math.round(containerX + containerW * 0.7);
+  const halfContainerHeight = containerH / 2;
 
-    const layoutContext = {
-        containerX: containerX,
-        containerY: containerY,
-        containerW: containerW,
-        containerH: containerH,
-        containerLeftWidth: containerLeftWidth,
-        containerCenterWidth: containerCenterWidth,
-        containerRightStartX: containerRightStartX,
-        centerStartX: centerStartX,
-        halfContainerHeight: halfContainerHeight,
-    };
+  const layoutContext = {
+    containerX: containerX,
+    containerY: containerY,
+    containerW: containerW,
+    containerH: containerH,
+    containerLeftWidth: containerLeftWidth,
+    containerCenterWidth: containerCenterWidth,
+    containerRightStartX: containerRightStartX,
+    centerStartX: centerStartX,
+    halfContainerHeight: halfContainerHeight,
+  };
 
-    for (let i = 0; i < SUB_PANEL_ORDER.length; i++) {
-        const panelKey = SUB_PANEL_ORDER[i];
-        const subPanelState = SUB_PANELS[panelKey];
-        if (!subPanelState) continue;
+  for (let i = 0; i < SUB_PANEL_ORDER.length; i++) {
+    const panelKey = SUB_PANEL_ORDER[i];
+    const subPanelState = SUB_PANELS[panelKey];
+    if (!subPanelState) continue;
 
-        if (!subPanelState.panel) {
-            const panel = resolveSubPanel(subPanelState);
-            if (!panel) {
-                if (!subPanelState.missingLogged) {
-                    console.log("Not Found:" + subPanelState.panelCaption + " / index=" + subPanelState.panelIndex);
-                    subPanelState.missingLogged = true;
-                }
-                continue;
-            }
-            subPanelState.panel = panel;
-            subPanelState.missingLogged = false;
+    if (!subPanelState.panel) {
+      const panel = resolveSubPanel(subPanelState);
+      if (!panel) {
+        if (!subPanelState.missingLogged) {
+          console.log(
+            "Not Found:" +
+              subPanelState.panelCaption +
+              " / index=" +
+              subPanelState.panelIndex,
+          );
+          subPanelState.missingLogged = true;
         }
-
-        const targetRect = computeSubPanelRect(panelKey, layoutContext);
-        moveSubPanelIfNeeded(subPanelState, targetRect);
+        continue;
+      }
+      subPanelState.panel = panel;
+      subPanelState.missingLogged = false;
     }
 
-    // 时间标签锚点：与 waveform 同行，分别贴中栏左右边缘。
-    playbackTimeLabel.x = Math.round(containerX + containerW * 0.3);
-    playbackTimeLabel.y = Math.round((halfContainerHeight - playbackTimeLabel.h) / 2 + containerY + halfContainerHeight);
-    lengthLabel.x = Math.round(containerX + containerW * 0.7 - lengthLabel.w);
-    lengthLabel.y = playbackTimeLabel.y;
-}
+    const targetRect = computeSubPanelRect(panelKey, layoutContext);
+    moveSubPanelIfNeeded(subPanelState, targetRect);
+  }
 
+  // 时间标签锚点：与 waveform 同行，分别贴中栏左右边缘。
+  playbackTimeLabel.x = Math.round(containerX + containerW * 0.3);
+  playbackTimeLabel.y = Math.round(
+    (halfContainerHeight - playbackTimeLabel.h) / 2 +
+      containerY +
+      halfContainerHeight,
+  );
+  lengthLabel.x = Math.round(containerX + containerW * 0.7 - lengthLabel.w);
+  lengthLabel.y = playbackTimeLabel.y;
+}
 
 // --- 回调函数接口 ---
 
@@ -563,19 +647,19 @@ function layoutSubPanels() {
  * 4) 重新布局子面板与时间标签
  */
 function on_size() {
-    if (window.Width <= 0 || window.Height <= 0) return;
+  if (window.Width <= 0 || window.Height <= 0) return;
 
-    const nextW = window.Width;
-    const nextH = window.Height;
-    if (layoutApplied && nextW === panelW && nextH === panelH) return;
+  const nextW = window.Width;
+  const nextH = window.Height;
+  if (layoutApplied && nextW === panelW && nextH === panelH) return;
 
-    panelW = nextW;
-    panelH = nextH;
-    layoutApplied = true;
+  panelW = nextW;
+  panelH = nextH;
+  layoutApplied = true;
 
-    if (bgLayer) bgLayer.onResize();
-    scheduleBackgroundSync();
-    layoutSubPanels();
+  if (bgLayer) bgLayer.onResize();
+  scheduleBackgroundSync();
+  layoutSubPanels();
 }
 
 /**
@@ -583,35 +667,60 @@ function on_size() {
  * @param {GdiGraphics} gr
  */
 function on_paint(gr) {
-    if (bgLayer) {
-        bgLayer.paint(gr);
-    } else {
-        gr.FillSolidRect(0, 0, panelW, panelH, THEME.COL.BG);
-    }
-    if (!fb.IsPlaying) return;
-    const playbackText = playbackTimeTf.Eval();
-    if (playbackText) {
-        lastPlaybackText = playbackText;
-    }
-    const lengthText = lengthTf.Eval();
-    if (lengthText) {
-        lastLengthText = lengthText;
-    }
-    // 启动/切歌瞬间 Eval 可能为空：继续保留上一次有效值，避免文本闪空。
-    if (!lastPlaybackText || !lastLengthText) return;
-    gr.SetSmoothingMode(2);
-    // 上下左右居中显示
-    _drawText(gr, THEME.TEXT.bodyCenter, lastPlaybackText, playbackTimeLabel.x, playbackTimeLabel.y, playbackTimeLabel.w, playbackTimeLabel.h);
-    _drawText(gr, THEME.TEXT.bodyCenter, lastLengthText, lengthLabel.x, lengthLabel.y, lengthLabel.w, lengthLabel.h);
-
+  if (bgLayer) {
+    bgLayer.paint(gr);
+  } else {
+    gr.FillSolidRect(0, 0, panelW, panelH, THEME.COL.BG);
+  }
+  if (!fb.IsPlaying) return;
+  const playbackText = playbackTimeTf.Eval();
+  if (playbackText) {
+    lastPlaybackText = playbackText;
+  }
+  const lengthText = lengthTf.Eval();
+  if (lengthText) {
+    lastLengthText = lengthText;
+  }
+  // 启动/切歌瞬间 Eval 可能为空：继续保留上一次有效值，避免文本闪空。
+  if (!lastPlaybackText || !lastLengthText) return;
+  gr.SetSmoothingMode(2);
+  // 上下左右居中显示
+  _drawText(
+    gr,
+    THEME.TEXT.bodyCenter,
+    lastPlaybackText,
+    playbackTimeLabel.x,
+    playbackTimeLabel.y,
+    playbackTimeLabel.w,
+    playbackTimeLabel.h,
+  );
+  _drawText(
+    gr,
+    THEME.TEXT.bodyCenter,
+    lastLengthText,
+    lengthLabel.x,
+    lengthLabel.y,
+    lengthLabel.w,
+    lengthLabel.h,
+  );
 }
 
-function on_playback_time(time){
-    window.RepaintRect(playbackTimeLabel.x, playbackTimeLabel.y, playbackTimeLabel.w, playbackTimeLabel.h);
+function on_playback_time(time) {
+  window.RepaintRect(
+    playbackTimeLabel.x,
+    playbackTimeLabel.y,
+    playbackTimeLabel.w,
+    playbackTimeLabel.h,
+  );
 }
 
-function on_playback_seek(time){
-    window.RepaintRect(playbackTimeLabel.x, playbackTimeLabel.y, playbackTimeLabel.w, playbackTimeLabel.h);
+function on_playback_seek(time) {
+  window.RepaintRect(
+    playbackTimeLabel.x,
+    playbackTimeLabel.y,
+    playbackTimeLabel.w,
+    playbackTimeLabel.h,
+  );
 }
 
 /**
@@ -619,8 +728,8 @@ function on_playback_seek(time){
  * @param {FbMetadbHandle} metadb
  */
 function on_playback_new_track(metadb) {
-    // scheduleBackgroundSync会触发全局重绘
-    scheduleBackgroundSync(metadb);
+  // scheduleBackgroundSync会触发全局重绘
+  scheduleBackgroundSync(metadb);
 }
 
 /**
@@ -629,11 +738,12 @@ function on_playback_new_track(metadb) {
  * @param {boolean} is_paused 暂停状态
  */
 function on_playback_starting(cmd, is_paused) {
-    if (cmd === 1) { // 停止后重新开始
-        clearStartupKickTimers();
-        bgStartupKickDone = false;
-        triggerStartupChildRefreshKick();
-    }
+  if (cmd === 1) {
+    // 停止后重新开始
+    clearStartupKickTimers();
+    bgStartupKickDone = false;
+    triggerStartupChildRefreshKick();
+  }
 }
 
 /**
@@ -641,34 +751,33 @@ function on_playback_starting(cmd, is_paused) {
  * @param {number} reason 停止原因 (0: 停止, 1: 切歌, 2: 结束)
  */
 function on_playback_stop(reason) {
-    if (reason !== 2) {
-        scheduleBackgroundSync(null);
-    }
+  if (reason !== 2) {
+    scheduleBackgroundSync(null);
+  }
 }
 
 /**
  * 当界面配色方案改变时触发
  */
 function on_colours_changed() {
-    _refreshThemeColors();
-    if (bgLayer) {
-        bgLayer.setThemeColor(THEME.COL.BG);
-        bgLayer.setMaskColor(THEME.COL.MASK);
-    }
-    scheduleBackgroundSync();
+  _refreshThemeColors();
+  if (bgLayer) {
+    bgLayer.setThemeColor(THEME.COL.BG);
+    bgLayer.setMaskColor(THEME.COL.MASK);
+  }
+  scheduleBackgroundSync();
 }
-
 
 /**
  * 当脚本卸载或重载前触发
  */
 function on_script_unload() {
-    clearStartupKickTimers();
-    clearDeferredBackgroundSyncTimers();
-    if (bgLayer) {
-        bgLayer.clearCache();
-        bgLayer = null;
-    }
+  clearStartupKickTimers();
+  clearDeferredBackgroundSyncTimers();
+  if (bgLayer) {
+    bgLayer.clearCache();
+    bgLayer = null;
+  }
 }
 
 // --- 初始化流程 ---
@@ -677,13 +786,13 @@ function on_script_unload() {
  * 面板启动初始化
  */
 function init() {
-    recreateBackgroundLayer();
-    scheduleBackgroundSync();
-    triggerStartupChildRefreshKick();
-    if (panelW > 0 && panelH > 0) {
-        layoutSubPanels();
-        layoutApplied = true;
-    }
+  recreateBackgroundLayer();
+  scheduleBackgroundSync();
+  triggerStartupChildRefreshKick();
+  if (panelW > 0 && panelH > 0) {
+    layoutSubPanels();
+    layoutApplied = true;
+  }
 }
 
 init();
