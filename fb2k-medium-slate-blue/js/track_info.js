@@ -321,8 +321,11 @@ function updateSourceIcon(metadb) {
 }
 
 /**
- * 核心数据更新: 读取元数据 → 更新 trackText/评分/来源/AQ → syncLayout → Repaint
- * 切歌 / 列表切换 / 元数据变化时触发
+ * 核心数据更新: 读取元数据 → 更新 trackText/评分/来源/AQ → layoutSections → syncLayout → Repaint
+ * 切歌 / 列表切换 / 元数据变化时触发。
+ * 注意: layoutSections 必须在每次 updateContent 调用，因为 stars/badge 的 visible
+ * 依赖 metadb/currentAQBadge 运行时状态，切歌或停止时可能从 false→true，
+ * 此时 content rect 需要重新计算（否则使用上次归零的旧值导致布局偏移）。
  */
 function updateContent() {
   metadb = fb.IsPlaying ? fb.GetNowPlaying() : fb.GetFocusItem();
@@ -370,6 +373,9 @@ function updateContent() {
   }
 
   if (panelW > 0) {
+    // 每次数据更新先重算 content rect。stars/badge 的 visible 依赖运行时状态，
+    // metadb 或 currentAQBadge 变化可能导致 visible false→true，需重新计算避免使用归零旧值。
+    layoutSections(SECTIONS, panelW, panelH);
     syncLayout();
     window.Repaint();
   }
@@ -377,7 +383,7 @@ function updateContent() {
 
 /**
  * 内容驱动布局同步: 测量文本+徽章尺寸 → 从 SEC.*.content 计算实际元素坐标
- * 不触动 layoutSections (仅 on_size 触发)，切歌时由 updateContent 调用
+ * 依赖 updateContent 中先调用 layoutSections 保证 content rect 与当前 visible 同步
  */
 function syncLayout() {
   // 全宽 section: 直接取 content 作为 hit-test 区域
@@ -460,8 +466,9 @@ function syncLayout() {
 // ============================================================================
 
 /**
- * SMP resize 回调: spacer → layoutSections → syncLayout
- * 仅尺寸变化时触发，切歌走 updateContent → syncLayout 捷径
+ * SMP resize 回调: spacer → contentH → layoutSections → syncLayout
+ * 仅面板尺寸变化时触发。切歌/数据变化由 updateContent 处理，
+ * 其中也包含 layoutSections（处理动态 visible 切换）。
  */
 function on_size() {
   if (window.Width <= 0 || window.Height <= 0) return;

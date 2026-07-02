@@ -45,7 +45,9 @@
 
 ## track_info.js
 
-- [ ] 首次启动布局偏移：全新播放器首次启动时，无选中/无播放 → 显示 "No Track" → 播放歌曲后内容位置计算错误。刷新脚本或重启后可恢复正常，后续无异常。疑似 JSplitter/SMP 初始化回调时序问题（`on_size()` 与 `updateContent()` 的竞态）
+- [x] 首次启动布局偏移：全新播放器首次启动时，无选中/无播放 → 显示 "No Track" → 播放歌曲后内容位置计算错误
+  - **根因**: `layoutSections()` 仅在 `on_size()` 中调用。首次启动 `on_size()` 执行时 `metadb=NULL` → `stars`/`badge` 的 `visible` getter 返回 false → `layoutSections()` 将其 `SEC.*.content` 归零。后续播放 `metadb` 有值 → `visible` 变 true，但 `updateContent()` 只调 `syncLayout()` 不调 `layoutSections()` → 用归零的 content rect 算坐标 → 布局偏移
+  - **修复**: `updateContent()` 末尾在 `syncLayout()` 前加入 `layoutSections(SECTIONS, panelW, panelH)`，每次数据更新时同步 content rect
 
 ## album_info.js
 

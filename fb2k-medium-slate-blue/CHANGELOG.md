@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- `track_info` 首次启动布局偏移：`layoutSections()` 仅在 `on_size` 中调用，首次启动时 `stars`/`badge` 不可见导致 content rect 归零，后续播放不再重算 → `updateContent` 末尾在 `syncLayout` 前加入 `layoutSections`，每次数据更新同步 content rect 与当前 `visible` 状态
+
 ## 1.3.0-alpha.2 — 2026-06-30
 
 ### Added
