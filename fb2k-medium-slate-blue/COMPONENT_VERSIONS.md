@@ -4,6 +4,9 @@
 |:---|:---|:---|
 | JSplitter | `v4.1.11` | JavaScript 面板宿主，JSDoc 随 DLL 附带 |
 
+> js脚本是基于`v4.1.11`编写的！！
+> 当前安装的JSplitter版本是`v4.3.4`
+
 ## 发布地址
 
 - [JSplitter - Плагины - foobar2000](https://foobar2000.club/forum/viewtopic.php?t=6378)（俄文主站）
@@ -12,7 +15,139 @@
 
 ## 版本更新记录
 
-> 来源：俄文主站，翻译整理。仅收录 4.0.0+ 版本。
+> 来源：俄文主站/GitHub，翻译整理。仅收录 4.0.0+ 版本。
+
+### v4.3.4 [last week]
+- **[修复]** 修复了一个 GDI+ 字体失效问题，该问题影响通过 `utils.LoadFont` 加载的字体。访问 `GdiFont.Name` 可能使底层 GDI+ 字体对象失效，并导致后续 GDI+ 绘制操作（例如 `GdiGraphics.DrawString`）使 foobar2000 崩溃。
+- **[修复]** 修复了在 JavaScript 对象正在被终结时退出 foobar2000 可能发生的崩溃。COM 对象清理期间的重入窗口消息处理可能在 JavaScript 上下文已经销毁后尝试运行待处理的 JavaScript 作业。关闭生命周期和清理处理也已加固，以防止重入拆卸。
+- **[更新]** 扩展 `MenuObject.SetDefault`，除项目 ID 外还可接受另一个 `MenuObject`，允许将子菜单本身设置为默认项。
+
+### v4.3.3 [last week]
+- **[修复]** 修复了 `fb.AddLocationsAsync` 和 `plman.AddLocations` 错误地将组件特定位置（例如 `3dydfy://`）解析为文件系统路径的问题。相对文件路径仍继续相对于当前脚本、包含文件或 Worker 文件解析。
+- **[修复]** 移除了 `%jsplitter_fb2k%` 和 `%jsplitter_fb2k_profile%` 末尾的路径分隔符，以匹配预期的 Title Formatting 路径语法，并避免组合路径时出现双分隔符。
+
+### v4.3.2 [last week]
+- **[错误]** 修复了启动 foobar2000 时无论当前主题如何都会出现的视觉“白色闪光”。JSplitter 现在会在脚本渲染开始前，根据当前 UI 主题自行绘制初始面板背景。
+- **[更新]** 移除了 `FbWindow.FrameStyle NoBorder` 模式下不必要的命中测试和光标处理，这些行为在该模式下不适用（例如 `MinWidth == MaxWidth`）。
+- **[新功能]** 新增 `FbTitleFormat.EvalActivePlaylistItem` 和 `FbTitleFormat.EvalPlaylistItem`，用于在播放列表上下文中评估 Title Formatting 表达式，包括 `%list_index%` 和 `%list_total%` 等播放列表特定字段。
+- **[新功能]** 新增 `MenuObject.SetDefault`，用于将菜单项标记为默认操作，并以粗体显示。可通过再次调用该方法并传入另一个项目 ID 来重新指定默认项。
+
+### v4.3.1 [last week]
+- **[新功能]** 新增两个全局 Title Formatting 字段：`%jsplitter_fb2k%` 和 `%jsplitter_fb2k_profile%`，提供 foobar2000 安装目录和配置目录路径。相同值也可作为进程环境变量使用。新增专门的 Title Formatting 文档章节，涵盖所有 JSplitter 字段。
+- **[更新]** 扩展 `FbWindow.SetPseudoCaption`，新增可选参数 `maximize_on_dblclk`，用于通过双击伪标题区域最大化或还原主窗口。
+- **[更新]** 统一了所有支持文件路径的 API 中的相对文件系统路径解析，包括面板脚本、包含文件和 Workers。相对路径使用调用脚本的位置解析，并回退到既定搜索位置。
+- **[新功能]** 新增 `window.ScriptInfo.Path`，提供面板主脚本的完整本机文件系统路径；对于内存脚本则为空字符串。
+- **[错误]** 修复了当图像文件无法打开且其路径包含花括号时，`fb.ShowPictureViewer` 可能崩溃的问题。
+
+### v4.3.0 [2 weeks ago]
+- **[更新]** 将 JavaScript 引擎更新至 SpiderMonkey 153.4.0esr。
+- **[新功能]** 新增对 ES 模块的支持。作为面板 File 脚本选择的 `.mjs` 文件现在会作为 ES 模块加载，支持相对静态导入、嵌套和循环依赖、命名导出和默认导出、模块缓存、`import.meta.url`、Unicode 路径，以及模块加载、解析和求值期间的适当错误传播。
+- **[更新]** 将 foobar2000 SDK 更新至 2026-10-01。
+- **[新功能]** 扩展 `FbWindow` API，新增用于控制 foobar2000 主窗口的系统命令：`Minimize`、`Maximize`、`Restore` 和 `Close`，以及 `IsMinimized` 和 `IsMaximized` 状态属性。
+- **[新功能]** 新增 `window.IsToolbar`，用于检测 JSplitter 面板是否作为 Columns UI 中的工具栏项托管。
+
+### v4.2.2 [2 weeks ago]
+- **[新功能]** 新增流式文件 I/O API，用于处理大文件而无需将完整内容加载到 JavaScript 内存中。`utils.OpenTextReader` 和 `utils.OpenTextWriter` 提供可选择字符编码的增量式面向行文本读写，而 `utils.OpenBinaryReader` 和 `utils.OpenBinaryWriter` 通过可复用的 `Uint8Array` 缓冲区读写二进制数据。这些 API 在面板和 Worker 领域中均可用。
+- **[更新]** 扩展 `utils.ReadTextFile` 和 `utils.WriteTextFile` 的字符编码支持。文本读取现在一致支持 UTF-8、UTF-16LE/BE、UTF-32LE/BE 以及受支持的 Windows 代码页，包括在请求时自动检测字符集。`WriteTextFile` 现在也接受输出代码页，不再仅限于 UTF-8，并可为 UTF-8、UTF-16 和 UTF-32 生成可选 BOM。现有 UTF-8 默认行为保持不变以兼容旧代码。
+- **[新功能]** 新增 `Worker.RunAsync`，用于方便地执行一次性后台工作，而无需手动创建和管理持久 Worker。每次调用都会创建一个临时完整 Worker 领域/线程，将提供的参数结构化克隆到其中，执行用户定义的同步或异步 JavaScript 回调，将结果结构化克隆回面板，并随后自动终止 Worker。它适用于合理粗粒度的隔离任务，例如大文件处理，否则自定义 Worker 消息协议会增加不必要的样板代码。
+- **[新功能]** 新增原生 SQLite API，在面板和 Worker 领域中均可用。`utils.OpenDatabase` 可打开基于文件或内存的数据库，并返回 `SQLiteDatabase` 对象，支持直接 SQL 执行、参数化查询、事务以及通过 `SQLiteStatement` 使用可复用预处理语句。JavaScript 值可以安全地绑定为 SQL 参数，查询行以普通 JavaScript 对象返回，SQLite BLOB 值以 `Uint8Array` 暴露。相对数据库路径遵循 JSplitter 的脚本相对路径解析，同时也支持 `:memory:` 数据库。
+- **[新功能]** 新增 `utils.LoadFont`，用于直接从脚本包加载自定义 TrueType/OpenType 字体，而无需将其安装到 Windows。加载的字体对 foobar2000 进程私有，可用于 GDI 和 Direct2D 字体 API，并在面板和 Worker 领域之间共享。相对路径使用 JSplitter 的脚本相对路径解析，允许字体与主脚本、包含文件或 Worker 源文件一起打包。重复加载同一文件是安全的，加载的字体在 foobar2000 进程生命周期内保持可用。
+- **[新功能]** 新增 `fb.Window` API，用于直接从面板脚本控制 foobar2000 主窗口。该 API 暴露当前窗口位置和外框尺寸，允许移动和调整窗口大小，在默认框架、无标题栏和无边框样式之间切换，进入或离开全屏模式，并配置最小和最大尺寸约束。在 Default User Interface 下，它还可以隐藏或恢复主菜单和状态栏。这些设置会影响实际的 foobar2000 顶层窗口，并可在运行时动态更改。自本版本起，`window.FoobarWindowX`、`window.FoobarWindowY`、`window.FoobarWindowWidth`、`window.FoobarWindowHeight` 和 `window.MoveFoobarWindow` 已弃用，并将在未来版本中移除。新代码应使用 `fb.Window` 几何属性和 `Move`。
+- **[更新]** 扩展 `utils.GetWaveformAsync`，新增可选 `on_progress` 回调。已最终确定的波形包络范围现在可以在解码仍在进行时交付，使波形 UI 能够渐进显示，而不必等待完整音轨解码完成。回调会接收每个新的 `Float32Array` 范围及其输出偏移，并可返回 `false` 以取消过时的解码请求。返回的 Promise 仍会在解码正常完成时解析为完整波形。新增了渐进式波形加载示例。
+- **[新功能]** 在 JSplitter 的 Advanced preferences 下新增 Playback Statistics Title Format 设置。该设置控制用于识别 JSplitter 内部播放统计索引中曲目的 title-format 表达式，允许在默认 `$lower(%artist% - %title%)` 身份不足以匹配的媒体库中调整匹配方案。更改该设置需要重启 foobar2000。
+- **[更新]** 扩展 `fb.ShowPictureViewer`。除了直接从文件路径打开图像外，它现在还可以接受 `FbMetadbHandle` 和可选专辑封面类型。在这种形式下，foobar2000 会自行解析并打开请求的艺术作品，包括嵌入式和外部专辑封面。
+- **[新功能]** 新增用于多流媒体文件的音频流选择 API。`fb.GetAudioStreams` 枚举活动输入解码器暴露的所有音频流，并返回其完整 `FbFileInfo` 数据以及流索引、解码器默认值和当前用户选择状态。`fb.SetAudioStream` 存储曲目的选定流偏好，并且在应用于当前播放项时重启播放，使新流立即生效，同时从当前位置继续播放。流选择使用 foobar2000 原生输入流选择器，且 `SetAudioStream` 需要 foobar2000 2.0 或更新版本。
+- **[错误]** 修复了处理已保存的 JSplitter 布局时的问题，这些布局引用了由不再安装或当前不可用组件提供的 UI Elements。缺失的子元素现在会被安全处理，并由 UI Element not found 占位符表示，而不是导致不正确的面板恢复或初始化行为。
+- **[错误]** 修复了在更新或移除当前正在使用的脚本包后重启 foobar2000 时偶发挂起的问题。现在仅在 Package Manager 和面板配置对话框完全关闭后请求重启，防止关闭过程卡在嵌套模态消息循环中。
+- **[更新]** 将源代码编辑器引擎更新至 Scintilla 5.6.7。
+
+### v4.2.1 [3 weeks ago]
+- **[新功能]** 新增 BroadcastChannel API，用于 JSplitter 面板和 Workers 之间的异步通信。具有相同通道名称的实例可以交换结构化克隆消息，而无需在领域之间共享实时 JavaScript 值。对于新代码，推荐使用 BroadcastChannel 替代旧的同步 `window.NotifyOthers` 机制；现有 API 仍保留以兼容旧代码。
+- **[新功能]** 新增 `utils.IsOS64Bit`，用于检测 Windows 本身是否为 64 位，独立于当前 foobar2000 进程的架构。
+- **[新功能]** 新增 `utils.SystemInfo`，返回系统信息快照，包括 Windows 产品名称和内部版本号、操作系统架构、总物理内存和可用物理内存、foobar2000 私有工作集使用量，以及当前 foobar2000 进程使用最多的图形适配器的专用/本地视频内存信息。VRAM 信息包括所选适配器名称、专用内存大小、当前 Windows 为该进程设置的视频内存预算，以及该进程当前本地视频内存使用量。
+- **[新功能]** 新增可复用 PCM 缓冲区 API，用于实时音频处理。`FbAudioChunk.CopyDataTo` 将音频样本复制到调用者提供的 `Float32Array`，而 `fb.GetAudioChunkTo` 将可视化音频直接写入可复用的 `Float32Array`，不创建中间 `FbAudioChunk` 或 JavaScript 样本数组。现有 `fb.GetAudioChunk` 和 `FbAudioChunk.Data` 行为保持不变以兼容旧代码。新 API 显著减少了持续运行的可视化器（如频谱分析器）中的临时分配和垃圾回收压力。
+- **[新功能]** 新增 `utils.GetWaveformAsync`，用于异步将音轨解码为固定大小的波形振幅包络。它可以分析完整音轨或指定时间范围，返回线性 `0.0..1.0` 振幅值作为 `Float32Array`，并且在面板和 Worker 领域中均可用。波形点根据平均局部样本峰值计算，不会将结果归一化到音轨的最响点。
+- **[错误]** 重做了定时器后端，以从定时器线程协调中移除同步等待。这些等待可能不必要地阻塞执行，并在某些情况下导致面板初始化、关闭和其他定时器相关操作出现明显延迟或挂起。定时器调度和关闭现在无需阻塞调用线程即可处理。
+- **[错误]** 修复了垃圾回收使用的内存分配统计。恢复了 GC 的分配计数触发，并在堆限制附近添加了安全边界，以降低在垃圾回收有机会运行前突然超过配置最大堆大小的风险。
+- **[错误]** 修复了创建 `D2DStrokeStyle` 对象时的默认参数处理。显式构造现在使用与简写描边样式形式相同的默认值。
+- **[更新]** 隐藏的 JSplitter 主菜单部分中的 Open component folder 和 Open documentation 命令现在始终可用，即使当前没有 JSplitter 面板拥有键盘焦点。
+
+### v4.2.0 beta 1 [last month]
+- **[更新]** 新增 Worker API，用于在后台线程上运行 JavaScript。Workers 支持消息传递、适用的现有 JSplitter API、离屏 GDI/Direct2D 渲染、结构化克隆和可转移对象、外部脚本文件和包含文件。要开始有效使用这个新 API，应仔细研究提供的文档。
+- **[更新]** 重大变更！完全重做了 `window.JsMemoryStats`，采用新的内存统计模型和重命名字段，并新增当前面板所属 Workers 的内存使用信息。
+- **[更新]** 重做了 Advanced > Performance > GC 下的垃圾回收设置。移除了基于可用系统内存的自动配置；GC 和堆限制现在由显式设置和固定默认值控制：主线程最大堆大小 — 1024 MB，每个 Worker 最大堆大小 — 256 MB，GC 前堆增长 — 64 MB，GC 前外部内存增长 — 256 MB。这使内存限制和 GC 行为可预测，并允许在需要时独立调整。堆和外部内存增长设置适用于主线程和每个 Worker。
+- **[新功能]** 在 Advanced > Performance 下新增 Use high-resolution timers 选项，默认禁用。启用后，短 `setTimeout` 和 `setInterval` 延迟可以更接近其请求值进行调度，而不再受标准 Windows 定时器粒度限制。这可以改善高刷新率动画和其他时间敏感代码。现有隐式依赖较粗定时器粒度的脚本在启用此选项时可能表现不同，因为回调可能比之前运行得频繁得多。例如，动画或其他状态如果按每次回调推进，而不是按经过时间推进，可能会进展更快，CPU 使用率也可能增加。在高负载下，这也可能导致渲染（主）线程明显变慢，因此现有代码可能需要适配此定时器后端。仅支持 Windows 10 版本 1803 及更高版本。
+- **[新功能]** 新增只读属性 `utils.HighResolutionTimersEnabled`，用于面板和 Worker 领域，允许脚本检测高分辨率定时器后端是否实际处于活动状态，并据此调整调度/让出策略。该值派生自 Advanced Preferences > Performance > Use high-resolution timers，但报告的是有效运行时状态，而不仅仅是复选框状态：仅当选项已启用且当前 Windows 版本实际支持高分辨率可等待定时器时返回 `true`；否则返回 `false`。
+- **[新功能]** 扩展 `on_paint`，传入实际更新矩形：`on_paint(gr, x, y, width, height)`。现有 `on_paint(gr)` 处理程序仍完全兼容。这对于包含多个非重叠 UI 区域的单宿主面板特别有用，允许脚本跳过不与当前更新矩形相交的渲染区域。
+- **[新功能]** 在主菜单中新增隐藏的 JSplitter 部分，可通过 Shift+Click File 菜单访问。该部分镜像了 JSplitter 上下文菜单中几乎所有可用命令，并作用于当前拥有键盘焦点的 JSplitter 面板。作为常规主菜单命令，它们还可以通过 foobar2000 的设置分配任意键盘快捷键。
+- **[新功能]** 新增 `window.ShowPanelList`，用于显示当前面板的子面板列表对话框。
+- **[新功能]** 新增 `window.IsFocused`，用于指示当前 JSplitter 面板是否拥有键盘焦点。
+- **[新功能]** 新增 `utils.Is64Bit` 属性，用于检测 x86/x64 进程架构。
+- **[错误]** 修复了在向 DUI 导入主题期间 JSplitter 缺失视觉徽章的问题。
+- **[错误]** v4.1.15 回归：DUI 中的不可见面板没有收到需要更新内容的通知。
+- **[错误]** 移除了 UIHacks 插件（`foo_ui_hacks`）API 的文档，因为此 API 不属于 JSplitter API。
+- **[更新]** 移除了 D2D 初始化 SUCCESS 控制台消息。
+- **[更新]** 改进了 complete/musicbrainz 示例：新增手动刷新、更安全的 MusicBrainz 缓存和异步请求处理、请求节流，以及更健壮的 release/链接解析。
+- **[新功能]** 新增可复用的 Direct2D 描边样式支持，用于绘制可配置端点、线条连接、虚线样式、斜接限制、虚线偏移和自定义虚线图案的图元。所有接受线条样式的现有 D2D 绘制方法现在都可以使用共享的 `D2DStrokeStyle` 对象，并更新了文档和新增视觉示例。
+- **[更新]** 将 JavaScript 引擎更新至 SpiderMonkey 140.16.0esr。
+
+### v4.1.17 [Sep 4]
+- **[错误]** 修复了嵌套 `gdi.PushClip/PopClip` 和 `d2d.PushClip/PopClip`。裁剪状态现在保存在栈上，并在多个裁剪区域嵌套时正确恢复。
+- **[新功能]** 新增 `GdiBitmap.GetThemeColourSchemeJSON` 和 `D2DBitmap.GetThemeColourSchemeJSON`。该方法使用 OKLab 中的加权 K-means++ 分析位图颜色，并返回协调的五角色 UI 配色方案，用于背景、文本、播放背景/强调、焦点框和选择背景。可选调色板大小可由调用者调整。新增了一个很好演示该新方法的示例。
+- **[更新]** 重做了 performance API，使其更接近 Web Performance / User Timing / Performance Timeline 行为。新增标准 mark 和 measure 形式及选项、重复 mark/measure 条目、有序时间线查询、改进的 PerformanceObserver 行为和静态 `PerformanceObserver.supportedEntryTypes`，同时保留现有 JSplitter 扩展以兼容旧代码。新增 Performance API 示例。
+- **[新功能]** 新增原生文件系统助手（含示例）：
+  - `utils.GetDrives`
+  - `utils.GetDriveInfo`
+  - `utils.GetShortPath`
+  - `utils.GetFolderSize`
+  - `utils.GetFolderSizeAsync`
+- **[新功能]** 新增 `fb.GetLibraryRoots`，用于从当前媒体库内容推断唯一媒体库根路径，而无需在 JavaScript 中重建它们。
+- **[更新]** 扩展 `utils.ShowHtmlDialog` 示例，演示面板 JavaScript 和 HTML 对话框之间传递数据和回调，包括 `window.external.dialogWindow`，以便正确拥有从 HTML 打开的原生对话框。
+- **[更新]** 改进生成的 API 文档，新增持久可折叠导航树用于 API 成员和全局 API 搜索。
+- **[更新]** 将 JS 引擎更新至 SpiderMonkey 140.15.0esr。
+
+### v4.1.16 [Aug 31]
+- **[错误]** 修复了在并行 title formatting 中评估 JSplitter 统计字段（例如 `%jsplitter_rating%`）时发生的崩溃，该问题由内部 title format 对象惰性初始化期间的竞态条件引起。
+- **[新功能]** 为以下函数新增可选 `window_id` 参数，用于指定原生所有者窗口 (HWND)：
+  - `plman.ShowPlaylistLockUI(playlistIndex[, window_id])`
+  - `utils.FilePicker(title, default_path, filter, mode[, window_id])`
+  - `utils.FolderPicker(title, default_path[, window_id])`
+  - `utils.MessageBox(msg, title, buttons, icon, default_button, help_text[, window_id])`
+- **[新功能]** 新增 `FbMetadbHandleList.Reverse` 和 `FbMetadbHandleList.Shuffle`，用于原地反转和随机打乱句柄列表。
+
+### v4.1.15 [Aug 28]
+- **[错误]** 重大变更！！！`plman.MovePlaylistSelection` 和 `plman.MovePlaylistSelectionV2` 不再隐式创建撤销备份。需要撤销支持的脚本必须在移动播放列表项之前显式调用 `plman.UndoBackup`，与其他播放列表内容修改保持一致。
+- **[新功能]** 新增 `plman.ReorderPlaylistItems`。
+- **[新功能]** 新增 `gdi.PushClip/PopClip` 和 `d2d.PushClip/PopClip`。
+- **[新功能]** 扩展 `utils.ColourPicker` 对话框，新增控件：
+  - HEX：RRGGBB 颜色值
+  - Alpha：alpha 分量
+  - Copy ARGB：用于复制当前颜色值（0xAARRGGBB 格式）的按钮
+- **[新功能]** 新增 `window.external.dialogWindow`，用于 `utils.ShowHtmlDialog` 创建的 HTML 对话框，暴露对话框的原生窗口句柄，以便用于嵌套模态对话框。
+- **[新功能]** 更新 `utils.ColourPicker`、`utils.FontPicker`、`utils.InputBox` 和 `utils.ShowHtmlDialog` 的模态对话框所有权处理。`window_id` 参数现在用作原生所有者窗口句柄 (HWND)，而不是被忽略，从而允许从 `utils.ShowHtmlDialog` 打开的对话框通过 `window.external.dialogWindow` 正确归属于 HTML 对话框。
+- **[新功能]** 新增 `utils.RecyclePath`，用于将文件和目录移动到回收站。
+- **[新功能]** 用新的文档生成器替换旧文档构建流程，并在 https://dima-lur.github.io/jsplitter 发布生成的 API 文档。
+
+### v4.1.14 [Aug 21]
+- **[错误]** 重大变更！！！将旧 `%smp_*%` title formatting 字段重命名为 `%jsplitter_*%`（组件和示例中均如此），以避免与 Spider Monkey Panel 冲突， namely：
+  - `smp_playcount` → `jsplitter_playcount`
+  - `smp_loved` → `jsplitter_loved`
+  - `smp_first_played` → `jsplitter_first_played`
+  - `smp_last_played` → `jsplitter_last_played`
+  - `smp_rating` → `jsplitter_rating`
+- **[错误]** 文档：修复 `Helpers.js` 中的 `vol2pos` 函数。
+- **[错误]** 文档：澄清 `fb.GetOutputDevices` 活动设备行为。
+- **[更新]** 将 JS 引擎更新至 SpiderMonkey 140.14.0esr。
+- **[更新]** 将源代码编辑器更新至 Scintilla 5.6.6。
+
+### v4.1.13 [Aug 8]
+- **[新功能]** `utils.Glob`：路径模式通配符现在也适用于中间目录，而不仅仅是文件名。例如 `utils.Glob(fb.ProfilePath + 'image*\\album?\\*.jpg')`。
+- **[更新]** 将 JS 引擎更新至 SpiderMonkey 140.13.0esr。
+- **[更新]** 将源代码编辑器更新至 Scintilla 5.6.5。
+
+### v4.1.12 [Jul 13]
+- **[错误]** 修复了在 CUI 中设置单个 JSplitter 颜色和字体（不常见）时，`on_colours_changed` 和 `on_font_changed` 未触发的问题。
+- **[更新]** 将源代码编辑器更新至 Scintilla 5.6.4。
 
 ### v4.1.11 [2026-06-27]
 

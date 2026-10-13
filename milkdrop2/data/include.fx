@@ -19,7 +19,7 @@ float4 _c14; // .xy = mouse position; .z = button hold; .z = mouse click
 float4 _c15; // .x = hour, .y = minute, .z = second, .w = time converted to seconds
 float4 _c16; // .x = year, .y = month, .z = day, .w = weekday (1-7)
 float4 _c17; // .x = bass_smooth, .y = mid_smooth, .z = treb_smooth, .w = vol_smooth
-float4 _c18; // .x = vis_intensity, .y = vis_shift, .z = vis_version; .w = unused
+float4 _c18; // .x = vis_intensity, .y = vis_shift, .z = vis_version; .w = FFT Hz reference
 float4 _c19; // .x = colshift_hue, .y = colshift_saturation, .z = colshift_brightness; .w = unused
 float4 _c20; // .x = gamma_adj, .y = echo_alpha, .z = echo_inv_zoom, .w = echo_orient
 float4 _qa;  // q vars bank 1 [q1-q4]
@@ -181,6 +181,7 @@ float4x3 rot_rand4;
 #define vis_intensity _c18.x
 #define vis_shift _c18.y
 #define vis_version _c18.z
+#define fft_hz_ref _c18.w
 #define colshift_hue _c19.x
 #define colshift_saturation _c19.y
 #define colshift_brightness _c19.z
@@ -197,8 +198,8 @@ float4x3 rot_rand4;
 
 #define GetFFT(p) (tex2D(sampler_fft, float2(saturate((p)), 0.25)).x)
 #define GetFFTPeak(p) (tex2D(sampler_fft, float2(saturate((p)), 0.75)).x)
-#define GetFFTHz(hz) (GetFFT(saturate((hz) / 22050.0)))
-#define GetFFTPeakHz(hz) (GetFFTPeak(saturate((hz) / 22050.0)))
+#define GetFFTHz(hz) (GetFFT(saturate((hz) / fft_hz_ref)))
+#define GetFFTPeakHz(hz) (GetFFTPeak(saturate((hz) / fft_hz_ref)))
 #define GetWaveLeft(p) (tex2D(sampler_wave, float2(saturate((p)), 0.25)).x)
 #define GetWaveRight(p) (tex2D(sampler_wave, float2(saturate((p)), 0.75)).x)
 #define GetWave(p) ((GetWaveLeft(p) + GetWaveRight(p)) * 0.5)
