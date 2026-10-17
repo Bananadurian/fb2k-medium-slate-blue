@@ -6,10 +6,12 @@
 "use strict";
 
 // ============================================================================
-// THEME — 集中管理所有 CUI 系统颜色、字体和路径
+// THEME — 集中管理 CUI/DUI 系统颜色、字体和路径
 // ============================================================================
 
 /*
+ * CUI API reference — enum values are implemented as real constants below.
+ *
 window.GetColourCUI(type, client_guidopt)
 window.GetFontCUI(type, client_guidopt)
 
@@ -79,7 +81,8 @@ Filter Panel: Items: "{D93F1EF3-4AEE-4632-B5BF-0220CEC76DED}"
 
 /**
  * @typedef {Object} ThemeConfig
- * @property {Object} COL - CUI 颜色值，键名为 UPPER_SNAKE_CASE
+ * @property {number} UI_TYPE - 0 = Columns UI, 1 = Default UI
+ * @property {Object} COL - CUI/DUI 颜色值，键名为 UPPER_SNAKE_CASE
  * @property {number} COL.FG - 普通文字颜色
  * @property {number} COL.SEL_FG - 选中文字颜色
  * @property {number} COL.BG - 全局背景色
@@ -87,13 +90,13 @@ Filter Panel: Items: "{D93F1EF3-4AEE-4632-B5BF-0220CEC76DED}"
  * @property {number} COL.FRAME - 激活项/强调色
  * @property {number} COL.SCROLLBAR - 滚动条颜色 (硬编码)
  * @property {number} COL.MASK - 遮罩层底色
- * @property {number} COL.PLAYLIST_SWICHER_MASK - Playlist Switcher 遮罩底色 (指定 GUID)
- * @property {number} COL.PLAYLIST_MASK - NG Playlist 遮罩底色 (指定 GUID)
+ * @property {number} COL.PLAYLIST_SWICHER_MASK - Playlist Switcher 遮罩底色 (CUI 指定 GUID；DUI 回退全局背景)
+ * @property {number} COL.PLAYLIST_MASK - NG Playlist 遮罩底色 (CUI 指定 GUID；DUI 回退全局背景)
  * @property {Object} FONT - GdiFont 对象集合
  * @property {GdiFont} FONT.TITLE - 大标题字体
  * @property {GdiFont} FONT.BODY - 正文字体
  * @property {GdiFont} FONT.BOLD - 加粗正文字体
- * @property {GdiFont} FONT.LABEL - 标签字体 (CUI Labels)
+ * @property {GdiFont} FONT.LABEL - 标签字体 (CUI Labels / DUI Tabs)
  * @property {Object} LAYOUT - DPI 缩放后的布局常量
  * @property {number} LAYOUT.ICON_SIZE - 图标尺寸
  * @property {number} LAYOUT.SCROLL_STEP - 滚轮步长
@@ -117,53 +120,190 @@ Filter Panel: Items: "{D93F1EF3-4AEE-4632-B5BF-0220CEC76DED}"
  * @property {FbTitleFormat} TF.COVER_KEY - 封面缓存键格式
  */
 
-// CUI 字体源
-const FONT_ITEMS  = window.GetFontCUI(0);  // Common (list items)
-const FONT_LABELS = window.GetFontCUI(1);  // Common (labels)
+// ============================================================================
+// UI adapter — Columns UI (0) / Default UI (1)
+// ============================================================================
+
+const _THEME_UI_TYPE = window.InstanceType; // 0 = Columns UI, 1 = Default UI
+const _THEME_IS_DUI = _THEME_UI_TYPE === 1;
+
+// Used in window.GetColourCUI()
+const ColourTypeCUI = {
+    text: 0,
+    selection_text: 1,
+    inactive_selection_text: 2,
+    background: 3,
+    selection_background: 4,
+    inactive_selection_background: 5,
+    active_item_frame: 6,
+};
+
+// Used in window.GetFontCUI()
+const FontTypeCUI = { items: 0, labels: 1 };
+
+// Used in window.GetColourDUI()
+const ColourTypeDUI = { text: 0, background: 1, highlight: 2, selection: 3 };
+
+// Used in window.GetFontDUI()
+const FontTypeDUI = {
+    defaults: 0, tabs: 1, lists: 2, playlists: 3, statusbar: 4, console: 5,
+};
+
+const _CUI_GUID_PLAYLIST_SWITCHER = "{EB38A997-3B5F-4126-8746-262AA9C1F94B}";
+const _CUI_GUID_PLAYLIST = "{C882D3AC-C014-44DF-9C7E-2DADF37645A0}";
+
+/**
+ * Relative luminance of an opaque ARGB colour (WCAG 2.x).
+ * @param {number} color
+ * @returns {number}
+ */
+function _luminance(color) {
+    // RGB channels only; DUI colours are opaque ARGB values.
+    const channel = function (value) {
+        const c = value / 255;
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * channel((color >> 16) & 0xff)
+         + 0.7152 * channel((color >> 8) & 0xff)
+         + 0.0722 * channel(color & 0xff);
+}
+
+/**
+ * @param {number} c1
+ * @param {number} c2
+ * @returns {number} WCAG contrast ratio
+ */
+function _contrastRatio(c1, c2) {
+    const l1 = _luminance(c1);
+    const l2 = _luminance(c2);
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+const _MIN_TEXT_CONTRAST = 4.5; // WCAG AA for normal text
+
+/**
+ * Read CUI theme colours.
+ * ColourTypeCUI: 0 text, 1 selected text, 3 background,
+ * 4 selection background, 6 active item frame.
+ * @returns {Object}
+ */
+function _readCUIColors() {
+    return {
+        FG: window.GetColourCUI(ColourTypeCUI.text),
+        SEL_FG: window.GetColourCUI(ColourTypeCUI.selection_text),
+        BG: window.GetColourCUI(ColourTypeCUI.background),
+        SEL_BG: window.GetColourCUI(ColourTypeCUI.selection_background),
+        FRAME: window.GetColourCUI(ColourTypeCUI.active_item_frame),
+        MASK: window.GetColourCUI(ColourTypeCUI.background),
+        PLAYLIST_SWICHER_MASK:
+            window.GetColourCUI(ColourTypeCUI.background, _CUI_GUID_PLAYLIST_SWITCHER),
+        PLAYLIST_MASK:
+            window.GetColourCUI(ColourTypeCUI.background, _CUI_GUID_PLAYLIST),
+    };
+}
+
+/**
+ * Read DUI theme colours.
+ * @returns {Object}
+ */
+function _readDUIColors() {
+    const text = window.GetColourDUI(ColourTypeDUI.text);
+    const background = window.GetColourDUI(ColourTypeDUI.background);
+    const highlight = window.GetColourDUI(ColourTypeDUI.highlight);
+    const selection = window.GetColourDUI(ColourTypeDUI.selection);
+
+    // DUI has no configurable selected-text colour. Use the accent only when
+    // it is readable on both the normal and selection backgrounds; otherwise use text.
+    const selFg = Math.min(
+        _contrastRatio(highlight, background),
+        _contrastRatio(highlight, selection)
+    ) >= _MIN_TEXT_CONTRAST ? highlight : text;
+
+    return {
+        FG: text,
+        SEL_FG: selFg,
+        BG: background,
+        SEL_BG: selection,
+        FRAME: highlight,
+        MASK: background,
+        // DUI has no per-client colour overrides.
+        PLAYLIST_SWICHER_MASK: background,
+        PLAYLIST_MASK: background,
+    };
+}
+
+/**
+ * Read colours for the current UI.
+ * @returns {Object}
+ */
+function _readThemeColors() {
+    const colors = _THEME_IS_DUI ? _readDUIColors() : _readCUIColors();
+    // UI-independent hardcoded colour; keep the original THEME.COL contract.
+    colors.SCROLLBAR = _rgb(149, 149, 149);
+    return colors;
+}
+
+/**
+ * Build THEME.FONT from the base UI fonts.
+ * @param {?GdiFont} itemsFont
+ * @param {?GdiFont} labelsFont
+ * @returns {Object}
+ */
+function _buildThemeFonts(itemsFont, labelsFont) {
+    const name = (itemsFont && itemsFont.Name) || "Segoe UI";
+    return {
+        TITLE: gdi.Font(name, _scale(18), 1),
+        BODY:  gdi.Font(name, _scale(12), 0),
+        BOLD:  gdi.Font(name, _scale(12), 1),
+        LABEL: labelsFont || gdi.Font(name, _scale(12), 0),
+    };
+}
+
+/**
+ * Read CUI theme fonts.
+ * FontTypeCUI: 0 = items, 1 = labels.
+ * @returns {Object}
+ */
+function _readCUIFonts() {
+    return _buildThemeFonts(
+        window.GetFontCUI(FontTypeCUI.items),
+        window.GetFontCUI(FontTypeCUI.labels)
+    );
+}
+
+/**
+ * Read DUI theme fonts.
+ * @returns {Object}
+ */
+function _readDUIFonts() {
+    const defaults = window.GetFontDUI(FontTypeDUI.defaults);
+    return _buildThemeFonts(
+        window.GetFontDUI(FontTypeDUI.lists) || defaults,
+        window.GetFontDUI(FontTypeDUI.tabs) || defaults
+    );
+}
+
+/**
+ * Read fonts for the current UI.
+ * @returns {Object}
+ */
+function _readThemeFonts() {
+    return _THEME_IS_DUI ? _readDUIFonts() : _readCUIFonts();
+}
 
 // console.log("============theme初始化");
 
 const THEME = {
-    // --- CUI 全局颜色 ---
-    // GetColourCUI 索引说明（设置面板的7个颜色）:
-    //   0 = Item Foreground (普通文字 前景色)
-    //   1 = Selected item Foreground(激活面板 选中文字 前景色)
-    //   2 = Inactive selected item Foreground (未激活面板 选中文字 前景色)
-    //   3 = Item Background(普通文字 背景色)
-    //   4 = Selected item Background (激活面板 选中文字 背景色)
-    //   5 = Inactive selected item Background (未激活面板 选中文字 背景色)
-    //   6 = Active item frame (激活项/强调色)
-    COL: {
-        FG:             window.GetColourCUI(0),
-        SEL_FG:         window.GetColourCUI(1),
-        BG:             window.GetColourCUI(3),
-        SEL_BG:         window.GetColourCUI(4),
-        FRAME:          window.GetColourCUI(6),
-        // ITEM_DETAIL_BG:  window.GetColourCUI(3, "{4E20CEED-42F6-4743-8EB3-610454457E19}"),
-        MASK:          window.GetColourCUI(3),
-        PLAYLIST_SWICHER_MASK: window.GetColourCUI(3, "{EB38A997-3B5F-4126-8746-262AA9C1F94B}"),
-        PLAYLIST_MASK: window.GetColourCUI(3, "{C882D3AC-C014-44DF-9C7E-2DADF37645A0}"),
-        // 硬编码色值
-        SCROLLBAR:      _rgb(149, 149, 149),
-        
-    },
+    // --- UI type: 0 = Columns UI, 1 = Default UI ---
+    UI_TYPE: _THEME_UI_TYPE,
 
-    // --- CUI 字体 (统一为 GdiFont 对象) ---
-    // Used in window.GetFontCUI()
-    // GetFontCUI(FontTypeCUI, client_guidopt)
-    // FontTypeCUI 说明：
-    //   0 = Common (list items)
-    //   1 = Common (labels)
-    // client_guidopt:
-    //   NG Playlist: Items: "{19F8E0B3-E822-4F07-B200-D4A67E4872F9}"
-    // GdiFont = gdi.Font(name, size, style)
-    // 面板直接使用 THEME.FONT.TITLE / .BODY 等，无需再调用 gdi.Font()
-    FONT: {
-        TITLE: gdi.Font(FONT_ITEMS.Name, _scale(18), 1),  // 大标题
-        BODY:  gdi.Font(FONT_ITEMS.Name, _scale(12), 0),  // 正文 / 按钮 / 紧凑文字
-        BOLD:  gdi.Font(FONT_ITEMS.Name, _scale(12), 1),  // 正文加粗 / 选中按钮
-        LABEL: FONT_LABELS,                                 // 标签 / 徽章 / 面板标题
-    },
+    // --- Global colours (CUI / DUI) ---
+    // CUI index mapping is documented in _readCUIColors().
+    COL: _readThemeColors(),
+
+    // --- Fonts (unified GdiFont objects for CUI / DUI) ---
+    // Font sources are documented in _readCUIFonts() / _readDUIFonts().
+    FONT: _readThemeFonts(),
 
     // --- 通用布局常量 (已 DPI 缩放) ---
     LAYOUT: {
@@ -222,29 +362,19 @@ const THEME = {
 // ============================================================================
 
 /**
+ * Refresh colours in place so cached THEME.COL references stay valid.
  * @returns {void}
  */
 function _refreshThemeColors() {
-    THEME.COL.FG                   = window.GetColourCUI(0);
-    THEME.COL.SEL_FG               = window.GetColourCUI(1);
-    THEME.COL.BG                   = window.GetColourCUI(3);
-    THEME.COL.SEL_BG               = window.GetColourCUI(4);
-    THEME.COL.FRAME                = window.GetColourCUI(6);
-    THEME.COL.MASK                 = window.GetColourCUI(3);
-    THEME.COL.PLAYLIST_SWICHER_MASK = window.GetColourCUI(3, "{EB38A997-3B5F-4126-8746-262AA9C1F94B}");
-    THEME.COL.PLAYLIST_MASK        = window.GetColourCUI(3, "{C882D3AC-C014-44DF-9C7E-2DADF37645A0}");
+    Object.assign(THEME.COL, _readThemeColors());
 }
 
 /**
+ * Refresh fonts in place so cached THEME.FONT references stay valid.
  * @returns {void}
  */
 function _refreshThemeFonts() {
-    const itemsName  = window.GetFontCUI(0).Name;
-    const labelsFont = window.GetFontCUI(1);
-    THEME.FONT.TITLE = gdi.Font(itemsName, _scale(18), 1);
-    THEME.FONT.BODY  = gdi.Font(itemsName, _scale(12), 0);
-    THEME.FONT.BOLD  = gdi.Font(itemsName, _scale(12), 1);
-    THEME.FONT.LABEL = labelsFont;
+    Object.assign(THEME.FONT, _readThemeFonts());
 }
 
 // --- 图片资源路径 ---
