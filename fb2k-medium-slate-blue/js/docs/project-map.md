@@ -17,10 +17,20 @@
 - `bg_panel_container_control.js`: background container with control sub-panel layout
 
 ## 2. Directory Layout
-- `lib/`: shared libs (`utils.js`, `data.js`, `interaction.js`, `theme.js`, `background.js`, `title_bar_shared.js`, `flag.js`, `icons.js`, `i18n.js`, `json_schema_adapter.js`)
+- `lib/`: shared libs (`config.js`, `utils.js`, `data.js`, `interaction.js`, `theme.js`, `background.js`, `title_bar_shared.js`, `flag.js`, `icons.js`, `i18n.js`, `json_schema_adapter.js`)
 - `test1.js`: local test copy
 
 ## 3. Library Dependency Chain
+`lib/config.js`
+- must load before `lib/utils.js` and `lib/theme.js`; uses only JSplitter host `fb`/`utils` APIs (no `lib/utils.js` dependency)
+- consumed by: all 14 entry scripts (first include after `"use strict"`)
+- global config: `fb.ProfilePath + "\\js_data\\theme_config.json"`
+- per-panel overrides: `window.GetProperty("theme.config.override." + key)`
+- exposes `THEME_CONFIG` (`create`, `schema`, `KEY`, `DRAW_MODE`, `SOURCE`, `PANEL_ID`) and a per-panel `PANEL_CONFIG` instance
+- precedence: instance override > global file > panel default > schema default
+- `window.DrawMode` is applied from `render.drawMode` before any drawing objects are created
+- docs: `docs/config-module.md`
+
 `lib/utils.js`
 - consumed by: `theme.js`, `data.js`, `interaction.js`, `flag.js`
 - then reused by: `background.js`, `title_bar_shared.js`
@@ -43,6 +53,10 @@
 - `lib/i18n.js`: `I18N` (UI 文案中英文映射，按脚本文件名分组)，`I18N.t(path, vars)` (取值 API，读 `window.GetProperty("ui.language", "en")` 切换语言，支持 `{key}` 占位替换)
   - depends on: 无外部依赖，纯数据模块
   - consumed by: `playback_buttons.js`, `control_buttons.js`, `title_library.js`, `title_playlist.js`
+- `lib/config.js`: `THEME_CONFIG` (schema 驱动配置模块，`create()` 返回 `PANEL_CONFIG`)，`PANEL_CONFIG.get/getSource/set/clear/dump`，`THEME_CONFIG.getGlobal/setGlobal/removeGlobal/reloadGlobal`
+  - depends on: JSplitter host `fb`/`utils` only
+  - consumed by: all 14 entry scripts
+  - docs: `config-module.md`
 
 ## 5. Behavior Constraints Snapshot
 - Prefer existing library helpers over local reinvention.

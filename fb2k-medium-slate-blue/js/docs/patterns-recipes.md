@@ -261,6 +261,42 @@ const DISCO_DATA_SOURCE = window.GetProperty(
 - 文件路径配置：JSON 目录、封面目录等
 - 行为开关：显示/隐藏特定功能
 
+### 9.1.1 Runtime Config Module (`lib/config.js`)
+
+`THEME_CONFIG` 是运行时配置层，与编译期 `THEME.CFG` / `PANEL_CFG` 并存。它提供跨面板全局配置、单面板覆盖与持久化。
+
+**加载顺序**（必须在 `theme.js` 创建字体前设置 `window.DrawMode`）：
+
+```javascript
+"use strict";
+
+include("lib/config.js");
+const PANEL_CONFIG = THEME_CONFIG.create(THEME_CONFIG.PANEL_ID.ALBUM_INFO, {
+    [THEME_CONFIG.KEY.DRAW_MODE]: THEME_CONFIG.DRAW_MODE.D2D,
+});
+window.DrawMode = PANEL_CONFIG.get(THEME_CONFIG.KEY.DRAW_MODE);
+
+include("lib/utils.js");
+// ...
+```
+
+**优先级**：实例覆盖 > 全局文件 > 面板默认 > schema 默认。
+
+**全局文件**：`fb.ProfilePath + "\\js_data\\theme_config.json"`
+
+```json
+{
+  "version": 1,
+  "render": { "drawMode": 1 }
+}
+```
+
+**面板覆盖**：`window.GetProperty("theme.config.override.render.drawMode")`（`0`/`1`）；设置用 `PANEL_CONFIG.set(..., { reload: true })` 或 Properties UI；删除属性回退全局。
+
+**D2D**：`0` = GDI+，`1` = Direct2D。DrawMode 变更需要重载面板。全局设为 `1` 会影响当前 3 个 GDI 面板（`track_info`、`title_library`、`title_playlist`），属于实验特性，需单独验证。
+
+**扩展**：在 `THEME_CONFIG.schema` 增加条目，在需要的面板读取 `PANEL_CONFIG.get(KEY)`；优先级/持久化自动复用。完整设计见 `config-module.md`。
+
 ## 9.2 Data Source Pattern: Audio Tag Extraction
 
 从音频标签提取链接数据（相对于 JSON 文件，标签来源更通用且用户可控）

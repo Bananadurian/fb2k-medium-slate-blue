@@ -88,7 +88,11 @@
   - ✓ "废弃"注释均为功能描述，无需删除
 - [x] 优化 CLAUDE.md / 文档重构（精简内容、消除重复，详见 docs/ 重构）
 - [x] 文档路径优化（`docs/` 目录结构梳理，已完成重构）
-- [ ] 引入配置模块（全局透明模式开关、D2D 渲染模式开关）
+- [x] 引入配置模块（D2D 渲染模式开关已接入；全局透明模式开关待后续）
+  - `lib/config.js` + `js/docs/config-module.md`
+  - 全局配置 `js_data/theme_config.json`；单面板覆盖走 JSplitter 面板属性
+  - 首项 `render.drawMode`（0=GDI，1=D2D），默认保持现有 11 D2D / 3 GDI 分布
+  - 全局透明模式受宿主 `window.IsTransparent` 只读限制，未纳入首版
 - [ ] 脚本 README.md 文档
 - [ ] 面板底部阴影遮罩（让显示更自然，避免生硬切割）
 - [ ] 添加 panel/container 布局对象
@@ -118,6 +122,7 @@
   - [x] 切换注册表到 PNG（`lib/icons.js` 四个注册表全部切换）
   - [x] `_loadImage` 默认值优化：`maxWidth` 默认 96px（对齐图标库标准）
 - [ ] window.DrawMode 优化卡顿面板 **[可能是 JSplitter 渲染机制问题，需排查]**
+  - 现可通过 `render.drawMode` 全局/单面板配置切换；验证 3 个 GDI 面板（`track_info`、`title_library`、`title_playlist`）切到 D2D 后的显示与性能
 - [x] 设备切换动态化：去掉硬编码设备名，改用 `fb.GetOutputDevices()` 动态识别
   - **涉及文件**: `control_buttons.js` → `syncDeviceState()` + `classifyDevice()`
   - **优先级循环**: WASAPI shared → WASAPI exclusive → ASIO → shared

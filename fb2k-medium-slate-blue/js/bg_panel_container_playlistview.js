@@ -4,8 +4,11 @@
 
 "use strict";
 
-/** 启用 Direct2D 硬件加速渲染模式 */
-window.DrawMode = 1;
+include("lib/config.js");
+const PANEL_CONFIG = THEME_CONFIG.create(THEME_CONFIG.PANEL_ID.BG_PANEL_CONTAINER_PLAYLISTVIEW, {
+    [THEME_CONFIG.KEY.DRAW_MODE]: THEME_CONFIG.DRAW_MODE.D2D,
+});
+window.DrawMode = PANEL_CONFIG.get(THEME_CONFIG.KEY.DRAW_MODE);
 
 // --- 外部库引入 ---
 include("lib/utils.js");

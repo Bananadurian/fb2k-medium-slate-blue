@@ -29,6 +29,7 @@ profile/
 ├── fb2k-medium-slate-blue/
 │   ├── js/    # Core SMP scripts
 │   │   ├── lib/                           # Shared libraries
+│   │   │   ├── config.js                  # Runtime config (schema, global file, panel overrides)
 │   │   │   ├── theme.js                   # Colors, fonts, layouts
 │   │   │   ├── utils.js                   # DPI, colors, text measurement
 │   │   │   ├── background.js              # Background controller

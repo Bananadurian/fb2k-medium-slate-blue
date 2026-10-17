@@ -3,7 +3,12 @@
  */
 
 "use strict";
-window.DrawMode = 1;
+
+include("lib/config.js");
+const PANEL_CONFIG = THEME_CONFIG.create(THEME_CONFIG.PANEL_ID.TAB_CONTAINER_PLAYLIST, {
+    [THEME_CONFIG.KEY.DRAW_MODE]: THEME_CONFIG.DRAW_MODE.D2D,
+});
+window.DrawMode = PANEL_CONFIG.get(THEME_CONFIG.KEY.DRAW_MODE);
 
 include("lib/utils.js");
 include("lib/data.js");
