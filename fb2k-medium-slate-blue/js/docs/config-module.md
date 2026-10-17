@@ -6,14 +6,14 @@
 
 配置来源分两层：
 
-- **全局配置**：`fb.ProfilePath + "\\js_data\\theme_config.json"`，所有面板共享，用户可手动编辑，随 portable profile 迁移，不进 Git。
+- **全局配置**：`fb.ProfilePath + "\\fb2k-medium-slate-blue\\theme_config.json"`，所有面板共享，用户可手动编辑，随主题目录/portable profile 迁移，不进 Git。
 - **面板覆盖**：JSplitter 面板属性 `window.GetProperty("theme.config.override." + key)`，按面板实例持久化。
 
 有效值优先级从高到低：
 
 1. 面板实例属性覆盖。
 2. 全局配置文件。
-3. 面板代码默认值（`THEME_CONFIG.create(panelId, panelDefaults)`）。
+3. 面板 ID 绑定的内部默认值（`THEME_CONFIG.PANEL` 中每个描述符的 `defaults`）。
 4. Schema 默认值。
 
 无配置文件、无覆盖时，11 个面板保持 D2D（`1`），3 个面板保持 GDI（`0`）：`track_info`、`title_playlist`、`title_library`。
@@ -25,7 +25,7 @@
 - 模块实现位于 IIFE 中，只暴露 `THEME_CONFIG`，内部 helper 不泄漏到面板 realm。
 - 模块在 `include("lib/utils.js")` / `lib/theme.js` 之前加载。
 - 模块自身不创建任何 GDI/D2D 对象；只使用 JSplitter 内置 `fb` / `utils` / `window` API，不依赖 `lib/utils.js`。
-- `THEME_CONFIG.PANEL_ID` 保存 14 个入口脚本的稳定 ID，用于日志、诊断与未来 UI。
+- `THEME_CONFIG.PANEL` 保存 14 个入口脚本的描述符（`id` + 默认值），用于创建 `PANEL_CONFIG`、日志、诊断与未来 UI。
 
 ## 3. Schema
 
@@ -58,40 +58,40 @@ THEME_CONFIG.SOURCE = Object.freeze({
     SCHEMA_DEFAULT: "schema-default",
 });
 
-THEME_CONFIG.PANEL_ID = Object.freeze({
-    TRACK_INFO: "track_info",
-    ALBUM_INFO: "album_info",
-    BIOGRAPHY_V2: "biography_v2",
-    PLAYBACK_BUTTONS: "playback_buttons",
-    CONTROL_BUTTONS: "control_buttons",
-    TITLE_PLAYLIST: "title_playlist",
-    TITLE_LIBRARY: "title_library",
-    COVER_PANEL: "cover_panel",
-    TAB_CONTAINER: "_tab_container",
-    TAB_CONTAINER_DETAIL: "tab_container_detail",
-    TAB_CONTAINER_PLAYLIST: "tab_container_playlist",
-    BG_PANEL: "bg_panel",
-    BG_PANEL_CONTAINER_PLAYLISTVIEW: "bg_panel_container_playlistview",
-    BG_PANEL_CONTAINER_CONTROL: "bg_panel_container_control",
+THEME_CONFIG.PANEL = Object.freeze({
+    TRACK_INFO: Object.freeze({ id: "track_info", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.GDI }) }),
+    ALBUM_INFO: Object.freeze({ id: "album_info", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+    BIOGRAPHY_V2: Object.freeze({ id: "biography_v2", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+    PLAYBACK_BUTTONS: Object.freeze({ id: "playback_buttons", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+    CONTROL_BUTTONS: Object.freeze({ id: "control_buttons", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+    TITLE_PLAYLIST: Object.freeze({ id: "title_playlist", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.GDI }) }),
+    TITLE_LIBRARY: Object.freeze({ id: "title_library", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.GDI }) }),
+    COVER_PANEL: Object.freeze({ id: "cover_panel", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+    TAB_CONTAINER: Object.freeze({ id: "_tab_container", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+    TAB_CONTAINER_DETAIL: Object.freeze({ id: "tab_container_detail", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+    TAB_CONTAINER_PLAYLIST: Object.freeze({ id: "tab_container_playlist", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+    BG_PANEL: Object.freeze({ id: "bg_panel", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+    BG_PANEL_CONTAINER_PLAYLISTVIEW: Object.freeze({ id: "bg_panel_container_playlistview", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+    BG_PANEL_CONTAINER_CONTROL: Object.freeze({ id: "bg_panel_container_control", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
 });
 ```
+
+`create()` 只接受 `THEME_CONFIG.PANEL` 中的描述符；调用方不能传入默认值。用户可通过全局文件或面板实例属性覆盖。`PANEL` 用于日志、诊断与未来 UI。
 
 ## 4. API
 
 ### 4.1 面板实例
 
-每个入口脚本通过 `THEME_CONFIG.create(panelId, panelDefaults)` 创建一个 `PANEL_CONFIG`：
+每个入口脚本通过 `THEME_CONFIG.create(THEME_CONFIG.PANEL.*)` 创建一个 `PANEL_CONFIG`：
 
 ```javascript
-const PANEL_CONFIG = THEME_CONFIG.create(THEME_CONFIG.PANEL_ID.ALBUM_INFO, {
-    [THEME_CONFIG.KEY.DRAW_MODE]: THEME_CONFIG.DRAW_MODE.D2D,
-});
+const PANEL_CONFIG = THEME_CONFIG.create(THEME_CONFIG.PANEL.ALBUM_INFO);
 
 PANEL_CONFIG.get(key);              // 有效值（按需解析，不缓存有效值）
 PANEL_CONFIG.getSource(key);        // "override" | "global" | "panel-default" | "schema-default"
 PANEL_CONFIG.getOverride(key);      // 面板实例属性值或 undefined
 PANEL_CONFIG.getGlobal(key);        // 全局文件值或 undefined
-PANEL_CONFIG.getPanelDefault(key);  // 面板代码默认值或 undefined
+PANEL_CONFIG.getPanelDefault(key);  // 面板 ID 绑定的默认值或 undefined
 PANEL_CONFIG.getSchemaDefault(key); // schema 默认值
 PANEL_CONFIG.hasOverride(key);      // 是否存在面板实例覆盖
 PANEL_CONFIG.set(key, value, opts); // 写面板实例覆盖；opts.reload=true 时调用 window.Reload()
@@ -100,7 +100,7 @@ PANEL_CONFIG.reload();              // 丢弃全局文件缓存，下次 get 重
 PANEL_CONFIG.dump();                // 各层 raw 值 + 有效值/source
 ```
 
-`reloadRequired` 的键在未重载时会输出警告。`panelId` 用于日志/诊断；面板覆盖由面板实例属性完成。
+`reloadRequired` 的键在未重载时会输出警告。`panel.id` 用于日志/诊断；默认值内置于 `PANEL` 描述符，面板覆盖由面板实例属性完成。
 
 ### 4.2 全局配置
 
@@ -120,15 +120,15 @@ THEME_CONFIG.schema;      // schema
 THEME_CONFIG.KEY;         // 键名常量
 THEME_CONFIG.DRAW_MODE;   // 0/1 常量
 THEME_CONFIG.SOURCE;      // source 常量
-THEME_CONFIG.PANEL_ID;    // 入口脚本 ID
-THEME_CONFIG.create(panelId, panelDefaults);
+THEME_CONFIG.PANEL;       // 面板注册表（id + 默认值）
+THEME_CONFIG.create(panel);
 ```
 
 ## 5. 持久化
 
 ### 5.1 全局配置文件
 
-路径：`fb.ProfilePath + "\\js_data\\theme_config.json"`
+路径：`fb.ProfilePath + "\\fb2k-medium-slate-blue\\theme_config.json"`
 
 ```json
 {
@@ -139,11 +139,13 @@ THEME_CONFIG.create(panelId, panelDefaults);
 }
 ```
 
+仓库内示例：`fb2k-medium-slate-blue/theme_config.example.json`。复制为 `theme_config.json` 后按需修改；`0` = GDI+，`1` = Direct2D。
+
 当前行为：
 
 - 懒加载：首次 `get` 时读取；`ReadTextFile` / `JSON.parse` 均有 try/catch。
 - 文件不存在、空、非法 JSON、根不是对象、嵌套类型错误都回退到面板默认值。
-- 读取路径不创建 `js_data` 或配置文件。
+- 读取路径不创建任何文件或目录。
 - 写入只发生在显式 `THEME_CONFIG.setGlobal()` / `removeGlobal()` 调用时。
 - 写入前按需 `CreateFolder`；read-modify-write 保留未知键。
 - 写入临时文件后通过 `RenamePath` 替换；替换失败时尝试覆盖复制。
@@ -167,9 +169,7 @@ THEME_CONFIG.create(panelId, panelDefaults);
 ```javascript
 include("lib/config.js");
 
-const PANEL_CONFIG = THEME_CONFIG.create(THEME_CONFIG.PANEL_ID.ALBUM_INFO, {
-    [THEME_CONFIG.KEY.DRAW_MODE]: THEME_CONFIG.DRAW_MODE.D2D,
-});
+const PANEL_CONFIG = THEME_CONFIG.create(THEME_CONFIG.PANEL.ALBUM_INFO);
 window.DrawMode = PANEL_CONFIG.get(THEME_CONFIG.KEY.DRAW_MODE);
 
 include("lib/utils.js");
@@ -196,8 +196,9 @@ include("lib/utils.js");
 
 1. 在 `THEME_CONFIG.schema` 增加条目（`type`、`values`、`default`、`reloadRequired`、`description`）。
 2. 如需键名常量，在 `THEME_CONFIG.KEY` 增加对应项。
-3. 在需要的面板通过 `PANEL_CONFIG.get(THEME_CONFIG.KEY.XXX)` 读取。
-4. 全局值通过 `THEME_CONFIG.setGlobal` 写入；面板覆盖通过 `PANEL_CONFIG.set` 写入。
+3. 如需面板级默认值，在对应 `THEME_CONFIG.PANEL.*.defaults` 中增加键；入口脚本仍只传描述符，不传默认值。
+4. 在需要的面板通过 `PANEL_CONFIG.get(THEME_CONFIG.KEY.XXX)` 读取。
+5. 全局值通过 `THEME_CONFIG.setGlobal` 写入；面板覆盖通过 `PANEL_CONFIG.set` 写入。
 
 优先级、校验、懒加载与持久化自动复用。`ui.language`、`biography.*` 等现有字段仍由各自面板的 `window.GetProperty` 读取，尚未迁移到本模块。
 
@@ -208,7 +209,7 @@ include("lib/utils.js");
 已完成：
 
 - 所有 JS 文件通过 `node --check`。
-- 32 项 stub 测试通过：无配置回退、全局覆盖、实例覆盖、清除覆盖、数字字符串归一化、非法值回退、懒加载不创建目录、`setGlobal` / `removeGlobal`、未知键保留、`.bad` 备份、版本保护、reload 语义、`dump`。
+- 41 项 stub 测试通过：`PANEL` 注册表校验、自定义描述符拒绝、无配置回退、全局覆盖、实例覆盖、清除覆盖、数字字符串归一化、非法值回退、懒加载不创建目录、`setGlobal` / `removeGlobal`、未知键保留、`.bad` 备份、版本保护、reload 语义、`dump`。
 - DrawMode 顺序测试通过：`window.DrawMode` 在 `gdi.Font` 之前赋值。
 
 待 foobar2000 内手动验证：
@@ -228,13 +229,15 @@ include("lib/utils.js");
 
 - `js/lib/config.js`
 - `js/docs/config-module.md`（本文档）
+- `theme_config.example.json`（全局配置示例，复制为 `theme_config.json` 使用）
 
 使用配置模块的入口脚本：
 
 - `_tab_container.js`、`album_info.js`、`bg_panel.js`、`bg_panel_container_control.js`、`bg_panel_container_playlistview.js`、`biography_v2.js`、`control_buttons.js`、`cover_panel.js`、`playback_buttons.js`、`tab_container_detail.js`、`tab_container_playlist.js`、`title_library.js`、`title_playlist.js`、`track_info.js`
 
-相关文档：
+相关文档与忽略规则：
 
+- `.gitignore`：忽略 `fb2k-medium-slate-blue/theme_config.json`、`.bad`、`.tmp`。
 - `js/docs/project-map.md`：依赖链与 canonical reuse 条目。
 - `js/docs/patterns-recipes.md`：§9.1.1 Runtime Config Module。
 - `FEATURES.md`：D2D / GDI 切换说明。

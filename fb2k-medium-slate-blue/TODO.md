@@ -90,7 +90,7 @@
 - [x] 文档路径优化（`docs/` 目录结构梳理，已完成重构）
 - [x] 引入配置模块（D2D 渲染模式开关已接入；全局透明模式开关待后续）
   - `lib/config.js` + `js/docs/config-module.md`
-  - 全局配置 `js_data/theme_config.json`；单面板覆盖走 JSplitter 面板属性
+  - 全局配置 `fb2k-medium-slate-blue/theme_config.json`；单面板覆盖走 JSplitter 面板属性
   - 首项 `render.drawMode`（0=GDI，1=D2D），默认保持现有 11 D2D / 3 GDI 分布
   - 全局透明模式受宿主 `window.IsTransparent` 只读限制，未纳入首版
 - [ ] 脚本 README.md 文档

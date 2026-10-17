@@ -25,6 +25,11 @@ playlists-v2.0/
 # jscript panel 3 产生的资源
 js_data/
 
+# THEME_CONFIG 用户配置（运行时生成）
+fb2k-medium-slate-blue/theme_config.json
+fb2k-medium-slate-blue/theme_config.json.bad
+fb2k-medium-slate-blue/theme_config.json.tmp
+
 # 2025-11-19 minibar 插件缓存信息，由于音乐库过大，导致文件超过100M了，移除该文件
 minibar.db
 

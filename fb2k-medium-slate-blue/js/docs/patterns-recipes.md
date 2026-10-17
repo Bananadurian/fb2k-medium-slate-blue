@@ -271,18 +271,16 @@ const DISCO_DATA_SOURCE = window.GetProperty(
 "use strict";
 
 include("lib/config.js");
-const PANEL_CONFIG = THEME_CONFIG.create(THEME_CONFIG.PANEL_ID.ALBUM_INFO, {
-    [THEME_CONFIG.KEY.DRAW_MODE]: THEME_CONFIG.DRAW_MODE.D2D,
-});
+const PANEL_CONFIG = THEME_CONFIG.create(THEME_CONFIG.PANEL.ALBUM_INFO);
 window.DrawMode = PANEL_CONFIG.get(THEME_CONFIG.KEY.DRAW_MODE);
 
 include("lib/utils.js");
 // ...
 ```
 
-**优先级**：实例覆盖 > 全局文件 > 面板默认 > schema 默认。
+**优先级**：实例覆盖 > 全局文件 > 面板默认 > schema 默认。面板默认值与 `id` 一起内置于 `THEME_CONFIG.PANEL` 描述符，入口脚本只传描述符，不能自行传入默认值。
 
-**全局文件**：`fb.ProfilePath + "\\js_data\\theme_config.json"`
+**全局文件**：`fb.ProfilePath + "\\fb2k-medium-slate-blue\\theme_config.json"`
 
 ```json
 {

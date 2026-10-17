@@ -12,7 +12,7 @@
 
 const THEME_CONFIG = (function () {
     const VERSION = 1;
-    const CONFIG_DIR = fb.ProfilePath + "\\js_data";
+    const CONFIG_DIR = fb.ProfilePath + "\\fb2k-medium-slate-blue";
     const CONFIG_PATH = CONFIG_DIR + "\\theme_config.json";
     const OVERRIDE_PREFIX = "theme.config.override.";
     const LOG_PREFIX = "[theme-config]";
@@ -43,22 +43,28 @@ const THEME_CONFIG = (function () {
         SCHEMA_DEFAULT: "schema-default",
     });
 
-    const PANEL_ID = Object.freeze({
-        TRACK_INFO: "track_info",
-        ALBUM_INFO: "album_info",
-        BIOGRAPHY_V2: "biography_v2",
-        PLAYBACK_BUTTONS: "playback_buttons",
-        CONTROL_BUTTONS: "control_buttons",
-        TITLE_PLAYLIST: "title_playlist",
-        TITLE_LIBRARY: "title_library",
-        COVER_PANEL: "cover_panel",
-        TAB_CONTAINER: "_tab_container",
-        TAB_CONTAINER_DETAIL: "tab_container_detail",
-        TAB_CONTAINER_PLAYLIST: "tab_container_playlist",
-        BG_PANEL: "bg_panel",
-        BG_PANEL_CONTAINER_PLAYLISTVIEW: "bg_panel_container_playlistview",
-        BG_PANEL_CONTAINER_CONTROL: "bg_panel_container_control",
+    // Panel registry: id and code defaults live together. Entry scripts pass
+    // one of these descriptors to create(); callers cannot supply defaults.
+    const PANEL = Object.freeze({
+        TRACK_INFO: Object.freeze({ id: "track_info", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.GDI }) }),
+        ALBUM_INFO: Object.freeze({ id: "album_info", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+        BIOGRAPHY_V2: Object.freeze({ id: "biography_v2", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+        PLAYBACK_BUTTONS: Object.freeze({ id: "playback_buttons", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+        CONTROL_BUTTONS: Object.freeze({ id: "control_buttons", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+        TITLE_PLAYLIST: Object.freeze({ id: "title_playlist", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.GDI }) }),
+        TITLE_LIBRARY: Object.freeze({ id: "title_library", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.GDI }) }),
+        COVER_PANEL: Object.freeze({ id: "cover_panel", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+        TAB_CONTAINER: Object.freeze({ id: "_tab_container", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+        TAB_CONTAINER_DETAIL: Object.freeze({ id: "tab_container_detail", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+        TAB_CONTAINER_PLAYLIST: Object.freeze({ id: "tab_container_playlist", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+        BG_PANEL: Object.freeze({ id: "bg_panel", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+        BG_PANEL_CONTAINER_PLAYLISTVIEW: Object.freeze({ id: "bg_panel_container_playlistview", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
+        BG_PANEL_CONTAINER_CONTROL: Object.freeze({ id: "bg_panel_container_control", defaults: Object.freeze({ [KEY.DRAW_MODE]: DRAW_MODE.D2D }) }),
     });
+
+    const PANEL_DESCRIPTORS = new Set(Object.keys(PANEL).map(function (key) {
+        return PANEL[key];
+    }));
 
     let globalDoc = null;
     let globalDocError = false;
@@ -188,7 +194,7 @@ const THEME_CONFIG = (function () {
     /**
      * Load the global config document lazily.
      * Missing or invalid files fall back to an empty document; the read path
-     * never creates js_data or the config file.
+     * never creates the config directory or file.
      * @returns {Object}
      */
     function _loadGlobalDoc() {
@@ -327,13 +333,18 @@ const THEME_CONFIG = (function () {
 
     /**
      * Create a per-panel configuration view.
-     * @param {string} panelId Diagnostic identifier.
-     * @param {Object<string, *>} panelDefaults Panel-specific code defaults.
+     * Pass a descriptor from THEME_CONFIG.PANEL; its defaults are bound to the
+     * panel and cannot be supplied or overridden by callers.
+     * @param {{id:string, defaults:Object}} panel
      * @returns {Object}
      */
-    function create(panelId, panelDefaults) {
-        const id = (typeof panelId === "string" && panelId) ? panelId : "unknown";
-        const defaults = _isPlainObject(panelDefaults) ? panelDefaults : {};
+    function create(panel) {
+        const descriptor = PANEL_DESCRIPTORS.has(panel) ? panel : null;
+        if (!descriptor) {
+            _log("create() expects a THEME_CONFIG.PANEL descriptor");
+        }
+        const id = descriptor ? descriptor.id : "unknown";
+        const defaults = descriptor ? descriptor.defaults : {};
         let warned = {};
 
         /**
@@ -628,7 +639,7 @@ const THEME_CONFIG = (function () {
         KEY: KEY,
         DRAW_MODE: DRAW_MODE,
         SOURCE: SOURCE,
-        PANEL_ID: PANEL_ID,
+        PANEL: PANEL,
         create: create,
 
         /**

@@ -5,9 +5,7 @@
 "use strict";
 
 include("lib/config.js");
-const PANEL_CONFIG = THEME_CONFIG.create(THEME_CONFIG.PANEL_ID.CONTROL_BUTTONS, {
-    [THEME_CONFIG.KEY.DRAW_MODE]: THEME_CONFIG.DRAW_MODE.D2D,
-});
+const PANEL_CONFIG = THEME_CONFIG.create(THEME_CONFIG.PANEL.CONTROL_BUTTONS);
 window.DrawMode = PANEL_CONFIG.get(THEME_CONFIG.KEY.DRAW_MODE);
 
 include("lib/utils.js");

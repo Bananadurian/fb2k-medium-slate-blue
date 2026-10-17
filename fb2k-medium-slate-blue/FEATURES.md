@@ -160,7 +160,7 @@ URL_MUSICBRAINZ  = https://musicbrainz.org/release/xxxxx
 ### Q: 如何切换 D2D / GDI 渲染模式？
 **A**: 默认不创建配置文件，各面板保持原有模式（`track_info`、`title_library`、`title_playlist` 为 GDI，其余面板为 D2D）。
 
-- **全局切换**：编辑 `<foobar2000 profile>/js_data/theme_config.json`：
+- **全局切换**：编辑 `<foobar2000 profile>/fb2k-medium-slate-blue/theme_config.json`：
 
 ```json
 {
@@ -169,7 +169,7 @@ URL_MUSICBRAINZ  = https://musicbrainz.org/release/xxxxx
 }
 ```
 
-`0` = GDI+，`1` = Direct2D；修改后重载面板生效。
+`0` = GDI+，`1` = Direct2D；修改后重载面板生效。仓库内示例：`fb2k-medium-slate-blue/theme_config.example.json`，复制为 `theme_config.json` 后修改。
 
 - **单面板切换**：右键面板 → Configure panel → Properties，新增 `theme.config.override.render.drawMode`（`0`/`1`）；删除该属性即回退全局。
 - **注意**：D2D 为实验特性；把当前 3 个 GDI 面板切到 D2D 前请先验证显示与性能。

@@ -5,9 +5,7 @@
 "use strict";
 
 include("lib/config.js");
-const PANEL_CONFIG = THEME_CONFIG.create(THEME_CONFIG.PANEL_ID.TITLE_LIBRARY, {
-    [THEME_CONFIG.KEY.DRAW_MODE]: THEME_CONFIG.DRAW_MODE.GDI,
-});
+const PANEL_CONFIG = THEME_CONFIG.create(THEME_CONFIG.PANEL.TITLE_LIBRARY);
 window.DrawMode = PANEL_CONFIG.get(THEME_CONFIG.KEY.DRAW_MODE);
 
 include("lib/utils.js");
