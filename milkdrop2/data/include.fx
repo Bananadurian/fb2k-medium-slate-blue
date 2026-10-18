@@ -4,8 +4,9 @@
 
 float4 rand_frame;  // random float4, updated each frame
 float4 rand_preset; // random float4, updated once per *preset*
-float4 _c0;  // .xy = multiplier to use on UV's to paste an image fullscreen, *aspect-aware*; .zw = inverse.
-float4 _c1, _c2, _c3, _c4;
+float4 _c0;  // .xy = multiplier to use on UV's to paste an image fullscreen, *aspect-aware*; .zw = inverse
+float4 _c1;  // .xy = screen-dependent aspect (1 in screen-dependent render mode); .zw = inverse
+float4 _c2, _c3, _c4;
 float4 _c5;  // .xy = scale,bias for reading blur1; .zw = scale,bias for reading blur2;
 float4 _c6;  // .xy = scale,bias for reading blur3; .zw = blur1_min,blur1_max
 float4 _c7;  // .xy ~= float2(1024, 768); .zw ~= float2(1 / 1024.0, 1 / 768.0)
@@ -15,7 +16,7 @@ float4 _c10; // .xyzw ~= 0.5 + 0.5 * cos(time * float4(~0.005, ~0.008, ~0.013, ~
 float4 _c11; // .xyzw ~= 0.5 + 0.5 * sin(time * float4(~0.005, ~0.008, ~0.013, ~0.022))
 float4 _c12; // .xyz = mip info for main image (.x = #across, .y = #down, .z = avg); .w = unused
 float4 _c13; // .xy = blur2_min,blur2_max; .zw = blur3_min,blur3_max
-float4 _c14; // .xy = mouse position; .z = button hold; .z = mouse click
+float4 _c14; // .xy = mouse UV (-1 outside); .z = mouse click x (negative unless held); .w = mouse click y (negative unless just clicked)
 float4 _c15; // .x = hour, .y = minute, .z = second, .w = time converted to seconds
 float4 _c16; // .x = year, .y = month, .z = day, .w = weekday (1-7)
 float4 _c17; // .x = bass_smooth, .y = mid_smooth, .z = treb_smooth, .w = vol_smooth
@@ -145,6 +146,7 @@ float4x3 rot_rand4;
 #define q64 _qp.w
 
 #define aspect _c0
+#define aspect_sd _c1
 #define texsize _c7 // .xy = (w, h); .zw = (1 / (float)w, 1 / (float)h)
 #define roam_cos _c8
 #define roam_sin _c9
@@ -196,8 +198,8 @@ float4x3 rot_rand4;
 #define GetBlur2(uv) (tex2D(sampler_blur2, uv).xyz * _c5.z + _c5.w)
 #define GetBlur3(uv) (tex2D(sampler_blur3, uv).xyz * _c6.x + _c6.y)
 
-#define GetFFT(p) (tex2D(sampler_fft, float2(saturate((p)), 0.25)).x)
-#define GetFFTPeak(p) (tex2D(sampler_fft, float2(saturate((p)), 0.75)).x)
+#define GetFFT(p) (sqrt(tex2D(sampler_fft, float2(saturate((p)), 0.25)).x))
+#define GetFFTPeak(p) (sqrt(tex2D(sampler_fft, float2(saturate((p)), 0.75)).x))
 #define GetFFTHz(hz) (GetFFT(saturate((hz) / fft_hz_ref)))
 #define GetFFTPeakHz(hz) (GetFFTPeak(saturate((hz) / fft_hz_ref)))
 #define GetWaveLeft(p) (tex2D(sampler_wave, float2(saturate((p)), 0.25)).x)
