@@ -389,17 +389,21 @@ function showSearchMenu(x, y) {
 }
 
 // 数组索引 = fb.ReplaygainMode 值: 0=None, 1=Track, 2=Album, 3=Smart
-const replayGainConfigs = [
-  { img: iconMgr.get("ui", "rg_off"), text: I18N.t("control_buttons.rg_none") },
-  { img: iconMgr.get("ui", "rg_track"), text: I18N.t("control_buttons.rg_track") },
-  { img: iconMgr.get("ui", "rg_album"), text: I18N.t("control_buttons.rg_album") },
-  { img: iconMgr.get("ui", "rg_album"), text: I18N.t("control_buttons.rg_smart") },
-];
+// 每次同步时取图标，主题模式变化后无需手动失效缓存。
+function getReplayGainConfigs() {
+  return [
+    { img: iconMgr.get("ui", "rg_off"), text: I18N.t("control_buttons.rg_none") },
+    { img: iconMgr.get("ui", "rg_track"), text: I18N.t("control_buttons.rg_track") },
+    { img: iconMgr.get("ui", "rg_album"), text: I18N.t("control_buttons.rg_album") },
+    { img: iconMgr.get("ui", "rg_album"), text: I18N.t("control_buttons.rg_smart") },
+  ];
+}
 
 /** 根据 ReplayGain 模式同步按钮图标与提示文字 */
 function syncRgState() {
   const mode = fb.ReplaygainMode;
-  const cfg = replayGainConfigs[mode] || replayGainConfigs[0];
+  const configs = getReplayGainConfigs();
+  const cfg = configs[mode] || configs[0];
   if (buttons.replaygain)
     buttons.replaygain.updateState(
       cfg.img,
@@ -515,6 +519,23 @@ function createButtons() {
       fnRightClick: it.fnRightClick || null,
       tipText: it.tipText || "",
     });
+  });
+  syncRgState();
+  syncDeviceState();
+  syncVolumeState();
+}
+
+/** 主题模式变化后原位刷新所有按钮图标，保留几何与 hover 状态 */
+function refreshIcons() {
+  BTN_LAYOUT.items.forEach((it) => {
+    if (it.type === "volume" || !it.img) return;
+    const btn = buttons[it.key];
+    if (!btn) return;
+    btn.updateState(
+      iconMgr.get("ui", it.img),
+      iconMgr.get("ui", it.img + "_hover"),
+      btn.tipText,
+    );
   });
   syncRgState();
   syncDeviceState();
@@ -741,6 +762,7 @@ function on_playback_new_track() {
 function on_colours_changed() {
   _refreshThemeColors();
   volumeBar.refreshColors();
+  refreshIcons();
   window.Repaint();
 }
 

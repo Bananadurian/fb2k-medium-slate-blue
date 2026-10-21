@@ -1440,8 +1440,34 @@ function on_playlist_items_selection_change() {
   }
 }
 
+/** 主题模式变化后刷新 SECTIONS 中的 UI 图标 */
+function refreshSectionIcons() {
+  for (let i = 0; i < SECTIONS.length; i++) {
+    const sec = SECTIONS[i];
+    switch (sec.name) {
+      case "badge":
+        sec.icon = iconMgr.get("ui", "edition");
+        break;
+      case "artist":
+        sec.icon = iconMgr.get("ui", "artist");
+        break;
+      case "genres":
+        sec.icon = iconMgr.get("ui", "genres");
+        break;
+      case "dateLang":
+        sec.icon = iconMgr.get("ui", "date");
+        sec.icon2 = iconMgr.get("ui", "language");
+        break;
+      case "links":
+        sec.icon = iconMgr.get("ui", "links");
+        break;
+    }
+  }
+}
+
 function on_colours_changed() {
   _refreshThemeColors();
+  refreshSectionIcons();
   createTextBuffer();
   window.Repaint();
 }

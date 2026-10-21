@@ -1392,8 +1392,31 @@ function on_playlist_items_selection_change() {
   // console.log("=========" + window.IsTransparent)
 }
 
+/** 主题模式变化后刷新 SECTIONS 中的 UI 图标 */
+function refreshSectionIcons() {
+  for (let i = 0; i < SECTIONS.length; i++) {
+    const sec = SECTIONS[i];
+    switch (sec.name) {
+      case "aliases":
+        sec.icon = iconMgr.get("ui", "aliases");
+        break;
+      case "genres":
+        sec.icon = iconMgr.get("ui", "genres");
+        break;
+      case "born":
+        sec.icon = iconMgr.get("ui", "born");
+        sec.icon2 = iconMgr.get("ui", "country");
+        break;
+      case "links":
+        sec.icon = iconMgr.get("ui", "links");
+        break;
+    }
+  }
+}
+
 function on_colours_changed() {
   _refreshThemeColors();
+  refreshSectionIcons();
   createTextBuffer();
   window.Repaint();
 }

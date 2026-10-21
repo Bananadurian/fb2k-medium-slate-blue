@@ -117,33 +117,33 @@ let lastTransparentNotifyTs = 0;
 
 const ORDER_CONFIG = {
   0: {
-    img: iconMgr.get("player", "order_default"),
-    hover: iconMgr.get("player", "order_default_hover"),
+    img: "order_default",
+    hover: "order_default_hover",
     tip: I18N.t("playback_buttons.order_mode_0"),
   },
   1: {
-    img: iconMgr.get("player", "order_repeat"),
-    hover: iconMgr.get("player", "order_repeat_hover"),
+    img: "order_repeat",
+    hover: "order_repeat_hover",
     tip: I18N.t("playback_buttons.order_mode_1"),
   },
   2: {
-    img: iconMgr.get("player", "order_track"),
-    hover: iconMgr.get("player", "order_track_hover"),
+    img: "order_track",
+    hover: "order_track_hover",
     tip: I18N.t("playback_buttons.order_mode_2"),
   },
   3: {
-    img: iconMgr.get("player", "order_default"),
-    hover: iconMgr.get("player", "order_default_hover"),
+    img: "order_default",
+    hover: "order_default_hover",
     tip: I18N.t("playback_buttons.order_mode_3"),
   },
   4: {
-    img: iconMgr.get("player", "order_shuffle"),
-    hover: iconMgr.get("player", "order_shuffle_hover"),
+    img: "order_shuffle",
+    hover: "order_shuffle_hover",
     tip: I18N.t("playback_buttons.order_mode_4"),
   },
   default: {
-    img: iconMgr.get("player", "order_default"),
-    hover: iconMgr.get("player", "order_default_hover"),
+    img: "order_default",
+    hover: "order_default_hover",
     tip: I18N.t("playback_buttons.order_mode_default"),
   },
 };
@@ -157,6 +157,20 @@ function createButtons() {
       func: it.func,
       tipText: it.tipText,
     });
+  });
+  syncButtonStates();
+}
+
+/** 主题模式变化后原位刷新所有按钮图标，保留几何与 hover 状态 */
+function refreshIcons() {
+  BTN_LAYOUT.items.forEach((it) => {
+    const btn = buttons[it.key];
+    if (!btn) return;
+    btn.updateState(
+      iconMgr.get("player", it.img),
+      iconMgr.get("player", it.img + "_hover"),
+      btn.tipText,
+    );
   });
   syncButtonStates();
 }
@@ -201,7 +215,11 @@ function syncStopState() {
 function syncOrderState() {
   const orderId = plman.PlaybackOrder;
   const cfg = ORDER_CONFIG[orderId] || ORDER_CONFIG.default;
-  buttons.order.updateState(cfg.img, cfg.hover, cfg.tip);
+  buttons.order.updateState(
+    iconMgr.get("player", cfg.img),
+    iconMgr.get("player", cfg.hover),
+    cfg.tip,
+  );
 }
 
 /** 同步所有按钮外观状态（播放/停止/模式） */
@@ -454,6 +472,7 @@ function on_playback_order_changed() {
  */
 function on_colours_changed() {
   _refreshThemeColors();
+  refreshIcons();
   window.Repaint();
 }
 

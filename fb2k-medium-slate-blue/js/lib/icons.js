@@ -7,6 +7,12 @@
  * iconMgr 缓存由 JSplitter 管理生命周期，面板 `on_script_unload` 不手动调用
  * `clear()`/`clearAll()`。旧模式 `_disposeImageDict()` 释放私有字典；新模式避免
  * 跨面板引用失效。调试时可在 Console 执行 `iconMgr.clearAll()` 强制重置。
+ *
+ * ## Theme-mode variants
+ * ui/player icons prefer `<category>/dark|light/<filename>`, falling back to
+ * `<category>/<filename>`. Add variant files only for icons that need it.
+ * Cache keys include the mode. Consumers holding GdiBitmap references (e.g.
+ * Button) must re-fetch icons after on_colours_changed for runtime switches.
  */
 
 "use strict";
@@ -38,8 +44,14 @@ class IconManager {
     // 键名规范化：统一转小写 + 空格转下划线
     const normalizedName = name.toLowerCase().replace(/\s+/g, "_");
 
+    // 主题模式图标按模式分别缓存；非主题类别沿用原键名
+    const supportsTheme = this._supportsTheme(category);
+    const cacheKey = supportsTheme
+      ? (THEME.IS_DARK ? "dark:" : "light:") + normalizedName
+      : normalizedName;
+
     const cache = this._caches[category];
-    if (cache && cache.has(normalizedName)) return cache.get(normalizedName);
+    if (cache && cache.has(cacheKey)) return cache.get(cacheKey);
 
     const registry = this._getRegistry(category);
     if (!registry) return null;
@@ -51,10 +63,9 @@ class IconManager {
         : this.get(category, "default", opts);
     }
 
-    const dir = this._getCategoryDir(category);
-    const img = _loadImage(dir + filename, opts.maxWidth);
+    const img = this._loadIcon(category, filename, opts);
     if (img) {
-      if (cache) cache.set(normalizedName, img);
+      if (cache) cache.set(cacheKey, img);
       return img;
     }
     return normalizedName === "default"
@@ -97,10 +108,42 @@ class IconManager {
   }
 
   /**
+   * Whether a category supports theme-mode icon variants.
+   * Only monochrome UI/player icons need adaptation; brands/flags keep their colours.
+   * @param {'brands'|'flags'|'player'|'ui'} category
+   * @returns {boolean}
+   */
+  _supportsTheme(category) {
+    return category === "ui" || category === "player";
+  }
+
+  /**
+   * Load an icon, preferring the current theme-mode subdirectory.
+   * @param {'brands'|'flags'|'player'|'ui'} category
+   * @param {string} filename
+   * @param {Object} opts - { maxWidth }
+   * @returns {GdiBitmap|null}
+   */
+  _loadIcon(category, filename, opts) {
+    const dir = this._getCategoryDir(category);
+    if (this._supportsTheme(category)) {
+      const modeDir = dir + (THEME.IS_DARK ? "dark\\" : "light\\");
+      const themed = _loadImage(modeDir + filename, opts.maxWidth);
+      if (themed) return themed;
+    }
+    return _loadImage(dir + filename, opts.maxWidth);
+  }
+
+  /**
    * 使缓存中的某个图标失效
    */
   invalidate(category, name) {
-    if (this._caches[category]) this._caches[category].delete(name);
+    const cache = this._caches[category];
+    if (!cache) return;
+    const normalizedName = name.toLowerCase().replace(/\s+/g, "_");
+    cache.delete(normalizedName);
+    cache.delete("dark:" + normalizedName);
+    cache.delete("light:" + normalizedName);
   }
 
   /**

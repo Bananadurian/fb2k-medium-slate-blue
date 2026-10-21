@@ -68,6 +68,14 @@ function createTitleBarController(cfg) {
         func: cfg.onButtonClick,
     };
 
+    function refreshIcons() {
+        images.icon = iconMgr.get('ui', imgKey);
+        images.button = iconMgr.get('ui', btnKey);
+        images.button_hover = iconMgr.get('ui', btnHoverKey);
+        button.img = images.button;
+        button.imgHover = images.button_hover;
+    }
+
     let displayText = "";
     let activeElement = null;
 
@@ -176,6 +184,7 @@ function createTitleBarController(cfg) {
 
     function on_colours_changed() {
         _refreshThemeColors();
+        refreshIcons();
         window.Repaint();
     }
 
