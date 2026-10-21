@@ -107,7 +107,7 @@ class VolumeControl {
     this.h = 0;
     this.drag = false;
     this.hover = false;
-    this.color = THEME.COL.SEL_FG;
+    this.color = THEME.COL.SEL_BG;
     this.currentTip = "";
   }
 
@@ -616,7 +616,7 @@ function on_mouse_leave() {
   }
   volumeBar.hover = false;
   volumeBar.drag = false;
-  volumeBar.color = THEME.COL.SEL_FG;
+  volumeBar.color = THEME.COL.SEL_BG;
   volumeBar.repaint();
   tooltip("");
   _setCursor(CURSOR_ARROW);

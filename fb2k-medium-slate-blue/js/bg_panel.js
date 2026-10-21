@@ -74,7 +74,8 @@ const PANEL_CFG = {
     // ===== 形状（全模式生效）=====
     shapeType: "round-rect",                // "rect" | "round-rect"
     shapeRadius: THEME.LAYOUT.CORNER_RADIUS, // 圆角半径 (px)，<=0 等同矩形
-    padding: _scale(8),                     // 背景绘制内边距 (px)
+    // padding: _scale(8),                     // 背景绘制内边距 (px)
+    padding: { top: _scale(8), right: _scale(8), bottom: _scale(8), left: _scale(8) },
 
     // ===== 背景图（仅 cover-image 生效）=====
     imageScaleMode: "cover",                // "cover"=铺满裁切 | "fit"=完整留边
@@ -83,7 +84,8 @@ const PANEL_CFG = {
 
     // ===== 遮罩（全模式生效，可与 fill alpha 叠加）=====
     maskEnabled: true,
-    maskColor: THEME.COL.MASK,              // 遮罩 RGB 颜色
+    // maskColor: THEME.COL.MASK,              // 遮罩 RGB 颜色
+    maskColor: THEME.COL.PLAYLIST_MASK,     // 遮罩 RGB 颜色
     maskAlpha: 255,                         // 遮罩透明度 [0, 255]；0=透明
 
     // ===== 同步策略 =====
