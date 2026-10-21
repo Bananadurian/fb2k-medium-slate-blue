@@ -287,8 +287,8 @@ IconManager._loadUIRegistry = function () {
     edition: "copyright.png",
 
     // control_buttons.js aliases
-    recent: "history.png",
-    recent_hover: "history_hover.png",
+    recent: "rotate-ccw-clock.png",
+    recent_hover: "rotate-ccw-clock_hover.png",
     favorite: "flame.png",
     favorite_hover: "flame_hover.png",
     queue: "list-start.png",
