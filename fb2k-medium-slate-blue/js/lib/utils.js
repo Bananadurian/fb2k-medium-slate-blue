@@ -18,7 +18,7 @@ function _scale(size) {
 }
 
 // ============================================================================
-// 2. 颜色生成
+// 2. 颜色生成与转换
 // ============================================================================
 
 /**
@@ -72,6 +72,81 @@ function _getDimColor(color) {
     const g2 = Math.round(g * 0.2);
     const b2 = Math.round(b * 0.2);
     return 0xff000000 | (r2 << 16) | (g2 << 8) | b2;
+}
+
+/**
+ * Derive a hover-state color from a base color.
+ * Direction is chosen automatically by perceived luminance: dark colors are
+ * lightened, light colors are darkened. Only HSL lightness changes, so hue
+ * and saturation are preserved.
+ * Formula: dark  L' = L + (1 - L) * amount
+ *          light L' = L * (1 - amount)
+ * @param {number} color - Base color (0xAARRGGBB or 0xRRGGBB). Alpha 0 is treated as opaque.
+ * @param {number} [amount=0.15] - Adjustment ratio (0-1). Non-finite values fall back
+ *        to 0.15; out-of-range values are clamped. 0 skips the lightness shift.
+ * @param {number} [alpha] - Optional output alpha (0-255). Omitted or non-finite keeps
+ *        the input alpha (input alpha 0 becomes 0xff). Explicit 0 means fully transparent.
+ * @returns {number} Adjusted ARGB color integer with explicit alpha.
+ */
+function _getHoverColor(color, amount = 0.15, alpha) {
+    const c = color >>> 0;
+    const srcAlpha = c >>> 24;
+    const outAlpha = Number.isFinite(alpha)
+        ? Math.max(0, Math.min(255, Math.round(alpha)))
+        : (srcAlpha === 0 ? 0xff : srcAlpha);
+    const r8 = (c >> 16) & 0xff;
+    const g8 = (c >> 8) & 0xff;
+    const b8 = c & 0xff;
+
+    let t = Number.isFinite(amount) ? amount : 0.15;
+    t = Math.max(0, Math.min(1, t));
+    if (t === 0) return _argb(outAlpha, r8, g8, b8);
+
+    // RGB -> HSL (h/s/l in 0-1)
+    const r = r8 / 255;
+    const g = g8 / 255;
+    const b = b8 / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const delta = max - min;
+    const l0 = (max + min) / 2;
+    let h = 0;
+    let s = 0;
+    if (delta !== 0) {
+        s = l0 > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+        if (max === r) h = (g - b) / delta + (g < b ? 6 : 0);
+        else if (max === g) h = (b - r) / delta + 2;
+        else h = (r - g) / delta + 4;
+        h /= 6;
+    }
+
+    // Direction: integer BT.601 luma keeps the 128 gray boundary deterministic.
+    const luma = 299 * r8 + 587 * g8 + 114 * b8;
+    const l = luma >= 128000 ? l0 * (1 - t) : l0 + (1 - l0) * t;
+
+    // HSL -> RGB (chroma formula; grayscale keeps all channels at l)
+    let nr = l;
+    let ng = l;
+    let nb = l;
+    if (delta !== 0) {
+        const chroma = (1 - Math.abs(2 * l - 1)) * s;
+        const hp = h * 6;
+        const x = chroma * (1 - Math.abs((hp % 2) - 1));
+        switch (Math.floor(hp) % 6) {
+            case 0: nr = chroma; ng = x; nb = 0; break;
+            case 1: nr = x; ng = chroma; nb = 0; break;
+            case 2: nr = 0; ng = chroma; nb = x; break;
+            case 3: nr = 0; ng = x; nb = chroma; break;
+            case 4: nr = x; ng = 0; nb = chroma; break;
+            default: nr = chroma; ng = 0; nb = x;
+        }
+        const m = l - chroma / 2;
+        nr += m;
+        ng += m;
+        nb += m;
+    }
+
+    return _argb(outAlpha, Math.round(nr * 255), Math.round(ng * 255), Math.round(nb * 255));
 }
 
 // ============================================================================

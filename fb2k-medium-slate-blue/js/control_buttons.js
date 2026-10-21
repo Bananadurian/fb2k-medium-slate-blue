@@ -107,7 +107,10 @@ class VolumeControl {
     this.h = 0;
     this.drag = false;
     this.hover = false;
-    this.color = THEME.COL.SEL_BG;
+    this.trackColor = THEME.COL.FG;
+    this.baseColor = THEME.COL.SEL_BG;
+    this.hoverColor = _getHoverColor(this.baseColor);
+    this.color = this.baseColor;
     this.currentTip = "";
   }
 
@@ -116,15 +119,26 @@ class VolumeControl {
   }
 
   /**
+   * Refresh cached theme colors after the global theme changes.
+   * @returns {void}
+   */
+  refreshColors() {
+    this.trackColor = THEME.COL.FG;
+    this.baseColor = THEME.COL.SEL_BG;
+    this.hoverColor = _getHoverColor(this.baseColor);
+    this.color = this.hover ? this.hoverColor : this.baseColor;
+  }
+
+  /**
    * @param {GdiGraphics} gr
    * @returns {void}
    */
   paint(gr) {
     if (this.w <= 0 || this.h <= 0) return;
-    const arc = Math.max(1, _scale(1));
+    const arc = Math.max(2, _scale(1));
     // 抗锯齿
     gr.SetSmoothingMode(4);
-    gr.FillRoundRect(this.x, this.y, this.w, this.h, arc, arc, THEME.COL.FG);
+    gr.FillRoundRect(this.x, this.y, this.w, this.h, arc, arc, this.trackColor);
 
     const posW = this.getPosWidth();
     // 这里如果值posW太小的话绘制不了arc值得圆角矩形
@@ -174,7 +188,7 @@ class VolumeControl {
 
     if (isOver !== this.hover) {
       this.hover = isOver;
-      this.color = isOver ? THEME.COL.FRAME : THEME.COL.SEL_FG;
+      this.color = isOver ? this.hoverColor : this.baseColor;
       this.repaint();
     }
 
@@ -616,7 +630,7 @@ function on_mouse_leave() {
   }
   volumeBar.hover = false;
   volumeBar.drag = false;
-  volumeBar.color = THEME.COL.SEL_BG;
+  volumeBar.color = volumeBar.baseColor;
   volumeBar.repaint();
   tooltip("");
   _setCursor(CURSOR_ARROW);
@@ -726,6 +740,7 @@ function on_playback_new_track() {
 /** 主题颜色变化时刷新 */
 function on_colours_changed() {
   _refreshThemeColors();
+  volumeBar.refreshColors();
   window.Repaint();
 }
 
