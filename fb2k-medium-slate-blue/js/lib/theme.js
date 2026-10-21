@@ -297,6 +297,10 @@ const THEME = {
     // --- UI type: 0 = Columns UI, 1 = Default UI ---
     UI_TYPE: _THEME_UI_TYPE,
 
+    // --- Theme mode: true = dark, false = light ---
+    // Assigned after COL is initialised; kept in sync by _refreshThemeColors().
+    IS_DARK: true,
+
     // --- Global colours (CUI / DUI) ---
     // CUI index mapping is documented in _readCUIColors().
     COL: _readThemeColors(),
@@ -357,6 +361,10 @@ const THEME = {
     },
 };
 
+// Cached dark-mode flag, derived from THEME.COL.BG.
+// Use _isDarkTheme(bgColor) for panels with custom / sampled backgrounds.
+THEME.IS_DARK = _isDarkTheme();
+
 // ============================================================================
 // THEME 刷新函数 — on_colours_changed / on_font_changed 时调用
 // ============================================================================
@@ -367,6 +375,7 @@ const THEME = {
  */
 function _refreshThemeColors() {
     Object.assign(THEME.COL, _readThemeColors());
+    THEME.IS_DARK = _isDarkTheme();
 }
 
 /**
@@ -375,6 +384,32 @@ function _refreshThemeColors() {
  */
 function _refreshThemeFonts() {
     Object.assign(THEME.FONT, _readThemeFonts());
+}
+
+// ============================================================================
+// 主题模式判断
+// ============================================================================
+
+/**
+ * Heuristically detect whether the current theme is dark, based on the
+ * background colour reported by Columns UI / Default UI.
+ * Uses BT.601 luma with the same threshold as _getHoverColor(), so both
+ * helpers agree on what counts as a dark colour.
+ * Read the cached THEME.IS_DARK for the global mode; call this only for
+ * per-surface or one-off custom colours.
+ * TODO: Temporary heuristic — JSplitter currently exposes no direct theme-mode
+ * API. Replace this with the official API once it becomes available.
+ * @param {number} [bgColor=THEME.COL.BG] - Background colour to test
+ *        (0xAARRGGBB / 0xRRGGBB). Pass a custom or sampled colour for
+ *        transparent / image-backed panels.
+ * @returns {boolean} true when the background is perceptually dark.
+ */
+function _isDarkTheme(bgColor) {
+    const c = (Number.isFinite(bgColor) ? bgColor : THEME.COL.BG) >>> 0;
+    const luma = 299 * ((c >> 16) & 0xff)
+               + 587 * ((c >> 8) & 0xff)
+               + 114 * (c & 0xff);
+    return luma < 128000;
 }
 
 // --- 图片资源路径 ---
