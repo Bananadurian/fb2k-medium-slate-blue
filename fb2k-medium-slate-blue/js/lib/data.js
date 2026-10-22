@@ -56,15 +56,112 @@ const AQ_COLORS = {
     dolbyHd:    _rgb(130, 195, 255), // TrueHD/Atmos 高亮蓝
 };
 
+const _AQ_WHITE = _rgb(255, 255, 255);
+const _AQ_BLACK = _rgb(0, 0, 0);
+
+// Dark/light AQ palettes live in one place. Dark backgrounds keep the legacy
+// 20% dim formula (now tunable); light backgrounds are generated in OKLCH from
+// each AQ_COLORS seed. Both modes share the same text-contrast search.
+const AQ_BADGE_CONFIG = {
+    dark: {
+        bgDim: 0.20,          // dark background = accent * 0.20
+        whiteBg: _rgb(57, 57, 64), // pure-white accent fallback
+        textContrast: 6.0,    // unified target
+    },
+    light: {
+        bgTone: 0.94,         // OKLCH L: consistent pill lightness
+        bgChromaScale: 0.35,  // keep a soft tint
+        bgChromaMax: 0.06,
+        textContrast: 6.0,    // unified target
+    },
+    textChromaMax: 0.18,
+    textToneStep: 0.01,
+};
+
+/**
+ * Find a same-hue text color meeting the target contrast.
+ * Starts from the raw accent and moves its OKLCH tone toward white (dark mode)
+ * or black (light mode) until the contrast target is reached.
+ * @param {number} accent
+ * @param {number} bgColor
+ * @param {{L:number, C:number, h:number}} seed - OKLCH of the accent
+ * @param {number} targetContrast
+ * @param {boolean} isDark
+ * @returns {number}
+ */
+function _getAQBadgeTextColor(accent, bgColor, seed, targetContrast, isDark) {
+    if (_contrastRatio(accent, bgColor) >= targetContrast) return accent;
+
+    const step = isDark ? AQ_BADGE_CONFIG.textToneStep : -AQ_BADGE_CONFIG.textToneStep;
+    const chroma = Math.min(seed.C, AQ_BADGE_CONFIG.textChromaMax);
+    let tone = seed.L;
+    for (let i = 0; i < 100; i++) {
+        tone += step;
+        if (tone < 0 || tone > 1) break;
+        const candidate = _oklchToRgb(tone, chroma, seed.h);
+        if (_contrastRatio(candidate, bgColor) >= targetContrast) return candidate;
+    }
+    return isDark ? _AQ_WHITE : _AQ_BLACK;
+}
+
+/**
+ * Build one theme mode's AQ badge palette.
+ * Does not read THEME; safe to call before theme.js loads.
+ * @param {number} accent
+ * @param {boolean} isDark
+ * @returns {{bgColor: number, textColor: number}}
+ */
+function _getAQBadgePalette(accent, isDark) {
+    const cfg = isDark ? AQ_BADGE_CONFIG.dark : AQ_BADGE_CONFIG.light;
+    const seed = _rgbToOklch(accent);
+
+    let bgColor;
+    if (isDark) {
+        bgColor = (accent & 0xffffff) === 0xffffff
+            ? cfg.whiteBg
+            : _mixColor(accent, _AQ_BLACK, 1 - cfg.bgDim);
+    } else {
+        bgColor = _oklchToRgb(
+            cfg.bgTone,
+            Math.min(seed.C * cfg.bgChromaScale, cfg.bgChromaMax),
+            seed.h
+        );
+    }
+
+    return {
+        bgColor: bgColor,
+        textColor: _getAQBadgeTextColor(accent, bgColor, seed, cfg.textContrast, isDark),
+    };
+}
+
 /**
  * 音质标识样式类
  */
 class AQBadgeStyle {
+    /**
+     * @param {string} label
+     * @param {number} color - Raw opaque accent color (0xAARRGGBB)
+     * @param {string} desc
+     */
     constructor(label, color, desc) {
         this.label = label;
         this.color = color;
-        this.bgColor = _getDimColor(color);
         this.desc = desc;
+
+        // Precompute both modes without reading THEME, so construction is safe
+        // before theme.js loads. THEME is read only by the paint-time getters.
+        this._darkPalette = _getAQBadgePalette(color, true);
+        this._lightPalette = _getAQBadgePalette(color, false);
+    }
+
+    /** @returns {number} Opaque, mode-aware badge background. */
+    get bgColor() {
+        return THEME.IS_DARK ? this._darkPalette.bgColor : this._lightPalette.bgColor;
+    }
+
+    /** @returns {number} Opaque, mode-aware WCAG AA text color. */
+    get textColor() {
+        return THEME.IS_DARK ? this._darkPalette.textColor : this._lightPalette.textColor;
     }
 }
 

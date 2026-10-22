@@ -153,35 +153,6 @@ const _CUI_GUID_PLAYLIST_SWITCHER = "{EB38A997-3B5F-4126-8746-262AA9C1F94B}";
 const _CUI_GUID_PLAYLIST = "{C882D3AC-C014-44DF-9C7E-2DADF37645A0}";
 
 /**
- * Relative luminance of an opaque ARGB colour (WCAG 2.x).
- * @param {number} color
- * @returns {number}
- */
-function _luminance(color) {
-    // RGB channels only; DUI colours are opaque ARGB values.
-    const channel = function (value) {
-        const c = value / 255;
-        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-    };
-    return 0.2126 * channel((color >> 16) & 0xff)
-         + 0.7152 * channel((color >> 8) & 0xff)
-         + 0.0722 * channel(color & 0xff);
-}
-
-/**
- * @param {number} c1
- * @param {number} c2
- * @returns {number} WCAG contrast ratio
- */
-function _contrastRatio(c1, c2) {
-    const l1 = _luminance(c1);
-    const l2 = _luminance(c2);
-    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
-}
-
-const _MIN_TEXT_CONTRAST = 4.5; // WCAG AA for normal text
-
-/**
  * Read CUI theme colours.
  * ColourTypeCUI: 0 text, 1 selected text, 3 background,
  * 4 selection background, 6 active item frame.

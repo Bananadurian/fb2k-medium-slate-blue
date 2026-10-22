@@ -660,7 +660,7 @@ function drawBadgeSection(gr, sec) {
     gr.GdiDrawText(
       currentAQBadge.label,
       TS.labelCenter.font,
-      currentAQBadge.color,
+      currentAQBadge.textColor,
       elements.badgeElement.x,
       elements.badgeElement.y,
       elements.badgeElement.w,

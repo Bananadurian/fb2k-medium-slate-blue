@@ -146,7 +146,7 @@ const SECTIONS = [
                 gr.FillRoundRect(badgeElement.x, badgeElement.y, badgeElement.w, badgeElement.h,
                     THEME.CFG.AQ_BADGE.RADIUS, THEME.CFG.AQ_BADGE.RADIUS, currentAQBadge.bgColor);
                 gr.SetSmoothingMode(0);
-                gr.GdiDrawText(currentAQBadge.label, TS.labelCenter.font, currentAQBadge.color,
+                gr.GdiDrawText(currentAQBadge.label, TS.labelCenter.font, currentAQBadge.textColor,
                     badgeElement.x, badgeElement.y, badgeElement.w, badgeElement.h, CENTER_LINE_FLAGS);
             }
         },

@@ -1,5 +1,5 @@
 /**
- * @description 共享工具函数库 — DPI 缩放、颜色、图片、命中检测、文本测量(_measureText)、图片绘制
+ * @description 共享工具函数库 — DPI 缩放、颜色(混合/OKLCH/WCAG 对比度)、图片、命中检测、文本测量(_measureText)、图片绘制
  */
 
 "use strict";
@@ -55,7 +55,122 @@ function _argb(a, r, g, b) {
 }
 
 /**
- * 计算背景调暗色 (用于 AQ 音质标识背景)
+ * Linearly mix two colors channel-wise and return an opaque ARGB color.
+ * @param {number} c1 - Base color (0xAARRGGBB / 0xRRGGBB)
+ * @param {number} c2 - Target color
+ * @param {number} [t] - Weight of c2, clamped to [0, 1]
+ * @returns {number} Opaque mixed color
+ */
+function _mixColor(c1, c2, t) {
+    const a = c1 >>> 0;
+    const b = c2 >>> 0;
+    const k = Math.max(0, Math.min(1, Number.isFinite(t) ? t : 0));
+    const inv = 1 - k;
+    return _rgb(
+        Math.round(((a >> 16) & 0xff) * inv + ((b >> 16) & 0xff) * k),
+        Math.round(((a >> 8) & 0xff) * inv + ((b >> 8) & 0xff) * k),
+        Math.round((a & 0xff) * inv + (b & 0xff) * k)
+    );
+}
+
+/**
+ * sRGB channel (0-255) to linear light (0-1).
+ * @param {number} value
+ * @returns {number}
+ */
+function _srgbToLinearChannel(value) {
+    const c = value / 255;
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+
+/**
+ * Linear light (0-1) to an sRGB channel (0-255, rounded and clamped).
+ * @param {number} value
+ * @returns {number}
+ */
+function _linearToSrgbChannel(value) {
+    const c = Math.max(0, Math.min(1, value));
+    const s = c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+    return Math.round(Math.max(0, Math.min(1, s)) * 255);
+}
+
+/**
+ * Convert an opaque ARGB color to OKLCH.
+ * @param {number} color
+ * @returns {{L:number, C:number, h:number}} h is in radians
+ */
+function _rgbToOklch(color) {
+    const r = _srgbToLinearChannel((color >> 16) & 0xff);
+    const g = _srgbToLinearChannel((color >> 8) & 0xff);
+    const b = _srgbToLinearChannel(color & 0xff);
+
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+
+    const L = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s;
+    const a = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+    const bb = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+    return { L: L, C: Math.hypot(a, bb), h: Math.atan2(bb, a) };
+}
+
+/**
+ * Convert OKLCH to an opaque ARGB color, clipping to the sRGB gamut.
+ * @param {number} L
+ * @param {number} C
+ * @param {number} h - Hue in radians
+ * @returns {number}
+ */
+function _oklchToRgb(L, C, h) {
+    const a = C * Math.cos(h);
+    const b = C * Math.sin(h);
+
+    const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+    const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+    const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+
+    const l = l_ ** 3;
+    const m = m_ ** 3;
+    const s = s_ ** 3;
+
+    return _rgb(
+        _linearToSrgbChannel( 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+        _linearToSrgbChannel(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+        _linearToSrgbChannel(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s)
+    );
+}
+
+/**
+ * Relative luminance of an opaque ARGB colour (WCAG 2.x).
+ * @param {number} color
+ * @returns {number}
+ */
+function _luminance(color) {
+    // RGB channels only; DUI colours are opaque ARGB values.
+    const channel = function (value) {
+        const c = value / 255;
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * channel((color >> 16) & 0xff)
+         + 0.7152 * channel((color >> 8) & 0xff)
+         + 0.0722 * channel(color & 0xff);
+}
+
+/**
+ * @param {number} c1
+ * @param {number} c2
+ * @returns {number} WCAG contrast ratio
+ */
+function _contrastRatio(c1, c2) {
+    const l1 = _luminance(c1);
+    const l2 = _luminance(c2);
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+const _MIN_TEXT_CONTRAST = 4.5; // WCAG AA for normal text
+
+/**
+ * 计算背景调暗色 (AQ 深色模式背景的旧实现，保留待后续处理)
  * 公式：亮度 * 0.2，纯白(#FFFFFF)则转为冷灰(#393940)
  * @param {number} color - 原始颜色整数
  * @returns {number} 调暗后的颜色整数
