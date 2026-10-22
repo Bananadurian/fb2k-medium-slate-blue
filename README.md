@@ -1,4 +1,4 @@
-# fb2k-medium-slate-blue [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![zh-CN](https://img.shields.io/badge/中文-zh--CN-red.svg)](README.zh-CN.md)
+# fb2k-medium-slate-blue [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![zh-CN](https://img.shields.io/badge/中文-zh--CN-red.svg)](fb2k-medium-slate-blue/README.zh-CN.md)
 
 - [1. Introduction](#1-introduction)
 - [2. Setup](#2-setup)
@@ -80,4 +80,4 @@ Depending on installed plugins, the following folders may appear under `profile/
 
 ## 6. License
 
-This project is licensed under the [MIT License](LICENSE). See [THIRD_PARTY.md](THIRD_PARTY.md) for third-party attributions.
+This project is licensed under the [MIT License](LICENSE). See [THIRD_PARTY.md](fb2k-medium-slate-blue/THIRD_PARTY.md) for third-party attributions.

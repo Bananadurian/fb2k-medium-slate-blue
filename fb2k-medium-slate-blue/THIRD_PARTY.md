@@ -4,7 +4,7 @@ This project uses the following third-party resources.
 
 ## Icons
 
-See [`fb2k-medium-slate-blue/imgs/README.md`](fb2k-medium-slate-blue/imgs/README.md#图标来源) for a detailed breakdown per category.
+See [`imgs/README.md`](imgs/README.md#图标来源) for a detailed breakdown per category.
 
 | Source | License |
 |:---|:---|
@@ -14,7 +14,7 @@ See [`fb2k-medium-slate-blue/imgs/README.md`](fb2k-medium-slate-blue/imgs/README
 
 ## Plugins
 
-Bundled components under `user-components-x64/` are the work of their respective authors and distributed under their own license terms. This is a partial list — see the directory for all included plugins.
+Bundled components under `../user-components-x64/` are the work of their respective authors and distributed under their own license terms. This is a partial list — see the directory for all included plugins.
 
 > ✅ Active &nbsp; 💤 Inactive &nbsp; ❌ Removed &nbsp; ⛔ Deprecated
 

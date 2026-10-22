@@ -1,4 +1,4 @@
-# fb2k-medium-slate-blue [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![EN](https://img.shields.io/badge/English-EN-blue.svg)](README.md)
+# fb2k-medium-slate-blue [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../LICENSE) [![EN](https://img.shields.io/badge/English-EN-blue.svg)](../README.md)
 
 - [1. 简介](#1-简介)
 - [2. 使用](#2-使用)
@@ -11,9 +11,9 @@
 
 ## 1. 简介
 
-![screenshot](fb2k-medium-slate-blue/imgs/screenshots/1.3.0-1.png)
+![screenshot](imgs/screenshots/1.3.0-1.png)
 
-> 更多截图见 [CHANGELOG.md](fb2k-medium-slate-blue/CHANGELOG.md)。
+> 更多截图见 [CHANGELOG.md](CHANGELOG.md)。
 
 **fb2k-medium-slate-blue**（Medium Slate Blue）是一个基于 [**foobar2000 v2.25.x**](https://www.foobar2000.org/download)、[**Columns UI**](https://github.com/reupen/columns_ui) 定制的主题。
 
@@ -50,16 +50,16 @@
 
 ## 3. 功能特性
 
-完整说明参见 [**FEATURES.md**](fb2k-medium-slate-blue/FEATURES.md)。
+完整说明参见 [**FEATURES.md**](FEATURES.md)。
 
 - **专辑链接**：从音频标签读取 `URL_*` 字段，自动展示 Spotify、Discogs、YouTube 等 21 个平台的可点击图标按钮
 - **艺人信息**：国籍 + 国旗、作品集（Discography）、外部链接一键跳转
-- **电台封面**：利用 [foo_external_tags](https://wiki.hydrogenaud.io/index.php?title=Foobar2000:Components/External_Tags_(foo_external_tags)) 为电台流匹配本地封面（配置步骤 → [FEATURES.md §3](fb2k-medium-slate-blue/FEATURES.md#3-电台封面配置)）
+- **电台封面**：利用 [foo_external_tags](https://wiki.hydrogenaud.io/index.php?title=Foobar2000:Components/External_Tags_(foo_external_tags)) 为电台流匹配本地封面（配置步骤 → [FEATURES.md §3](FEATURES.md#3-电台封面配置)）
 - **主题系统**：支持封面取色、模糊背景、伪透明等多种背景渲染模式
 
 ## 4. 版本记录
 
-详见 [`fb2k-medium-slate-blue/CHANGELOG.md`](fb2k-medium-slate-blue/CHANGELOG.md)。版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
+详见 [`CHANGELOG.md`](CHANGELOG.md)。版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
 ## 5. 附录
 
@@ -80,4 +80,4 @@
 
 ## 6. 许可
 
-本项目采用 [MIT License](LICENSE)。第三方资源许可详见 [THIRD_PARTY.md](THIRD_PARTY.md)。
+本项目采用 [MIT License](../LICENSE)。第三方资源许可详见 [THIRD_PARTY.md](THIRD_PARTY.md)。

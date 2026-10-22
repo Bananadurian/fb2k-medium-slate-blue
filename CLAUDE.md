@@ -49,19 +49,19 @@ profile/
 │   │   ├── *_container*.js                # Container scripts
 │   │   ├── *_buttons.js                   # Button panels
 │   │   ├── *_info.js                      # Info panels
-│   └── imgs/                              # Theme assets
-│       ├── icons/                         # 图标资源（brands/player/ui/flags）
-│       ├── covers/radio/                  # 电台封面
-│       ├── screenshots/                   # 截图
-│       ├── svg_to_png.py                  # SVG→PNG 批量转换工具
-│       └── README.md                      # 图标来源、命名规范、工具使用说明
+│   ├── imgs/                              # Theme assets
+│   │   ├── icons/                         # 图标资源（brands/player/ui/flags）
+│   │   ├── covers/radio/                  # 电台封面
+│   │   ├── screenshots/                   # 截图
+│   │   ├── svg_to_png.py                  # SVG→PNG 批量转换工具
+│   │   └── README.md                      # 图标来源、命名规范、工具使用说明
+│   ├── README.zh-CN.md                    # User documentation (中文)
+│   └── THIRD_PARTY.md                     # Third-party license notices
 ├── configuration/                         # Plugin configs
 │   └── *.dll.cfg                          # Plugin-specific configs
 ├── theme.fth                              # Columns UI theme
 ├── config.sqlite                          # Main config database
 ├── README.md                              # User documentation (EN)
-├── README.zh-CN.md                        # User documentation (中文)
-├── THIRD_PARTY.md                         # Third-party license notices
 └── LICENSE                                # MIT License
 
 Excluded from indexing (.gitignore + .claudeignore):
@@ -138,7 +138,7 @@ Excluded from indexing (.gitignore + .claudeignore):
 - All `.js` panel scripts and libraries
 - Theme assets (`imgs/`)
 - `config.sqlite` (auto-sanitized via pre-commit hook)
-- `theme.fth`, `README.md`, `README.zh-CN.md`, `THIRD_PARTY.md`, `version.txt`, `LICENSE`
+- `theme.fth`, `README.md`, `fb2k-medium-slate-blue/README.zh-CN.md`, `fb2k-medium-slate-blue/THIRD_PARTY.md`, `version.txt`, `LICENSE`
 
 **Ignored (`.gitignore`):**
 - Large databases: `metadb.sqlite`, `minibar.db`
