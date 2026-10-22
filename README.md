@@ -38,8 +38,8 @@
    > Standard: `%APPDATA%\foobar2000\profile` (i.e. `C:\Users\<user>\AppData\Roaming\foobar2000\profile`)
 
 5. Launch foobar2000
-6. ⚠️ **Fix proxy settings**: The config file (`config.sqlite`) contains the author's personal proxy — change it immediately:
-   `Preferences → Networking → Proxy server → No proxy`
+6. ⚠️ **Proxy / credentials (old packages only)**: This repo no longer ships `config.sqlite`; foobar2000 creates a fresh one on first launch. If you use an older package that still includes it, it may contain the author's proxy and Last.fm credentials — reset them:
+   `Preferences → Networking → Proxy server → No proxy`, then sign in with your own Last.fm account.
 
 ### 2.1. Troubleshooting
 

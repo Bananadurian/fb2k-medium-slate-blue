@@ -38,8 +38,8 @@
 > 非便携版：`%APPDATA%\foobar2000\profile`（即 `C:\Users\<用户名>\AppData\Roaming\foobar2000\profile`）
 
 5. 启动 foobar2000
-6. ⚠️ **修改网络代理**：配置文件（`config.sqlite`）含作者个人代理设置，启动后务必修改：
-   `Preferences → Networking → Proxy server → No proxy`
+6. ⚠️ **网络代理与凭据（仅旧版整合包）**：本仓库已不再附带 `config.sqlite`，首次启动会自动生成。若使用仍包含该文件的旧版整合包，其中可能残留作者的代理与 Last.fm 凭据，请重置：
+   `Preferences → Networking → Proxy server → No proxy`，并登录自己的 Last.fm 账号。
 
 ### 2.1. 故障排查
 

@@ -6,6 +6,12 @@
 configuration/foo_enhanced_playcount.dll.cfg
 configuration/foo_scrobble.dll.cfg
 
+# 2026-10-22 foobar2000 配置数据库，可能包含密钥等敏感信息
+# 新版 foo_scrobble 等组件使用 foobar2000 2.0+ 基于 SQLite 的“现代设置”，
+# 不再写入 foo_scrobble.dll.cfg，凭据会落入 config.sqlite，仅忽略 .cfg 已无法覆盖。
+# 该文件曾被提交跟踪：已用 git rm --cached 取消跟踪，但旧提交历史中仍可能存在。
+config.sqlite
+
 # Claude Code 本地设置（仅本地保留）
 .claude/
 

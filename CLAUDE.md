@@ -60,7 +60,7 @@ profile/
 ├── configuration/                         # Plugin configs
 │   └── *.dll.cfg                          # Plugin-specific configs
 ├── theme.fth                              # Columns UI theme
-├── config.sqlite                          # Main config database
+├── config.sqlite                          # Main config database (local only, ignored)
 ├── README.md                              # User documentation (EN)
 └── LICENSE                                # MIT License
 
@@ -137,32 +137,22 @@ Excluded from indexing (.gitignore + .claudeignore):
 **Committed:**
 - All `.js` panel scripts and libraries
 - Theme assets (`imgs/`)
-- `config.sqlite` (auto-sanitized via pre-commit hook)
 - `theme.fth`, `README.md`, `fb2k-medium-slate-blue/README.zh-CN.md`, `fb2k-medium-slate-blue/THIRD_PARTY.md`, `version.txt`, `LICENSE`
 
 **Ignored (`.gitignore`):**
+- Main config: `config.sqlite` (may contain credentials via modern SQLite settings)
 - Large databases: `metadb.sqlite`, `minibar.db`
 - User data: `library-v2.0/`, `playlists-v2.0/`, `lyrics/`
 - Runtime: `js_data/`, `*cache/`, `crash reports/`, `component-updates/`
 - Logs: `library-error-log.txt`, `config.sqlite.bad`
 - Sanitize backups: `/config.sqlite.bak`
 
-### Config Sanitization
+### Config Privacy
 
-`config.sqlite` is tracked in Git but privacy-sanitized before every commit via a pre-commit hook (`fb2k-medium-slate-blue/tools/pre-commit` → `.git/hooks/pre-commit`).
+Since 2026-10-22, `config.sqlite` is ignored and no longer tracked. Newer components (e.g. `foo_scrobble`) use the SQLite-based "modern settings" introduced in foobar2000 2.0+, so credentials may be stored in `config.sqlite` instead of `configuration/*.dll.cfg`; ignoring only the `.cfg` files is therefore insufficient.
 
-**How it works:**
-1. Pre-commit hook detects `config.sqlite` in staging area
-2. Backs up real config → runs `sanitize_config.py` → stages sanitized version
-3. After commit (success or fail), restores real config to working copy
-
-**Sanitize rules** (`fb2k-medium-slate-blue/tools/sanitize_config.py`):
-- Deletes `UPnP.renderer.name`, `UPnP.renderer.USN`, `milk2.szPresetDir` from `configStrings`
-- Deletes rows with local proxy values (`127.0.0.1:`, `localhost:`, `::1:`) from `configStrings`
-- Runs `VACUUM` to physically erase deleted data
-- `core.totalTimePlayed` rule is present but disabled (`enabled: False`)
-
-**One-time setup**: `cp fb2k-medium-slate-blue/tools/pre-commit .git/hooks/pre-commit`
+- The file was tracked in earlier commits. `git rm --cached config.sqlite` only stops future tracking; old history still contains it. Purging history requires a rewrite — confirm with the maintainer first.
+- The legacy sanitizer (`fb2k-medium-slate-blue/tools/sanitize_config.py`) and its pre-commit hook remain for reference; the hook exits early unless `config.sqlite` is staged as added/modified.
 
 **Current version:** foobar2000 v2.25.x (see `version.txt`)
 
