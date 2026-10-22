@@ -1,1 +1,1 @@
-foobar2000 v2.26.1
+foobar2000 v2.26.2 preview 2026-10-22
