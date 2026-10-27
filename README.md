@@ -71,6 +71,7 @@ Depending on installed plugins, the following folders may appear under `profile/
 |:---|:---|:---|
 | `eslyric-data/` | [ESlyric](https://www.foobar2000.org/components/view/foo_uie_eslyric) | Lyric layouts & styles |
 | `milkdrop2/` | [MilkDrop 2](https://www.foobar2000.org/components/view/foo_vis_milk2) | Visualization presets & shaders |
+| `vumeter/` | [Analog VU Meter Visualisation](https://www.foobar2000.org/components/view/foo_vis_vumeter) | VU Meter presets |
 | `wispan/` | [Spectrum Analyzer Visualisation](https://www.foobar2000.org/components/view/foo_vis_wispan) | Spectrum visualizer config |
 | `goom/` | [What a GOOM!](https://www.foobar2000.org/components/view/foo_vis_goom) | Visualizer config (not bundled) |
 | `lyrics/` | ESlyric | Cached lyric files |

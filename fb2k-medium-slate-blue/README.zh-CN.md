@@ -71,6 +71,7 @@
 |:---|:---|:---|
 | `eslyric-data/` | [ESlyric](https://www.foobar2000.org/components/view/foo_uie_eslyric) | 歌词布局与样式 |
 | `milkdrop2/` | [MilkDrop 2](https://www.foobar2000.org/components/view/foo_vis_milk2) | 可视化预设与着色器 |
+| `vumeter/` | [Analog VU Meter Visualisation](https://www.foobar2000.org/components/view/foo_vis_vumeter) | VU 表（Volume Unit Meter，音量单位表）可视化预设  |
 | `wispan/` | [Spectrum Analyzer](https://www.foobar2000.org/components/view/foo_vis_wispan) | 频谱可视化配置 |
 | `goom/` | [What a GOOM!](https://www.foobar2000.org/components/view/foo_vis_goom) | 可视化配置（未捆绑） |
 | `lyrics/` | ESlyric | 缓存的歌词文件 |
