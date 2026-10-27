@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Popup Panels — Preferences</title>
+  <link rel="stylesheet" href="foo_popup_panels_help.css">
+</head>
+<body>
+  <p><a href="foo_popup_panels_help.html">Help overview</a></p>
+  <h1>Preferences</h1>
+
+  <p>
+    Open <strong>Preferences &gt; Display &gt; Popup panels</strong> to configure
+    the default behavior of popup panels.
+  </p>
+
+  <figure>
+    <img src="images/preferences.png" alt="Popup Panels preferences page">
+  </figure>
+
+  <h2>Applying changes</h2>
+  <p>
+    Changes made on this page are pending until you select
+    <strong>Apply</strong> in the foobar2000 Preferences dialog. Use
+    <strong>Reset</strong> to restore this page's defaults; apply the reset if
+    you want those values saved.
+  </p>
+  <p>
+    The window-style, close, content-loading, and taskbar options below are
+    defaults for newly created popups. They do not change existing popups;
+    configure those individually using the
+    <a href="ConfigurePanel.html">Configure dialog</a>. The minimized-panel
+    arrangement option is an exception: applying a changed arrangement also
+    repositions currently minimized popup panels.
+  </p>
+
+  <h2>Panel default values</h2>
+  <p>
+    These options determine the initial settings copied into each new popup.
+  </p>
+  <dl>
+    <dt>Show frame</dt>
+    <dd>Shows or hides the popup window frame. Default: On.</dd>
+
+    <dt>Show titlebar</dt>
+    <dd>Shows or hides the popup title bar. Default: On.</dd>
+
+    <dt>Show close button</dt>
+    <dd>
+      Controls whether new popups have a close button. Turning this off also
+      turns off the system-menu button and sizing buttons. Default: On.
+    </dd>
+
+    <dt>Show system menu button</dt>
+    <dd>
+      Controls whether new popups show the system-menu button in the title bar.
+      This is a default for newly created popups; it does not change the button
+      on existing panels. Default: On.
+    </dd>
+
+    <dt>Show sizing buttons</dt>
+    <dd>Controls whether new popups have sizing buttons. Default: On.</dd>
+
+    <dt>Destroy on close</dt>
+    <dd>
+      When enabled, closing a popup destroys it. When disabled, closing hides
+      it so it remains available in the background. Default: On.
+    </dd>
+
+    <dt>Confirm destroy on close</dt>
+    <dd>
+      Controls whether closing a popup that is set to be destroyed prompts for
+      confirmation. The prompt lets you keep the popup hidden in the background
+      instead of destroying it. Default: On.
+    </dd>
+
+    <dt>Load content on first display</dt>
+    <dd>
+      Defers creating the hosted extension until the popup is first shown. This
+      can avoid loading the panel content for a popup that remains hidden.
+      Default: On.
+    </dd>
+
+    <dt>Add to taskbar</dt>
+    <dd>Controls whether new popup panels appear as taskbar windows. Default: Off.</dd>
+  </dl>
+
+  <h2>Arrange minimized panels</h2>
+  <p>
+    Select how minimized popup panels are positioned. The
+    <strong>System</strong> option leaves their placement to Windows. The
+    directional options arrange minimized panels relative to the foobar2000
+    main window, starting at the named corner and proceeding in the named
+    direction. If the panels do not fit along that edge, placement continues
+    on another line or column in the direction indicated by the option.
+  </p>
+  <dl>
+    <dt>System</dt>
+    <dd>Use the system-managed minimized-window placement.</dd>
+
+    <dt>Top left right</dt>
+    <dd>Start at the top-left and proceed right; continue on the next line downward.</dd>
+
+    <dt>Top left down</dt>
+    <dd>Start at the top-left and proceed downward; continue in the next column to the right.</dd>
+
+    <dt>Top right left</dt>
+    <dd>Start at the top-right and proceed left; continue on the next line downward.</dd>
+
+    <dt>Top right down</dt>
+    <dd>Start at the top-right and proceed downward; continue in the next column to the left.</dd>
+
+    <dt>Bottom left right</dt>
+    <dd>Start at the bottom-left and proceed right; continue on the next line upward.</dd>
+
+    <dt>Bottom left up</dt>
+    <dd>Start at the bottom-left and proceed upward; continue in the next column to the right.</dd>
+
+    <dt>Bottom right left</dt>
+    <dd>Start at the bottom-right and proceed left; continue on the next line upward.</dd>
+
+    <dt>Bottom right up</dt>
+    <dd>Start at the bottom-right and proceed upward; continue in the next column to the left.</dd>
+  </dl>
+
+  <p>
+    When you apply a changed arrangement, currently minimized popup panels are
+    repositioned using the selected option.
+  </p>
+
+  <p><a href="foo_popup_panels_help.html">Back to Popup Panels help</a></p>
+</body>
+</html>

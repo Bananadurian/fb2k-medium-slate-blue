@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Popup Panels — Configure a popup panel</title>
+  <link rel="stylesheet" href="foo_popup_panels_help.css">
+</head>
+<body>
+  <p><a href="foo_popup_panels_help.html">Help overview</a></p>
+  <h1>Configure a popup panel</h1>
+
+  <p>
+    Open <strong>View &gt; Popup panels &gt; Configure</strong> and select a
+    popup to open its configuration dialog. You can also right-click the
+    popup's title bar and choose <strong>Configure popup...</strong>. The
+    hosted extension's context menu may provide the configuration command as
+    well, if the extension supports it.
+  </p>
+
+  <p>
+    All changes made in the Configure dialog are applied directly to the panel
+    as you make them, without a separate Apply step or further confirmation.
+    This includes panel settings and Panels Tree changes. The
+    <strong>OK</strong> button simply closes the dialog.
+  </p>
+
+  <figure>
+    <img src="images/configure-panel.png" alt="Popup panel configuration dialog">
+  </figure>
+
+  <h2>Options</h2>
+  <dl>
+    <dt>Title</dt>
+    <dd>Sets the popup window title.</dd>
+
+    <dt>Show frame</dt>
+    <dd>Shows or hides the window frame.</dd>
+
+    <dt>Show titlebar</dt>
+    <dd>Shows or hides the title bar.</dd>
+
+    <dt>Show close button</dt>
+    <dd>
+      Controls the close button. When disabled, the system-menu and sizing-button
+      options are also disabled.
+    </dd>
+
+    <dt>Show sizing buttons</dt>
+    <dd>Controls the sizing buttons in the window frame.</dd>
+
+    <dt>Show system menu button</dt>
+    <dd>
+      Controls the system-menu button in the title bar. When changed on a
+      visible panel, the panel is briefly hidden and shown again so the change
+      takes effect immediately. This causes a visible flicker.
+    </dd>
+
+    <dt>Destroy on close</dt>
+    <dd>
+      Destroys the popup when it is closed instead of keeping it available as a
+      hidden window.
+    </dd>
+
+    <dt>Load content on first display</dt>
+    <dd>Defers loading the panel content until the popup is first displayed.</dd>
+
+    <dt>Add to taskbar</dt>
+    <dd>Controls whether the popup is shown as a taskbar window.</dd>
+
+    <dt>Left, Top, Width, Height</dt>
+    <dd>
+      Show and edit the popup window position and size. Width and height must
+      be positive. These fields are unavailable while the window is minimized
+      or maximized.
+    </dd>
+  </dl>
+
+  <h2>Panels Tree</h2>
+  <p>
+    The Panels Tree is shown when the popup contains a panel container. It
+    displays the container's nested panel layout. Right-clicking a tree node
+    selects that node and opens its context menu. Right-clicking empty tree
+    space opens the menu for the root container.
+  </p>
+  <p>
+    For details about the available commands, see
+    <a href="PanelsTreeContextMenu.html">Panels Tree context menu</a>.
+  </p>
+</body>
+</html>

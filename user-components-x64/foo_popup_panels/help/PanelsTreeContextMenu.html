@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Popup Panels — Panels Tree context menu</title>
+  <link rel="stylesheet" href="foo_popup_panels_help.css">
+</head>
+<body>
+  <p><a href="foo_popup_panels_help.html">Help overview</a></p>
+  <h1>Panels Tree context menu</h1>
+
+  <p>
+    The Panels Tree is shown when the popup contains a panel container. It
+    displays the container's nested panel layout. Right-clicking a tree node
+    selects that node and opens its context menu. Right-clicking empty tree
+    space opens the menu for the root container.
+  </p>
+
+  <h2>Right-clicking empty tree space</h2>
+  <dl>
+    <dt>Add child</dt>
+    <dd>
+      Adds a panel to the root container. The submenu lists available
+      extensions grouped into Containers, Panels, Playlist views, Toolbars, and
+      Visualisations.
+    </dd>
+
+    <dt>Paste</dt>
+    <dd>
+      Appears when the Panels Tree clipboard contains a copied or cut panel. It
+      adds that panel to the root container.
+    </dd>
+  </dl>
+
+  <h2>Right-clicking a panel node</h2>
+  <dl>
+    <dt>Insert Before</dt>
+    <dd>Adds a selected extension immediately before the node in the same parent container.</dd>
+
+    <dt>Insert After</dt>
+    <dd>Adds a selected extension immediately after the node in the same parent container.</dd>
+
+    <dt>Replace</dt>
+    <dd>Replaces the selected node with a selected extension.</dd>
+
+    <dt>Remove</dt>
+    <dd>Removes the selected panel from its parent container.</dd>
+
+    <dt>Cut</dt>
+    <dd>
+      Places the panel and its configuration on the Panels Tree clipboard for
+      moving it. The source panel is removed when the cut entry is pasted.
+    </dd>
+
+    <dt>Copy</dt>
+    <dd>
+      Places the panel and its configuration on the Panels Tree clipboard
+      without removing the source.
+    </dd>
+
+    <dt>Paste</dt>
+    <dd>
+      Is available for a container node when the clipboard has a panel. It adds
+      the panel as a child of that container. Non-container nodes cannot contain
+      pasted children.
+    </dd>
+
+    <dt>Move Up and Move Down</dt>
+    <dd>
+      Reorder the node among its siblings in the same parent container. Each
+      command is offered only when a sibling position exists in that direction.
+    </dd>
+
+    <dt>Add child</dt>
+    <dd>
+      Is available for a Containers node. Its submenu adds an extension inside
+      that container; available extensions are grouped by category.
+    </dd>
+  </dl>
+
+  <p>
+    The Panels Tree clipboard is shared between Configure dialogs. You can
+    therefore cut or copy a panel node in one dialog and paste it into a
+    compatible container in another dialog. Cutting removes the source node
+    when pasted; copying leaves the source in place. Paste is available on the
+    root container or on a container node.
+  </p>
+
+  <p>
+    Insert, replace, remove, move, cut, and paste operations update the tree and
+    the popup's saved panel configuration.
+  </p>
+
+  <h2>Right-clicking a panel row</h2>
+  <dl>
+    <dt>Insert Before</dt>
+    <dd>Adds a selected extension immediately before the row in the same parent container.</dd>
+
+    <dt>Insert After</dt>
+    <dd>Adds a selected extension immediately after the row in the same parent container.</dd>
+
+    <dt>Replace</dt>
+    <dd>Replaces the selected row with a selected extension.</dd>
+
+    <dt>Remove</dt>
+    <dd>Removes the selected panel from its parent container.</dd>
+
+    <dt>Cut</dt>
+    <dd>
+      Places the panel and its configuration on the Panels Tree clipboard for
+      moving it. The source panel is removed when the cut entry is pasted.
+    </dd>
+
+    <dt>Copy</dt>
+    <dd>
+      Places the panel and its configuration on the Panels Tree clipboard
+      without removing the source.
+    </dd>
+
+    <dt>Paste</dt>
+    <dd>
+      Is available for a container row when the clipboard has a panel. It adds
+      the panel as a child of that container. Non-container rows cannot contain
+      pasted children.
+    </dd>
+
+    <dt>Move Up and Move Down</dt>
+    <dd>
+      Reorder the row among its siblings in the same parent container. Each
+      command is offered only when a sibling position exists in that direction.
+    </dd>
+
+    <dt>Add child</dt>
+    <dd>
+      Is available for a Containers row. Its submenu adds an extension inside
+      that container; available extensions are grouped by category.
+    </dd>
+  </dl>
+
+  <p>
+    Insert, replace, remove, move, cut, and paste operations update the tree and
+    the popup's saved panel configuration.
+  </p>
+
+  <p><a href="ConfigurePanel.html">Back to Configure a popup panel</a></p>
+</body>
+</html>
